@@ -10,22 +10,20 @@ export const mockSalaryStructures = [
     // Earnings
     basicSalary: 25000,
     hra: 10000, // House Rent Allowance
-    da: 5000, // Dearness Allowance
-    conveyanceAllowance: 2000,
-    medicalAllowance: 1500,
-    specialAllowance: 3000,
     otherAllowances: 1000,
     // Deductions
     pfDeduction: 1800, // 12% of basic
     esiDeduction: 750, // ESI
     professionalTax: 200,
     tds: 2000,
-    loanDeduction: 0,
+    advanceDeduction: 0,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
     // Calculated fields
-    grossSalary: 47500,
+    grossSalary: 36000,
     totalDeductions: 4750,
-    netSalary: 42750,
+    netSalary: 31250,
     status: 'ACTIVE',
   },
   {
@@ -36,20 +34,18 @@ export const mockSalaryStructures = [
     effectiveFrom: '2024-01-01',
     basicSalary: 30000,
     hra: 12000,
-    da: 6000,
-    conveyanceAllowance: 2500,
-    medicalAllowance: 1500,
-    specialAllowance: 4000,
     otherAllowances: 1500,
     pfDeduction: 2160,
     esiDeduction: 0,
     professionalTax: 200,
     tds: 3000,
-    loanDeduction: 0,
+    advanceDeduction: 0,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
-    grossSalary: 57500,
+    grossSalary: 43500,
     totalDeductions: 5360,
-    netSalary: 52140,
+    netSalary: 38140,
     status: 'ACTIVE',
   },
   {
@@ -60,20 +56,18 @@ export const mockSalaryStructures = [
     effectiveFrom: '2024-02-01',
     basicSalary: 20000,
     hra: 8000,
-    da: 4000,
-    conveyanceAllowance: 1600,
-    medicalAllowance: 1250,
-    specialAllowance: 2500,
     otherAllowances: 800,
     pfDeduction: 1440,
     esiDeduction: 563,
     professionalTax: 200,
     tds: 1200,
-    loanDeduction: 0,
+    advanceDeduction: 0,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
-    grossSalary: 38150,
+    grossSalary: 28800,
     totalDeductions: 3403,
-    netSalary: 34747,
+    netSalary: 25397,
     status: 'ACTIVE',
   },
   {
@@ -84,20 +78,18 @@ export const mockSalaryStructures = [
     effectiveFrom: '2024-01-15',
     basicSalary: 35000,
     hra: 14000,
-    da: 7000,
-    conveyanceAllowance: 3000,
-    medicalAllowance: 1500,
-    specialAllowance: 5000,
     otherAllowances: 2000,
     pfDeduction: 2520,
     esiDeduction: 0,
     professionalTax: 200,
     tds: 4000,
-    loanDeduction: 1000,
+    advanceDeduction: 1000,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
-    grossSalary: 67500,
+    grossSalary: 51000,
     totalDeductions: 7720,
-    netSalary: 59780,
+    netSalary: 43280,
     status: 'ACTIVE',
   },
 ];
@@ -122,22 +114,20 @@ export const mockPayslips = [
     // Salary components
     basicSalary: 25000,
     hra: 10000,
-    da: 5000,
-    conveyanceAllowance: 2000,
-    medicalAllowance: 1500,
-    specialAllowance: 3000,
     otherAllowances: 1000,
     // Deductions
     pfDeduction: 1800,
     esiDeduction: 750,
     professionalTax: 200,
     tds: 2000,
-    loanDeduction: 0,
+    advanceDeduction: 0,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
     // Totals
-    grossSalary: 47500,
+    grossSalary: 36000,
     totalDeductions: 4750,
-    netSalary: 42750,
+    netSalary: 31250,
     paymentDate: '2024-10-01',
     paymentStatus: 'PAID',
     paymentMethod: 'BANK_TRANSFER',
@@ -159,20 +149,18 @@ export const mockPayslips = [
     overtimeAmount: 0,
     basicSalary: 27692, // Reduced for 2 days absence
     hra: 11076,
-    da: 5538,
-    conveyanceAllowance: 2307,
-    medicalAllowance: 1384,
-    specialAllowance: 3692,
     otherAllowances: 1384,
     pfDeduction: 1992,
     esiDeduction: 0,
     professionalTax: 200,
     tds: 2769,
-    loanDeduction: 0,
+    advanceDeduction: 0,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
-    grossSalary: 53073,
+    grossSalary: 40152,
     totalDeductions: 4961,
-    netSalary: 48112,
+    netSalary: 35191,
     paymentDate: '2024-10-01',
     paymentStatus: 'PAID',
     paymentMethod: 'BANK_TRANSFER',
@@ -194,20 +182,18 @@ export const mockPayslips = [
     overtimeAmount: 2000,
     basicSalary: 25000,
     hra: 10000,
-    da: 5000,
-    conveyanceAllowance: 2000,
-    medicalAllowance: 1500,
-    specialAllowance: 3000,
     otherAllowances: 1000,
     pfDeduction: 1800,
     esiDeduction: 750,
     professionalTax: 200,
     tds: 2200,
-    loanDeduction: 0,
+    advanceDeduction: 0,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
-    grossSalary: 49500,
+    grossSalary: 38000,
     totalDeductions: 4950,
-    netSalary: 44550,
+    netSalary: 33050,
     paymentDate: null,
     paymentStatus: 'PENDING',
     paymentMethod: null,
@@ -226,16 +212,11 @@ export const calculateSalary = (salaryStructure, workingDays = 26, daysPresent =
 
   const adjustedBasic = Math.round(salaryStructure.basicSalary * attendanceRatio);
   const adjustedHra = Math.round(salaryStructure.hra * attendanceRatio);
-  const adjustedDa = Math.round(salaryStructure.da * attendanceRatio);
-  const adjustedConveyance = Math.round(salaryStructure.conveyanceAllowance * attendanceRatio);
-  const adjustedMedical = Math.round(salaryStructure.medicalAllowance * attendanceRatio);
-  const adjustedSpecial = Math.round(salaryStructure.specialAllowance * attendanceRatio);
   const adjustedOther = Math.round(salaryStructure.otherAllowances * attendanceRatio);
 
   const overtimeAmount = Math.round(overtimeHours * hourlyRate * 2); // Overtime at 2x rate
 
-  const adjustedGross = adjustedBasic + adjustedHra + adjustedDa + adjustedConveyance +
-                        adjustedMedical + adjustedSpecial + adjustedOther + overtimeAmount;
+  const adjustedGross = adjustedBasic + adjustedHra + adjustedOther + overtimeAmount;
 
   // Calculate deductions (PF based on adjusted basic)
   const adjustedPf = Math.round(adjustedBasic * 0.12);
@@ -244,17 +225,14 @@ export const calculateSalary = (salaryStructure, workingDays = 26, daysPresent =
   const adjustedTds = Math.round(salaryStructure.tds * attendanceRatio);
 
   const totalDeductions = adjustedPf + adjustedEsi + adjustedPt + adjustedTds +
-                         salaryStructure.loanDeduction + salaryStructure.otherDeductions;
+                         salaryStructure.advanceDeduction + salaryStructure.welfareDeduction +
+                         salaryStructure.healthInsurance + salaryStructure.otherDeductions;
 
   const netSalary = adjustedGross - totalDeductions;
 
   return {
     basicSalary: adjustedBasic,
     hra: adjustedHra,
-    da: adjustedDa,
-    conveyanceAllowance: adjustedConveyance,
-    medicalAllowance: adjustedMedical,
-    specialAllowance: adjustedSpecial,
     otherAllowances: adjustedOther,
     overtimeAmount,
     grossSalary: adjustedGross,
@@ -262,7 +240,9 @@ export const calculateSalary = (salaryStructure, workingDays = 26, daysPresent =
     esiDeduction: adjustedEsi,
     professionalTax: adjustedPt,
     tds: adjustedTds,
-    loanDeduction: salaryStructure.loanDeduction,
+    advanceDeduction: salaryStructure.advanceDeduction,
+    welfareDeduction: salaryStructure.welfareDeduction,
+    healthInsurance: salaryStructure.healthInsurance,
     otherDeductions: salaryStructure.otherDeductions,
     totalDeductions,
     netSalary,

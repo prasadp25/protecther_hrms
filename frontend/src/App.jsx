@@ -2,6 +2,8 @@ import { useState } from 'react';
 import Dashboard from './components/dashboard/Dashboard';
 import EmployeeList from './components/employee/EmployeeList';
 import EmployeeForm from './components/employee/EmployeeForm';
+import SiteList from './components/site/SiteList';
+import SiteForm from './components/site/SiteForm';
 import SalaryList from './components/salary/SalaryList';
 import SalaryForm from './components/salary/SalaryForm';
 import PayslipView from './components/salary/PayslipView';
@@ -10,9 +12,10 @@ import MarkAttendance from './components/attendance/MarkAttendance';
 import AttendanceReport from './components/attendance/AttendanceReport';
 
 function App() {
-  const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'salary', or 'attendance'
+  const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'sites', 'salary', or 'attendance'
   const [view, setView] = useState('list'); // 'list', 'form', 'payslips', 'calendar', 'mark', 'report'
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+  const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSalaryId, setSelectedSalaryId] = useState(null);
 
   // Employee handlers
@@ -34,6 +37,27 @@ function App() {
   const handleEmployeeCancel = () => {
     setView('list');
     setSelectedEmployeeId(null);
+  };
+
+  // Site handlers
+  const handleSiteAddNew = () => {
+    setSelectedSiteId(null);
+    setView('form');
+  };
+
+  const handleSiteEdit = (siteId) => {
+    setSelectedSiteId(siteId);
+    setView('form');
+  };
+
+  const handleSiteFormSuccess = () => {
+    setView('list');
+    setSelectedSiteId(null);
+  };
+
+  const handleSiteBack = () => {
+    setView('list');
+    setSelectedSiteId(null);
   };
 
   // Salary handlers
@@ -88,6 +112,7 @@ function App() {
       setView('list');
     }
     setSelectedEmployeeId(null);
+    setSelectedSiteId(null);
     setSelectedSalaryId(null);
   };
 
@@ -123,6 +148,16 @@ function App() {
               }`}
             >
               Employees
+            </button>
+            <button
+              onClick={() => handleModuleChange('sites')}
+              className={`pb-2 px-4 font-medium ${
+                module === 'sites'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Sites/Clients
             </button>
             <button
               onClick={() => handleModuleChange('attendance')}
@@ -162,6 +197,20 @@ function App() {
                   employeeId={selectedEmployeeId}
                   onSuccess={handleEmployeeFormSuccess}
                   onCancel={handleEmployeeCancel}
+                />
+              )}
+            </>
+          )}
+
+          {module === 'sites' && (
+            <>
+              {view === 'list' ? (
+                <SiteList onEdit={handleSiteEdit} onAddNew={handleSiteAddNew} />
+              ) : (
+                <SiteForm
+                  siteId={selectedSiteId}
+                  onSuccess={handleSiteFormSuccess}
+                  onBack={handleSiteBack}
                 />
               )}
             </>

@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { employeeService } from '../../services/employeeService';
+import { siteService } from '../../services/siteService';
 
 const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [offerLetterFile, setOfferLetterFile] = useState(null);
+  const [aadhaarFile, setAadhaarFile] = useState(null);
+  const [panFile, setPanFile] = useState(null);
+  const [activeSites, setActiveSites] = useState([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -22,13 +27,37 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
     status: 'ACTIVE',
     dateOfJoining: '',
     dateOfLeaving: '',
+    designation: '',
+    department: '',
+    offerLetterIssueDate: '',
+    offerLetterUrl: '',
+    aadhaarCardUrl: '',
+    panCardUrl: '',
+    emergencyContactName: '',
+    emergencyContactMobile: '',
+    emergencyContactRelationship: '',
+    siteId: '',
+    wpPolicy: 'Yes',
+    hospitalInsuranceId: '',
   });
 
   useEffect(() => {
+    loadActiveSites();
     if (employeeId) {
       loadEmployee();
     }
   }, [employeeId]);
+
+  const loadActiveSites = async () => {
+    try {
+      const response = await siteService.getActiveSites();
+      if (response.success) {
+        setActiveSites(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load active sites:', error);
+    }
+  };
 
   const loadEmployee = async () => {
     try {
@@ -46,16 +75,73 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
+
+    let updatedData = {
+      ...formData,
       [name]: value,
-    }));
+    };
+
+    // If status is ACTIVE, clear the leaving date
+    if (name === 'status' && value === 'ACTIVE') {
+      updatedData.dateOfLeaving = '';
+      updatedData.wpPolicy = 'Yes'; // Active employees get WP Policy
+    }
+
+    // If status is not ACTIVE, set WP Policy to No
+    if (name === 'status' && value !== 'ACTIVE') {
+      updatedData.wpPolicy = 'No';
+    }
+
+    setFormData(updatedData);
+
     // Clear error for this field
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: '',
       }));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const { name } = e.target;
+    const file = e.target.files[0];
+
+    if (file) {
+      // Validate file type (PDF, DOC, DOCX, JPG, PNG)
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Only PDF, DOC, DOCX, JPG, and PNG files are allowed');
+        e.target.value = '';
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        e.target.value = '';
+        return;
+      }
+
+      // Handle different file types
+      if (name === 'offerLetter') {
+        setOfferLetterFile(file);
+        setFormData((prev) => ({
+          ...prev,
+          offerLetterUrl: file.name,
+        }));
+      } else if (name === 'aadhaarCard') {
+        setAadhaarFile(file);
+        setFormData((prev) => ({
+          ...prev,
+          aadhaarCardUrl: file.name,
+        }));
+      } else if (name === 'panCard') {
+        setPanFile(file);
+        setFormData((prev) => ({
+          ...prev,
+          panCardUrl: file.name,
+        }));
+      }
     }
   };
 
@@ -98,7 +184,27 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
 
     if (!formData.dob) newErrors.dob = 'Date of birth is required';
     if (!formData.dateOfJoining) newErrors.dateOfJoining = 'Date of joining is required';
+    if (!formData.designation.trim()) newErrors.designation = 'Designation is required';
+    if (!formData.department.trim()) newErrors.department = 'Department is required';
+    if (!formData.offerLetterIssueDate) newErrors.offerLetterIssueDate = 'Offer letter issue date is required';
+    if (!formData.offerLetterUrl && !employeeId) newErrors.offerLetter = 'Offer letter is required';
+    if (!formData.aadhaarCardUrl && !employeeId) newErrors.aadhaarCard = 'Aadhaar card is required';
+    if (!formData.panCardUrl && !employeeId) newErrors.panCard = 'PAN card is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
+
+    // Emergency contact validation
+    if (!formData.emergencyContactName.trim()) newErrors.emergencyContactName = 'Emergency contact name is required';
+    if (!formData.emergencyContactMobile.trim()) {
+      newErrors.emergencyContactMobile = 'Emergency contact mobile is required';
+    } else if (!/^[0-9]{10}$/.test(formData.emergencyContactMobile)) {
+      newErrors.emergencyContactMobile = 'Mobile number must be 10 digits';
+    }
+    if (!formData.emergencyContactRelationship) newErrors.emergencyContactRelationship = 'Relationship is required';
+
+    // Hospital Insurance validation (if provided)
+    if (formData.hospitalInsuranceId && !/^[0-9]{12,15}$/.test(formData.hospitalInsuranceId)) {
+      newErrors.hospitalInsuranceId = 'Insurance ID must be 12-15 digits';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -256,6 +362,26 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
+            <label className={labelClasses}>Upload Aadhaar Card *</label>
+            <input
+              type="file"
+              name="aadhaarCard"
+              onChange={handleFileChange}
+              accept=".pdf,.jpg,.jpeg,.png"
+              className={inputClasses}
+            />
+            {errors.aadhaarCard && <p className={errorClasses}>{errors.aadhaarCard}</p>}
+            {formData.aadhaarCardUrl && (
+              <p className="mt-1 text-sm text-green-600">
+                Uploaded: {formData.aadhaarCardUrl}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              PDF, JPG, PNG (Max 5MB)
+            </p>
+          </div>
+
+          <div>
             <label className={labelClasses}>PAN Number *</label>
             <input
               type="text"
@@ -267,6 +393,26 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               style={{ textTransform: 'uppercase' }}
             />
             {errors.panNo && <p className={errorClasses}>{errors.panNo}</p>}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Upload PAN Card *</label>
+            <input
+              type="file"
+              name="panCard"
+              onChange={handleFileChange}
+              accept=".pdf,.jpg,.jpeg,.png"
+              className={inputClasses}
+            />
+            {errors.panCard && <p className={errorClasses}>{errors.panCard}</p>}
+            {formData.panCardUrl && (
+              <p className="mt-1 text-sm text-green-600">
+                Uploaded: {formData.panCardUrl}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              PDF, JPG, PNG (Max 5MB)
+            </p>
           </div>
 
           <div>
@@ -289,6 +435,56 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
             />
+          </div>
+        </div>
+      </div>
+
+      {/* Emergency Contact */}
+      <div className="border-b pb-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Emergency Contact</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClasses}>Contact Person Name *</label>
+            <input
+              type="text"
+              name="emergencyContactName"
+              value={formData.emergencyContactName}
+              onChange={handleChange}
+              className={inputClasses}
+            />
+            {errors.emergencyContactName && <p className={errorClasses}>{errors.emergencyContactName}</p>}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Contact Mobile Number *</label>
+            <input
+              type="text"
+              name="emergencyContactMobile"
+              value={formData.emergencyContactMobile}
+              onChange={handleChange}
+              maxLength="10"
+              className={inputClasses}
+            />
+            {errors.emergencyContactMobile && <p className={errorClasses}>{errors.emergencyContactMobile}</p>}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Relationship *</label>
+            <select
+              name="emergencyContactRelationship"
+              value={formData.emergencyContactRelationship}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="">Select Relationship</option>
+              <option value="Father">Father</option>
+              <option value="Mother">Mother</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Sibling">Sibling</option>
+              <option value="Friend">Friend</option>
+              <option value="Other">Other</option>
+            </select>
+            {errors.emergencyContactRelationship && <p className={errorClasses}>{errors.emergencyContactRelationship}</p>}
           </div>
         </div>
       </div>
@@ -360,8 +556,101 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               name="dateOfLeaving"
               value={formData.dateOfLeaving}
               onChange={handleChange}
+              disabled={formData.status === 'ACTIVE'}
               className={inputClasses}
             />
+            {formData.status === 'ACTIVE' && (
+              <p className="mt-1 text-xs text-gray-500">
+                Not applicable for active employees
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Designation *</label>
+            <select
+              name="designation"
+              value={formData.designation}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="">Select Designation</option>
+              <option value="Site Engineer">Site Engineer</option>
+              <option value="Site Supervisor">Site Supervisor</option>
+              <option value="Foreman">Foreman</option>
+              <option value="Mason">Mason</option>
+              <option value="Carpenter">Carpenter</option>
+              <option value="Electrician">Electrician</option>
+              <option value="Plumber">Plumber</option>
+              <option value="Helper">Helper</option>
+              <option value="Labour">Labour</option>
+              <option value="Operator">Operator</option>
+              <option value="Safety Officer">Safety Officer</option>
+              <option value="Store Keeper">Store Keeper</option>
+              <option value="Accountant">Accountant</option>
+              <option value="HR Manager">HR Manager</option>
+              <option value="Project Manager">Project Manager</option>
+              <option value="Other">Other</option>
+            </select>
+            {errors.designation && <p className={errorClasses}>{errors.designation}</p>}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Department *</label>
+            <select
+              name="department"
+              value={formData.department}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="">Select Department</option>
+              <option value="Civil">Civil</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Plumbing">Plumbing</option>
+              <option value="Carpentry">Carpentry</option>
+              <option value="Finishing">Finishing</option>
+              <option value="Safety">Safety</option>
+              <option value="Administration">Administration</option>
+              <option value="Accounts">Accounts</option>
+              <option value="HR">HR</option>
+              <option value="Stores">Stores</option>
+              <option value="Equipment">Equipment</option>
+              <option value="Quality Control">Quality Control</option>
+              <option value="Other">Other</option>
+            </select>
+            {errors.department && <p className={errorClasses}>{errors.department}</p>}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Offer Letter Issue Date *</label>
+            <input
+              type="date"
+              name="offerLetterIssueDate"
+              value={formData.offerLetterIssueDate}
+              onChange={handleChange}
+              className={inputClasses}
+            />
+            {errors.offerLetterIssueDate && <p className={errorClasses}>{errors.offerLetterIssueDate}</p>}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Upload Offer Letter *</label>
+            <input
+              type="file"
+              name="offerLetter"
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className={inputClasses}
+            />
+            {errors.offerLetter && <p className={errorClasses}>{errors.offerLetter}</p>}
+            {formData.offerLetterUrl && (
+              <p className="mt-1 text-sm text-green-600">
+                Uploaded: {formData.offerLetterUrl}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Accepted formats: PDF, DOC, DOCX, JPG, PNG (Max 5MB)
+            </p>
           </div>
 
           <div>
@@ -377,6 +666,62 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               <option value="TERMINATED">Terminated</option>
               <option value="ON_LEAVE">On Leave</option>
             </select>
+          </div>
+
+          <div>
+            <label className={labelClasses}>Assigned Site/Client</label>
+            <select
+              name="siteId"
+              value={formData.siteId}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="">Select Site (Optional)</option>
+              {activeSites.map((site) => (
+                <option key={site.siteId} value={site.siteId}>
+                  {site.siteCode} - {site.siteName}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Assign employee to a construction site/project
+            </p>
+          </div>
+
+          <div>
+            <label className={labelClasses}>WP Policy</label>
+            <select
+              name="wpPolicy"
+              value={formData.wpPolicy}
+              onChange={handleChange}
+              disabled={formData.status !== 'ACTIVE'}
+              className={inputClasses}
+            >
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              {formData.status === 'ACTIVE'
+                ? 'Work Permit policy coverage'
+                : 'Only available for ACTIVE employees'}
+            </p>
+          </div>
+
+          <div>
+            <label className={labelClasses}>Hospital Insurance ID</label>
+            <input
+              type="text"
+              name="hospitalInsuranceId"
+              value={formData.hospitalInsuranceId}
+              onChange={handleChange}
+              maxLength="15"
+              className={inputClasses}
+              placeholder="Enter 12-15 digit insurance ID"
+            />
+            {errors.hospitalInsuranceId && <p className={errorClasses}>{errors.hospitalInsuranceId}</p>}
+            <p className="mt-1 text-xs text-gray-500">
+              12-15 digit ID provided by insurance company (Optional)
+            </p>
           </div>
         </div>
       </div>

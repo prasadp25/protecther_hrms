@@ -472,19 +472,8 @@ const PayslipView = ({ onBack }) => {
                         <span>{formatCurrency(calculated.hra)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>DA:</span>
-                        <span>{formatCurrency(calculated.da)}</span>
-                      </div>
-                      <div className="flex justify-between">
                         <span>Other Allowances:</span>
-                        <span>
-                          {formatCurrency(
-                            calculated.conveyanceAllowance +
-                              calculated.medicalAllowance +
-                              calculated.specialAllowance +
-                              calculated.otherAllowances
-                          )}
-                        </span>
+                        <span>{formatCurrency(calculated.otherAllowances)}</span>
                       </div>
                       {calculated.overtimeAmount > 0 && (
                         <div className="flex justify-between">
@@ -659,23 +648,7 @@ const PayslipView = ({ onBack }) => {
                   <span>{formatCurrency(selectedPayslip.hra)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>DA</span>
-                  <span>{formatCurrency(selectedPayslip.da)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Conveyance</span>
-                  <span>{formatCurrency(selectedPayslip.conveyanceAllowance)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Medical</span>
-                  <span>{formatCurrency(selectedPayslip.medicalAllowance)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Special</span>
-                  <span>{formatCurrency(selectedPayslip.specialAllowance)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Other</span>
+                  <span>Other Allowances</span>
                   <span>{formatCurrency(selectedPayslip.otherAllowances)}</span>
                 </div>
                 {selectedPayslip.overtimeAmount > 0 && (
@@ -712,10 +685,22 @@ const PayslipView = ({ onBack }) => {
                   <span>TDS</span>
                   <span>{formatCurrency(selectedPayslip.tds)}</span>
                 </div>
-                {selectedPayslip.loanDeduction > 0 && (
+                {selectedPayslip.advanceDeduction > 0 && (
                   <div className="flex justify-between">
-                    <span>Loan</span>
-                    <span>{formatCurrency(selectedPayslip.loanDeduction)}</span>
+                    <span>Advance</span>
+                    <span>{formatCurrency(selectedPayslip.advanceDeduction)}</span>
+                  </div>
+                )}
+                {selectedPayslip.welfareDeduction > 0 && (
+                  <div className="flex justify-between">
+                    <span>Welfare</span>
+                    <span>{formatCurrency(selectedPayslip.welfareDeduction)}</span>
+                  </div>
+                )}
+                {selectedPayslip.healthInsurance > 0 && (
+                  <div className="flex justify-between">
+                    <span>Health Insurance</span>
+                    <span>{formatCurrency(selectedPayslip.healthInsurance)}</span>
                   </div>
                 )}
                 {selectedPayslip.otherDeductions > 0 && (

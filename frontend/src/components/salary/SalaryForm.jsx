@@ -15,18 +15,17 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     // Earnings
     basicSalary: 0,
     hra: 0,
-    da: 0,
-    conveyanceAllowance: 0,
-    medicalAllowance: 0,
-    specialAllowance: 0,
     otherAllowances: 0,
     // Deductions
     pfDeduction: 0,
     esiDeduction: 0,
     professionalTax: 200,
     tds: 0,
-    loanDeduction: 0,
+    advanceDeduction: 0,
+    welfareDeduction: 0,
+    healthInsurance: 0,
     otherDeductions: 0,
+    otherDeductionsRemarks: '',
   });
 
   useEffect(() => {
@@ -88,7 +87,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     setFormData((prev) => {
       const newData = {
         ...prev,
-        [name]: name === 'effectiveFrom' ? value : numValue,
+        [name]: (name === 'effectiveFrom' || name === 'otherDeductionsRemarks') ? value : numValue,
       };
 
       // Auto-calculate PF (12% of basic salary)
@@ -99,11 +98,6 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       // Auto-calculate HRA (40% of basic salary if not manually set)
       if (name === 'basicSalary' && !prev.hra) {
         newData.hra = Math.round(numValue * 0.4);
-      }
-
-      // Auto-calculate DA (20% of basic salary if not manually set)
-      if (name === 'basicSalary' && !prev.da) {
-        newData.da = Math.round(numValue * 0.2);
       }
 
       return newData;
@@ -122,10 +116,6 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     const grossSalary =
       formData.basicSalary +
       formData.hra +
-      formData.da +
-      formData.conveyanceAllowance +
-      formData.medicalAllowance +
-      formData.specialAllowance +
       formData.otherAllowances;
 
     const totalDeductions =
@@ -133,7 +123,9 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       formData.esiDeduction +
       formData.professionalTax +
       formData.tds +
-      formData.loanDeduction +
+      formData.advanceDeduction +
+      formData.welfareDeduction +
+      formData.healthInsurance +
       formData.otherDeductions;
 
     const netSalary = grossSalary - totalDeductions;
@@ -275,59 +267,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <input
               type="number"
               name="hra"
-              value={formData.hra}
-              onChange={handleChange}
-              className={inputClasses}
-              min="0"
-              step="100"
-            />
-          </div>
-
-          <div>
-            <label className={labelClasses}>DA (Dearness Allowance)</label>
-            <input
-              type="number"
-              name="da"
-              value={formData.da}
-              onChange={handleChange}
-              className={inputClasses}
-              min="0"
-              step="100"
-            />
-          </div>
-
-          <div>
-            <label className={labelClasses}>Conveyance Allowance</label>
-            <input
-              type="number"
-              name="conveyanceAllowance"
-              value={formData.conveyanceAllowance}
-              onChange={handleChange}
-              className={inputClasses}
-              min="0"
-              step="100"
-            />
-          </div>
-
-          <div>
-            <label className={labelClasses}>Medical Allowance</label>
-            <input
-              type="number"
-              name="medicalAllowance"
-              value={formData.medicalAllowance}
-              onChange={handleChange}
-              className={inputClasses}
-              min="0"
-              step="100"
-            />
-          </div>
-
-          <div>
-            <label className={labelClasses}>Special Allowance</label>
-            <input
-              type="number"
-              name="specialAllowance"
-              value={formData.specialAllowance}
+              value={formData.hra || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
@@ -340,7 +280,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <input
               type="number"
               name="otherAllowances"
-              value={formData.otherAllowances}
+              value={formData.otherAllowances || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
@@ -361,7 +301,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <input
               type="number"
               name="pfDeduction"
-              value={formData.pfDeduction}
+              value={formData.pfDeduction || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
@@ -374,7 +314,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <input
               type="number"
               name="esiDeduction"
-              value={formData.esiDeduction}
+              value={formData.esiDeduction || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
@@ -387,7 +327,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <input
               type="number"
               name="professionalTax"
-              value={formData.professionalTax}
+              value={formData.professionalTax || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
@@ -400,7 +340,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <input
               type="number"
               name="tds"
-              value={formData.tds}
+              value={formData.tds || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
@@ -409,11 +349,37 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Loan Deduction</label>
+            <label className={labelClasses}>Advance Deduction</label>
             <input
               type="number"
-              name="loanDeduction"
-              value={formData.loanDeduction}
+              name="advanceDeduction"
+              value={formData.advanceDeduction || ''}
+              onChange={handleChange}
+              className={inputClasses}
+              min="0"
+              step="100"
+            />
+          </div>
+
+          <div>
+            <label className={labelClasses}>Welfare Deduction</label>
+            <input
+              type="number"
+              name="welfareDeduction"
+              value={formData.welfareDeduction || ''}
+              onChange={handleChange}
+              className={inputClasses}
+              min="0"
+              step="100"
+            />
+          </div>
+
+          <div>
+            <label className={labelClasses}>Health Insurance</label>
+            <input
+              type="number"
+              name="healthInsurance"
+              value={formData.healthInsurance || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
@@ -426,13 +392,26 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <input
               type="number"
               name="otherDeductions"
-              value={formData.otherDeductions}
+              value={formData.otherDeductions || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
               step="100"
             />
           </div>
+        </div>
+
+        {/* Other Deductions Remarks */}
+        <div className="mt-4">
+          <label className={labelClasses}>Other Deductions Remarks</label>
+          <textarea
+            name="otherDeductionsRemarks"
+            value={formData.otherDeductionsRemarks}
+            onChange={handleChange}
+            rows="3"
+            className={inputClasses}
+            placeholder="Enter remarks for other deductions..."
+          />
         </div>
       </div>
 
