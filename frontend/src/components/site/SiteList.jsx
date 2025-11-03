@@ -43,13 +43,13 @@ const SiteList = ({ onEdit, onAddNew }) => {
       const keyword = searchKeyword.toLowerCase();
       filtered = filtered.filter(
         (site) =>
-          site.siteName?.toLowerCase().includes(keyword) ||
-          site.siteCode?.toLowerCase().includes(keyword) ||
-          site.clientName?.toLowerCase().includes(keyword) ||
-          site.clientContactPerson?.toLowerCase().includes(keyword) ||
-          site.clientMobile?.includes(keyword) ||
-          site.siteAddress?.toLowerCase().includes(keyword) ||
-          site.projectType?.toLowerCase().includes(keyword)
+          site.site_name?.toLowerCase().includes(keyword) ||
+          site.site_code?.toLowerCase().includes(keyword) ||
+          site.client_name?.toLowerCase().includes(keyword) ||
+          site.contact_person?.toLowerCase().includes(keyword) ||
+          site.contact_mobile?.includes(keyword) ||
+          site.address?.toLowerCase().includes(keyword) ||
+          site.location?.toLowerCase().includes(keyword)
       );
     }
 
@@ -230,61 +230,61 @@ const SiteList = ({ onEdit, onAddNew }) => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSites.map((site) => (
-                  <tr key={site.siteId} className="hover:bg-gray-50">
+                  <tr key={site.site_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {site.siteCode}
+                      {site.site_code}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {site.siteName}
+                      {site.site_name}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {site.clientName}
+                      {site.client_name}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {site.clientContactPerson}
+                      {site.contact_person}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {site.clientMobile}
+                      {site.contact_mobile}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {site.clientEmail || '-'}
+                      {site.contact_email || '-'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" title={site.siteAddress}>
-                      {site.siteAddress}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {site.projectType}
+                    <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" title={site.address}>
+                      {site.address}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(site.startDate).toLocaleDateString()}
+                      {site.location || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(site.expectedEndDate).toLocaleDateString()}
+                      {site.start_date ? new Date(site.start_date).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {site.end_date ? new Date(site.end_date).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">
-                      {site.numberOfEmployees}
+                      -
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(site.projectValue)}
+                      -
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={getStatusBadgeClass(site.status)}>
                         {site.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" title={site.remarks}>
-                      {site.remarks || '-'}
+                    <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" title={site.description}>
+                      {site.description || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2 sticky right-0 bg-white">
                       <button
-                        onClick={() => onEdit(site.siteId)}
+                        onClick={() => onEdit(site.site_id)}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() =>
-                          handleDelete(site.siteId, site.siteName)
+                          handleDelete(site.site_id, site.site_name)
                         }
                         className="text-red-600 hover:text-red-900"
                       >

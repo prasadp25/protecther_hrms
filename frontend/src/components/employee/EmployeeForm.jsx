@@ -23,6 +23,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
     pfNo: '',
     qualification: '',
     dob: '',
+    gender: '',
     address: '',
     status: 'ACTIVE',
     dateOfJoining: '',
@@ -64,7 +65,40 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       setLoading(true);
       const response = await employeeService.getEmployeeById(employeeId);
       if (response.success) {
-        setFormData(response.data);
+        // Map backend field names (snake_case) to frontend (camelCase)
+        const employee = response.data;
+        setFormData({
+          firstName: employee.first_name || '',
+          lastName: employee.last_name || '',
+          mobileNo: employee.mobile || '',
+          email: employee.email || '',
+          aadhaarNo: employee.aadhaar_no || '',
+          panNo: employee.pan_no || '',
+          accountNo: employee.account_number || '',
+          ifscCode: employee.ifsc_code || '',
+          bankName: employee.bank_name || '',
+          uanNo: employee.uan_no || '',
+          pfNo: employee.pf_no || '',
+          qualification: employee.qualification || '',
+          dob: employee.dob ? employee.dob.split('T')[0] : '',
+          gender: employee.gender || '',
+          address: employee.address || '',
+          status: employee.status || 'ACTIVE',
+          dateOfJoining: employee.date_of_joining ? employee.date_of_joining.split('T')[0] : '',
+          dateOfLeaving: employee.date_of_leaving ? employee.date_of_leaving.split('T')[0] : '',
+          designation: employee.designation || '',
+          department: employee.department || '',
+          offerLetterIssueDate: employee.offer_letter_issue_date ? employee.offer_letter_issue_date.split('T')[0] : '',
+          offerLetterUrl: employee.offer_letter_url || '',
+          aadhaarCardUrl: employee.aadhaar_card_url || '',
+          panCardUrl: employee.pan_card_url || '',
+          emergencyContactName: employee.emergency_contact_name || '',
+          emergencyContactMobile: employee.emergency_contact_mobile || '',
+          emergencyContactRelationship: employee.emergency_contact_relationship || '',
+          siteId: employee.site_id || '',
+          wpPolicy: employee.wp_policy || 'No',
+          hospitalInsuranceId: employee.hospital_insurance_id || '',
+        });
       }
     } catch (error) {
       alert('Failed to load employee data');
@@ -76,9 +110,15 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // Trim and uppercase for PAN and IFSC
+    let processedValue = value;
+    if (name === 'panNo' || name === 'ifscCode') {
+      processedValue = value.trim().toUpperCase();
+    }
+
     let updatedData = {
       ...formData,
-      [name]: value,
+      [name]: processedValue,
     };
 
     // If status is ACTIVE, clear the leaving date
@@ -169,7 +209,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
 
     if (!formData.panNo.trim()) {
       newErrors.panNo = 'PAN number is required';
-    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNo)) {
+    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNo.trim())) {
       newErrors.panNo = 'Invalid PAN format (e.g., ABCDE1234F)';
     }
 
@@ -183,6 +223,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
     }
 
     if (!formData.dob) newErrors.dob = 'Date of birth is required';
+    if (!formData.gender) newErrors.gender = 'Gender is required';
     if (!formData.dateOfJoining) newErrors.dateOfJoining = 'Date of joining is required';
     if (!formData.designation.trim()) newErrors.designation = 'Designation is required';
     if (!formData.department.trim()) newErrors.department = 'Department is required';
@@ -219,12 +260,56 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
 
     try {
       setLoading(true);
+
+      // Create FormData for file upload support
+      const formDataToSend = new FormData();
+
+      // Add text fields
+      formDataToSend.append('first_name', formData.firstName);
+      formDataToSend.append('last_name', formData.lastName);
+      formDataToSend.append('mobile', formData.mobileNo);
+      if (formData.email) formDataToSend.append('email', formData.email);
+      formDataToSend.append('dob', formData.dob);
+      formDataToSend.append('gender', formData.gender);
+      if (formData.qualification) formDataToSend.append('qualification', formData.qualification);
+      formDataToSend.append('address', formData.address);
+      formDataToSend.append('aadhaar_no', formData.aadhaarNo);
+      formDataToSend.append('pan_no', formData.panNo);
+      if (formData.uanNo) formDataToSend.append('uan_no', formData.uanNo);
+      if (formData.pfNo) formDataToSend.append('pf_no', formData.pfNo);
+      formDataToSend.append('account_number', formData.accountNo);
+      formDataToSend.append('ifsc_code', formData.ifscCode);
+      formDataToSend.append('bank_name', formData.bankName);
+      formDataToSend.append('designation', formData.designation);
+      formDataToSend.append('department', formData.department);
+      formDataToSend.append('date_of_joining', formData.dateOfJoining);
+      if (formData.dateOfLeaving) formDataToSend.append('date_of_leaving', formData.dateOfLeaving);
+      formDataToSend.append('offer_letter_issue_date', formData.offerLetterIssueDate);
+      formDataToSend.append('status', formData.status);
+      if (formData.siteId) formDataToSend.append('site_id', formData.siteId);
+      formDataToSend.append('emergency_contact_name', formData.emergencyContactName);
+      formDataToSend.append('emergency_contact_mobile', formData.emergencyContactMobile);
+      formDataToSend.append('emergency_contact_relationship', formData.emergencyContactRelationship);
+      formDataToSend.append('wp_policy', formData.wpPolicy || 'No');
+      if (formData.hospitalInsuranceId) formDataToSend.append('hospital_insurance_id', formData.hospitalInsuranceId);
+
+      // Add file uploads
+      if (offerLetterFile) {
+        formDataToSend.append('offerLetter', offerLetterFile);
+      }
+      if (aadhaarFile) {
+        formDataToSend.append('aadhaarCard', aadhaarFile);
+      }
+      if (panFile) {
+        formDataToSend.append('panCard', panFile);
+      }
+
       let response;
 
       if (employeeId) {
-        response = await employeeService.updateEmployee(employeeId, formData);
+        response = await employeeService.updateEmployee(employeeId, formDataToSend);
       } else {
-        response = await employeeService.createEmployee(formData);
+        response = await employeeService.createEmployee(formDataToSend);
       }
 
       if (response.success) {
@@ -236,6 +321,8 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         alert(error.response.data.message);
       } else if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
+      } else if (error.message) {
+        alert(error.message);
       } else {
         alert('Failed to save employee');
       }
@@ -317,6 +404,22 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               className={inputClasses}
             />
             {errors.dob && <p className={errorClasses}>{errors.dob}</p>}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Gender *</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            {errors.gender && <p className={errorClasses}>{errors.gender}</p>}
           </div>
 
           <div>
@@ -678,8 +781,8 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
             >
               <option value="">Select Site (Optional)</option>
               {activeSites.map((site) => (
-                <option key={site.siteId} value={site.siteId}>
-                  {site.siteCode} - {site.siteName}
+                <option key={site.site_id} value={site.site_id}>
+                  {site.site_code} - {site.site_name}
                 </option>
               ))}
             </select>

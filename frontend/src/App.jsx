@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './components/auth/Login';
+import authService from './services/authService';
 import Dashboard from './components/dashboard/Dashboard';
 import EmployeeList from './components/employee/EmployeeList';
 import EmployeeForm from './components/employee/EmployeeForm';
@@ -11,7 +14,14 @@ import AttendanceCalendar from './components/attendance/AttendanceCalendar';
 import MarkAttendance from './components/attendance/MarkAttendance';
 import AttendanceReport from './components/attendance/AttendanceReport';
 
-function App() {
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = authService.isAuthenticated();
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Main App Component
+const MainApp = () => {
   const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'sites', 'salary', or 'attendance'
   const [view, setView] = useState('list'); // 'list', 'form', 'payslips', 'calendar', 'mark', 'report'
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
@@ -262,6 +272,25 @@ function App() {
         </div>
       </footer>
     </div>
+  );
+};
+
+// Router Wrapper
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <MainApp />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
 

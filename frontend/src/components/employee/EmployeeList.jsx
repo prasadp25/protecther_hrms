@@ -46,8 +46,8 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
 
   const getSiteName = (siteId) => {
     if (!siteId) return '-';
-    const site = sites.find(s => s.siteId === siteId);
-    return site ? `${site.siteCode} - ${site.siteName}` : '-';
+    const site = sites.find(s => s.site_id === siteId);
+    return site ? `${site.site_code} - ${site.site_name}` : '-';
   };
 
   const filterEmployees = () => {
@@ -63,10 +63,10 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
       const keyword = searchKeyword.toLowerCase();
       filtered = filtered.filter(
         (emp) =>
-          emp.firstName?.toLowerCase().includes(keyword) ||
-          emp.lastName?.toLowerCase().includes(keyword) ||
-          emp.employeeCode?.toLowerCase().includes(keyword) ||
-          emp.mobileNo?.includes(keyword) ||
+          emp.first_name?.toLowerCase().includes(keyword) ||
+          emp.last_name?.toLowerCase().includes(keyword) ||
+          emp.employee_code?.toLowerCase().includes(keyword) ||
+          emp.mobile?.includes(keyword) ||
           emp.email?.toLowerCase().includes(keyword)
       );
     }
@@ -104,6 +104,28 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
         alert('Failed to delete employee');
       }
     }
+  };
+
+  const handleViewDocument = (url, type) => {
+    if (!url) return;
+    const backendUrl = 'http://localhost:5000';
+    let folderPath = '';
+
+    switch(type) {
+      case 'offer-letter':
+        folderPath = 'offer-letters';
+        break;
+      case 'aadhaar':
+        folderPath = 'aadhaar-cards';
+        break;
+      case 'pan':
+        folderPath = 'pan-cards';
+        break;
+      default:
+        folderPath = '';
+    }
+
+    window.open(`${backendUrl}/uploads/${folderPath}/${url}`, '_blank');
   };
 
   const getStatusBadgeClass = (status) => {
@@ -284,18 +306,18 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredEmployees.map((employee) => (
-                  <tr key={employee.employeeId} className="hover:bg-gray-50">
+                  <tr key={employee.employee_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {employee.employeeCode}
+                      {employee.employee_code}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {employee.firstName}
+                      {employee.first_name}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {employee.lastName}
+                      {employee.last_name}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.mobileNo}
+                      {employee.mobile}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {employee.email || '-'}
@@ -304,56 +326,60 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                       {employee.dob ? new Date(employee.dob).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.aadhaarNo || '-'}
+                      {employee.aadhaar_no || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.panNo || '-'}
+                      {employee.pan_no || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {employee.qualification || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.accountNo || '-'}
+                      {employee.account_number || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.ifscCode || '-'}
+                      {employee.ifsc_code || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.bankName || '-'}
+                      {employee.bank_name || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.uanNo || '-'}
+                      {employee.uan_no || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.pfNo || '-'}
+                      {employee.pf_no || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" title={employee.address}>
                       {employee.address || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(employee.dateOfJoining).toLocaleDateString()}
+                      {new Date(employee.date_of_joining).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.dateOfLeaving ? new Date(employee.dateOfLeaving).toLocaleDateString() : '-'}
+                      {employee.date_of_leaving ? new Date(employee.date_of_leaving).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.offerLetterIssueDate ? new Date(employee.offerLetterIssueDate).toLocaleDateString() : '-'}
+                      {employee.offer_letter_issue_date ? new Date(employee.offer_letter_issue_date).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.offerLetterUrl ? (
-                        <span className="text-blue-600 hover:text-blue-800 cursor-pointer" title={employee.offerLetterUrl}>
+                      {employee.offer_letter_url ? (
+                        <button
+                          onClick={() => handleViewDocument(employee.offer_letter_url, 'offer-letter')}
+                          className="text-blue-600 hover:text-blue-800 cursor-pointer underline"
+                          title={employee.offer_letter_url}
+                        >
                           📄 View
-                        </span>
+                        </button>
                       ) : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.emergencyContactName || '-'}
+                      {employee.emergency_contact_name || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.emergencyContactMobile || '-'}
+                      {employee.emergency_contact_mobile || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.emergencyContactRelationship || '-'}
+                      {employee.emergency_contact_relationship || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {employee.designation || '-'}
@@ -362,19 +388,19 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                       {employee.department || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {getSiteName(employee.siteId)}
+                      {getSiteName(employee.site_id)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        employee.wpPolicy === 'Yes'
+                        employee.wp_policy === 'Yes'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {employee.wpPolicy || 'No'}
+                        {employee.wp_policy || 'No'}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {employee.hospitalInsuranceId || '-'}
+                      {employee.hospital_insurance_id || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={getStatusBadgeClass(employee.status)}>
@@ -383,7 +409,7 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2 sticky right-0 bg-white">
                       <button
-                        onClick={() => onEdit(employee.employeeId)}
+                        onClick={() => onEdit(employee.employee_id)}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         Edit
@@ -391,8 +417,8 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                       <button
                         onClick={() =>
                           handleDelete(
-                            employee.employeeId,
-                            `${employee.firstName} ${employee.lastName}`
+                            employee.employee_id,
+                            `${employee.first_name} ${employee.last_name}`
                           )
                         }
                         className="text-red-600 hover:text-red-900"

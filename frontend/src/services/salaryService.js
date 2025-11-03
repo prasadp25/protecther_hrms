@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../config/api';
 import {
   mockSalaryStructures,
   mockPayslips,
@@ -6,9 +6,9 @@ import {
   generatePayslipId,
 } from '../mocks/salaryMock';
 
-const SALARY_ENDPOINT = '/salary';
-const PAYSLIP_ENDPOINT = '/payslip';
-const USE_MOCK_DATA = true; // Set to false when backend is running
+const SALARY_ENDPOINT = '/salaries';
+const PAYSLIP_ENDPOINT = '/payslips';
+const USE_MOCK_DATA = false; // Backend is now running!
 
 // Simulate API delay
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

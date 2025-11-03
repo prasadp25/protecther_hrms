@@ -1,8 +1,8 @@
-import api from './api';
+import api from '../config/api';
 import { mockSites, generateSiteCode } from '../mocks/siteMock';
 
 const SITE_ENDPOINT = '/sites';
-const USE_MOCK_DATA = true; // Set to false when backend is running
+const USE_MOCK_DATA = false; // Backend is now running!
 
 // Simulate API delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
