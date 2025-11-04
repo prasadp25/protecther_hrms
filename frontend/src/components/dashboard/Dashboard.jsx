@@ -243,7 +243,7 @@ const Dashboard = () => {
                     className={`h-2 rounded-full ${
                       item.status === 'ACTIVE'
                         ? 'bg-green-500'
-                        : item.status === 'RESIGNED'
+                        : item.status === 'INACTIVE'
                         ? 'bg-red-500'
                         : 'bg-yellow-500'
                     }`}

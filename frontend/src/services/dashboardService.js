@@ -23,37 +23,44 @@ export const dashboardService = {
       // Calculate employee statistics
       const totalEmployees = employees.length;
       const activeEmployees = employees.filter((emp) => emp.status === 'ACTIVE').length;
-      const resignedEmployees = employees.filter((emp) => emp.status === 'RESIGNED').length;
+      const inactiveEmployees = employees.filter((emp) => emp.status === 'INACTIVE' || emp.status === 'TERMINATED').length;
       const onLeaveEmployees = employees.filter((emp) => emp.status === 'ON_LEAVE').length;
 
       // Calculate salary statistics
       const activeSalaries = salaries.filter((sal) => sal.status === 'ACTIVE');
-      const totalMonthlySalary = activeSalaries.reduce((sum, sal) => sum + sal.netSalary, 0);
+      const totalMonthlySalary = activeSalaries.reduce((sum, sal) => sum + parseFloat(sal.net_salary || 0), 0);
       const avgSalary = totalMonthlySalary / (activeSalaries.length || 1);
-      const maxSalary = Math.max(...activeSalaries.map((sal) => sal.netSalary), 0);
-      const minSalary = Math.min(...activeSalaries.map((sal) => sal.netSalary), 0);
+      const maxSalary = Math.max(...activeSalaries.map((sal) => parseFloat(sal.net_salary || 0)), 0);
+      const minSalary = Math.min(...activeSalaries.map((sal) => parseFloat(sal.net_salary || 0)), 999999);
 
       // Calculate payslip statistics
       const currentMonth = new Date().toISOString().slice(0, 7);
       const currentMonthPayslips = payslips.filter((slip) => slip.month === currentMonth);
-      const paidPayslips = currentMonthPayslips.filter((slip) => slip.paymentStatus === 'PAID');
+      const paidPayslips = currentMonthPayslips.filter((slip) => slip.payment_status === 'PAID');
       const pendingPayslips = currentMonthPayslips.filter(
-        (slip) => slip.paymentStatus === 'PENDING'
+        (slip) => slip.payment_status === 'PENDING'
       );
 
-      const totalPaidAmount = paidPayslips.reduce((sum, slip) => sum + slip.netSalary, 0);
-      const totalPendingAmount = pendingPayslips.reduce((sum, slip) => sum + slip.netSalary, 0);
+      const totalPaidAmount = paidPayslips.reduce((sum, slip) => sum + parseFloat(slip.net_salary || 0), 0);
+      const totalPendingAmount = pendingPayslips.reduce((sum, slip) => sum + parseFloat(slip.net_salary || 0), 0);
 
-      // Get recent payslips
+      // Get recent payslips and transform field names
       const recentPayslips = payslips
         .sort((a, b) => new Date(b.month) - new Date(a.month))
-        .slice(0, 5);
+        .slice(0, 5)
+        .map(slip => ({
+          payslipId: slip.payslip_id,
+          employeeName: `${slip.first_name || ''} ${slip.last_name || ''}`.trim() || 'Employee',
+          month: slip.month,
+          netSalary: parseFloat(slip.net_salary || 0),
+          paymentStatus: slip.payment_status
+        }));
 
       // Calculate status distribution
       const statusDistribution = [
-        { status: 'ACTIVE', count: activeEmployees, percentage: (activeEmployees / totalEmployees) * 100 },
-        { status: 'RESIGNED', count: resignedEmployees, percentage: (resignedEmployees / totalEmployees) * 100 },
-        { status: 'ON_LEAVE', count: onLeaveEmployees, percentage: (onLeaveEmployees / totalEmployees) * 100 },
+        { status: 'ACTIVE', count: activeEmployees, percentage: (activeEmployees / (totalEmployees || 1)) * 100 },
+        { status: 'INACTIVE', count: inactiveEmployees, percentage: (inactiveEmployees / (totalEmployees || 1)) * 100 },
+        { status: 'ON_LEAVE', count: onLeaveEmployees, percentage: (onLeaveEmployees / (totalEmployees || 1)) * 100 },
       ];
 
       // Calculate monthly salary trend (last 3 months)
@@ -63,7 +70,7 @@ export const dashboardService = {
         const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
         const monthStr = date.toISOString().slice(0, 7);
         const monthPayslips = payslips.filter((slip) => slip.month === monthStr);
-        const monthTotal = monthPayslips.reduce((sum, slip) => sum + slip.netSalary, 0);
+        const monthTotal = monthPayslips.reduce((sum, slip) => sum + parseFloat(slip.net_salary || 0), 0);
         last3Months.push({
           month: monthStr,
           monthName: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
@@ -81,7 +88,7 @@ export const dashboardService = {
           employees: {
             total: totalEmployees,
             active: activeEmployees,
-            resigned: resignedEmployees,
+            resigned: inactiveEmployees,
             onLeave: onLeaveEmployees,
             statusDistribution,
           },
@@ -173,9 +180,9 @@ function calculateUpcomingBirthdays(employees) {
     const age = currentYear - year + (birthdayThisYear.getFullYear() > currentYear ? 1 : 0);
 
     return {
-      employeeId: emp.employeeId,
-      employeeCode: emp.employeeCode,
-      employeeName: `${emp.firstName} ${emp.lastName}`,
+      employeeId: emp.employee_id,
+      employeeCode: emp.employee_code,
+      employeeName: `${emp.first_name} ${emp.last_name}`,
       status: emp.status,
       dob: emp.dob,
       birthdayDate: birthdayThisYear.toISOString().split('T')[0],
@@ -197,16 +204,16 @@ function generateRecentActivities(employees, payslips) {
 
   // Add recent employee additions
   const recentEmployees = employees
-    .filter((emp) => emp.dateOfJoining)
-    .sort((a, b) => new Date(b.dateOfJoining) - new Date(a.dateOfJoining))
+    .filter((emp) => emp.date_of_joining)
+    .sort((a, b) => new Date(b.date_of_joining) - new Date(a.date_of_joining))
     .slice(0, 3);
 
   recentEmployees.forEach((emp) => {
     activities.push({
       type: 'employee_joined',
       title: 'New Employee Joined',
-      description: `${emp.firstName} ${emp.lastName} (${emp.employeeCode}) joined the company`,
-      date: emp.dateOfJoining,
+      description: `${emp.first_name} ${emp.last_name} (${emp.employee_code}) joined the company`,
+      date: emp.date_of_joining,
       icon: 'user-plus',
     });
   });
@@ -214,19 +221,20 @@ function generateRecentActivities(employees, payslips) {
   // Add recent payslip generations
   const recentPayslips = payslips
     .sort((a, b) => {
-      const dateA = a.paymentDate || a.month;
-      const dateB = b.paymentDate || b.month;
+      const dateA = a.payment_date || a.month;
+      const dateB = b.payment_date || b.month;
       return new Date(dateB) - new Date(dateA);
     })
     .slice(0, 3);
 
   recentPayslips.forEach((slip) => {
+    const employeeName = `${slip.first_name || ''} ${slip.last_name || ''}`.trim() || 'Employee';
     activities.push({
-      type: slip.paymentStatus === 'PAID' ? 'payment_completed' : 'payslip_generated',
-      title: slip.paymentStatus === 'PAID' ? 'Payment Completed' : 'Payslip Generated',
-      description: `Payslip for ${slip.employeeName} - ${new Date(slip.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
-      date: slip.paymentDate || slip.month,
-      icon: slip.paymentStatus === 'PAID' ? 'check-circle' : 'file-text',
+      type: slip.payment_status === 'PAID' ? 'payment_completed' : 'payslip_generated',
+      title: slip.payment_status === 'PAID' ? 'Payment Completed' : 'Payslip Generated',
+      description: `Payslip for ${employeeName} - ${new Date(slip.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+      date: slip.payment_date || slip.month,
+      icon: slip.payment_status === 'PAID' ? 'check-circle' : 'file-text',
     });
   });
 

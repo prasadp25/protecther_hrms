@@ -79,9 +79,9 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
 
     // Filter by site
     if (selectedSite !== 'ALL') {
-      const siteEmployees = employees.filter(emp => emp.siteId === selectedSite);
-      const siteEmployeeIds = siteEmployees.map(emp => emp.employeeId);
-      filtered = filtered.filter(sal => siteEmployeeIds.includes(sal.employeeId));
+      const siteEmployees = employees.filter(emp => emp.site_id === selectedSite);
+      const siteEmployeeIds = siteEmployees.map(emp => emp.employee_id);
+      filtered = filtered.filter(sal => siteEmployeeIds.includes(sal.employee_id));
     }
 
     // Filter by search keyword
@@ -89,8 +89,8 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
       const keyword = searchKeyword.toLowerCase();
       filtered = filtered.filter(
         (sal) =>
-          sal.employeeName?.toLowerCase().includes(keyword) ||
-          sal.employeeCode?.toLowerCase().includes(keyword)
+          `${sal.first_name} ${sal.last_name}`.toLowerCase().includes(keyword) ||
+          sal.employee_code?.toLowerCase().includes(keyword)
       );
     }
 
@@ -130,8 +130,8 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
     const salariesBySite = {};
 
     filteredSalaries.forEach(salary => {
-      const employee = employees.find(emp => emp.employeeId === salary.employeeId);
-      const siteId = employee?.siteId || 'UNASSIGNED';
+      const employee = employees.find(emp => emp.employee_id === salary.employee_id);
+      const siteId = employee?.site_id || 'UNASSIGNED';
 
       if (!salariesBySite[siteId]) {
         salariesBySite[siteId] = [];
@@ -487,48 +487,48 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSalaries.map((salary) => {
                   const totalAllowances =
-                    salary.hra +
-                    salary.da +
-                    salary.conveyanceAllowance +
-                    salary.medicalAllowance +
-                    salary.specialAllowance +
-                    salary.otherAllowances;
+                    parseFloat(salary.hra || 0) +
+                    parseFloat(salary.da || 0) +
+                    parseFloat(salary.conveyance_allowance || 0) +
+                    parseFloat(salary.medical_allowance || 0) +
+                    parseFloat(salary.special_allowance || 0) +
+                    parseFloat(salary.other_allowances || 0);
 
                   return (
-                    <tr key={salary.salaryId} className="hover:bg-gray-50">
+                    <tr key={salary.salary_id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {salary.employeeName}
+                          {salary.first_name} {salary.last_name}
                         </div>
-                        <div className="text-sm text-gray-500">{salary.employeeCode}</div>
+                        <div className="text-sm text-gray-500">{salary.employee_code}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(salary.basicSalary)}
+                        {formatCurrency(salary.basic_salary)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                         {formatCurrency(totalAllowances)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 text-right">
-                        {formatCurrency(salary.grossSalary)}
+                        {formatCurrency(salary.gross_salary)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 text-right">
-                        {formatCurrency(salary.totalDeductions)}
+                        {formatCurrency(salary.total_deductions)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600 text-right">
-                        {formatCurrency(salary.netSalary)}
+                        {formatCurrency(salary.net_salary)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(salary.effectiveFrom).toLocaleDateString()}
+                        {new Date(salary.effective_from).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
-                          onClick={() => onEdit(salary.salaryId)}
+                          onClick={() => onEdit(salary.salary_id)}
                           className="text-blue-600 hover:text-blue-900"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(salary.salaryId, salary.employeeName)}
+                          onClick={() => handleDelete(salary.salary_id, `${salary.first_name} ${salary.last_name}`)}
                           className="text-red-600 hover:text-red-900"
                         >
                           Deactivate

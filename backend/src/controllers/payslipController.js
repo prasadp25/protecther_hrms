@@ -112,7 +112,7 @@ const getPayslipById = async (req, res) => {
 // ==============================================
 const generatePayslip = async (req, res) => {
   try {
-    const { employee_id, month, year, days_present, overtime_hours } = req.body;
+    const { employee_id, month, year, days_present, advance_deduction, remarks } = req.body;
 
     // Validation
     if (!employee_id || !month || !year) {
@@ -167,50 +167,48 @@ const generatePayslip = async (req, res) => {
     const salaryData = salary[0];
 
     // Calculate working days for the month
-    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysInMonth = new Date(year, month, 0).getDate(); // Calendar days (30/31)
     const totalWorkingDays = 26; // Standard working days
 
-    // Calculate attendance ratio
-    const actualDaysPresent = days_present || totalWorkingDays;
-    const daysAbsent = totalWorkingDays - actualDaysPresent;
-    const attendanceRatio = actualDaysPresent / totalWorkingDays;
+    // Days present (includes weekly offs if present all working days)
+    const actualDaysPresent = days_present || daysInMonth;
+    const daysAbsent = daysInMonth - actualDaysPresent;
 
-    // Calculate proportional salary components
-    const basicSalary = Math.round(parseFloat(salaryData.basic_salary) * attendanceRatio);
-    const hra = Math.round(parseFloat(salaryData.hra) * attendanceRatio);
-    const otherAllowances = Math.round(
-      (parseFloat(salaryData.da || 0) +
-       parseFloat(salaryData.conveyance_allowance || 0) +
-       parseFloat(salaryData.medical_allowance || 0) +
-       parseFloat(salaryData.special_allowance || 0) +
-       parseFloat(salaryData.other_allowances || 0)) * attendanceRatio
-    );
+    // Fixed Salary Components (from salary structure)
+    const fixedBasic = parseFloat(salaryData.basic_salary);
+    const fixedHra = parseFloat(salaryData.hra || 0);
+    const fixedIncentive = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
+    const fixedGross = fixedBasic + fixedHra + fixedIncentive;
 
-    // Calculate overtime
-    const overtimeRate = parseFloat(salaryData.basic_salary) / totalWorkingDays / 8; // Per hour
-    const overtimeAmount = Math.round((overtime_hours || 0) * overtimeRate * 1.5); // 1.5x rate
+    // Fixed Deductions (constant regardless of attendance)
+    const pfDeduction = parseFloat(salaryData.pf_deduction || 0);
+    const esiDeduction = parseFloat(salaryData.esi_deduction || 0);
+    const professionalTax = parseFloat(salaryData.professional_tax || 0);
+    const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction || 0);
+    const advanceDeduction = parseFloat(advance_deduction || 0);
+    const otherDeductions = parseFloat(salaryData.other_deductions || 0);
 
-    // Calculate gross salary
-    const grossSalary = basicSalary + hra + otherAllowances + overtimeAmount;
+    const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
 
-    // Calculate proportional deductions
-    const pfDeduction = Math.round(parseFloat(salaryData.pf_deduction || 0) * attendanceRatio);
-    const esiDeduction = Math.round(parseFloat(salaryData.esi_deduction || 0) * attendanceRatio);
-    const professionalTax = parseFloat(salaryData.professional_tax || 0); // PT is fixed
-    const tds = Math.round(parseFloat(salaryData.tds || 0) * attendanceRatio);
-    const otherDeductions = Math.round(parseFloat(salaryData.other_deductions || 0) * attendanceRatio);
+    // NEW FORMULA: Net Payable = ((Gross - Deductions) / Days in Month) × Days Present
+    const netSalary = Math.round(((fixedGross - totalDeductions) / daysInMonth) * actualDaysPresent);
 
-    const totalDeductions = pfDeduction + esiDeduction + professionalTax + tds + otherDeductions;
-    const netSalary = grossSalary - totalDeductions;
+    // Calculate actual (prorated) components for display
+    const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
+    const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
+    const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
+    const actualGross = actualBasic + actualHra + actualIncentive;
 
     // Insert payslip
     const query = `
       INSERT INTO payslips (
-        employee_id, salary_id, month, total_working_days, days_present, days_absent,
-        basic_salary, hra, other_allowances, overtime, overtime_amount, gross_salary,
-        pf_deduction, esi_deduction, professional_tax, tds, other_deductions,
-        total_deductions, net_salary, payment_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        employee_id, salary_id, month,
+        total_working_days, total_days_in_month, days_present, days_absent,
+        basic_salary, hra, other_allowances, gross_salary,
+        pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
+        advance_deduction, other_deductions, total_deductions,
+        net_salary, payment_status, remarks
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -218,22 +216,23 @@ const generatePayslip = async (req, res) => {
       salaryData.salary_id,
       monthStr,
       totalWorkingDays,
+      daysInMonth,
       actualDaysPresent,
       daysAbsent,
-      basicSalary,
-      hra,
-      otherAllowances,
-      overtime_hours || 0,
-      overtimeAmount,
-      grossSalary,
+      actualBasic,  // Actual (prorated) basic
+      actualHra,     // Actual (prorated) HRA
+      actualIncentive, // Actual (prorated) incentive
+      actualGross,   // Actual (prorated) gross
       pfDeduction,
       esiDeduction,
       professionalTax,
-      tds,
+      mediclaimDeduction,
+      advanceDeduction,
       otherDeductions,
       totalDeductions,
       netSalary,
-      'PENDING'
+      'PENDING',
+      remarks || null
     ];
 
     const result = await executeQuery(query, params);

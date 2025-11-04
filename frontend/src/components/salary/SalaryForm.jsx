@@ -15,17 +15,15 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     // Earnings
     basicSalary: 0,
     hra: 0,
-    otherAllowances: 0,
+    incentiveAllowance: 0,
     // Deductions
     pfDeduction: 0,
     esiDeduction: 0,
     professionalTax: 200,
-    tds: 0,
+    mediclaimDeduction: 0,
     advanceDeduction: 0,
-    welfareDeduction: 0,
-    healthInsurance: 0,
     otherDeductions: 0,
-    otherDeductionsRemarks: '',
+    remarks: '',
   });
 
   useEffect(() => {
@@ -67,15 +65,15 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
 
   const handleEmployeeSelect = (e) => {
     const employeeId = parseInt(e.target.value);
-    const employee = employees.find((emp) => emp.employeeId === employeeId);
+    const employee = employees.find((emp) => emp.employee_id === employeeId);
 
     if (employee) {
       setSelectedEmployee(employee);
       setFormData((prev) => ({
         ...prev,
-        employeeId: employee.employeeId,
-        employeeCode: employee.employeeCode,
-        employeeName: `${employee.firstName} ${employee.lastName}`,
+        employeeId: employee.employee_id,
+        employeeCode: employee.employee_code,
+        employeeName: `${employee.first_name} ${employee.last_name}`,
       }));
     }
   };
@@ -87,17 +85,31 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     setFormData((prev) => {
       const newData = {
         ...prev,
-        [name]: (name === 'effectiveFrom' || name === 'otherDeductionsRemarks') ? value : numValue,
+        [name]: (name === 'effectiveFrom' || name === 'remarks') ? value : numValue,
       };
 
-      // Auto-calculate PF (12% of basic salary)
+      // Auto-calculate PF based on Basic Salary
+      // IF Basic >= 15000 THEN PF = 1800, ELSE PF = Basic * 12%
       if (name === 'basicSalary') {
-        newData.pfDeduction = Math.round(numValue * 0.12);
+        if (numValue >= 15000) {
+          newData.pfDeduction = 1800;
+        } else {
+          newData.pfDeduction = Math.round(numValue * 0.12);
+        }
       }
 
-      // Auto-calculate HRA (40% of basic salary if not manually set)
-      if (name === 'basicSalary' && !prev.hra) {
-        newData.hra = Math.round(numValue * 0.4);
+      // Auto-calculate ESIC (0.75% of gross) if gross < 21000
+      if (name === 'basicSalary' || name === 'hra' || name === 'incentiveAllowance') {
+        const basic = name === 'basicSalary' ? numValue : newData.basicSalary;
+        const hra = name === 'hra' ? numValue : newData.hra;
+        const incentive = name === 'incentiveAllowance' ? numValue : newData.incentiveAllowance;
+        const grossSalary = basic + hra + incentive;
+
+        if (grossSalary < 21000) {
+          newData.esiDeduction = Math.round(grossSalary * 0.0075); // 0.75%
+        } else {
+          newData.esiDeduction = 0;
+        }
       }
 
       return newData;
@@ -116,16 +128,14 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     const grossSalary =
       formData.basicSalary +
       formData.hra +
-      formData.otherAllowances;
+      formData.incentiveAllowance;
 
     const totalDeductions =
       formData.pfDeduction +
       formData.esiDeduction +
       formData.professionalTax +
-      formData.tds +
+      formData.mediclaimDeduction +
       formData.advanceDeduction +
-      formData.welfareDeduction +
-      formData.healthInsurance +
       formData.otherDeductions;
 
     const netSalary = grossSalary - totalDeductions;
@@ -161,12 +171,29 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
 
     try {
       setLoading(true);
+
+      // Convert camelCase to snake_case for backend
+      const salaryData = {
+        employee_id: formData.employeeId,
+        basic_salary: formData.basicSalary,
+        hra: formData.hra,
+        incentive_allowance: formData.incentiveAllowance,
+        pf_deduction: formData.pfDeduction,
+        esi_deduction: formData.esiDeduction,
+        professional_tax: formData.professionalTax,
+        mediclaim_deduction: formData.mediclaimDeduction,
+        advance_deduction: formData.advanceDeduction,
+        other_deductions: formData.otherDeductions,
+        effective_from: formData.effectiveFrom,
+        remarks: formData.remarks
+      };
+
       let response;
 
       if (salaryId) {
-        response = await salaryService.updateSalary(salaryId, formData);
+        response = await salaryService.updateSalary(salaryId, salaryData);
       } else {
-        response = await salaryService.createSalary(formData);
+        response = await salaryService.createSalary(salaryData);
       }
 
       if (response.success) {
@@ -222,8 +249,8 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             >
               <option value="">-- Select Employee --</option>
               {employees.map((emp) => (
-                <option key={emp.employeeId} value={emp.employeeId}>
-                  {emp.employeeCode} - {emp.firstName} {emp.lastName}
+                <option key={emp.employee_id} value={emp.employee_id}>
+                  {emp.employee_code} - {emp.first_name} {emp.last_name}
                 </option>
               ))}
             </select>
@@ -257,7 +284,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="100"
+              step="0.01"
             />
             {errors.basicSalary && <p className={errorClasses}>{errors.basicSalary}</p>}
           </div>
@@ -271,20 +298,20 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="100"
+              step="0.01"
             />
           </div>
 
           <div>
-            <label className={labelClasses}>Other Allowances</label>
+            <label className={labelClasses}>Incentive / Other Allowances</label>
             <input
               type="number"
-              name="otherAllowances"
-              value={formData.otherAllowances || ''}
+              name="incentiveAllowance"
+              value={formData.incentiveAllowance || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="100"
+              step="0.01"
             />
           </div>
         </div>
@@ -296,7 +323,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className={labelClasses}>
-              PF Deduction (12% of Basic)
+              PF Deduction (≥₹15000: ₹1800, &lt;₹15000: 12%)
             </label>
             <input
               type="number"
@@ -305,12 +332,14 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="10"
+              step="0.01"
+              readOnly
+              title="Auto-calculated based on Basic Salary"
             />
           </div>
 
           <div>
-            <label className={labelClasses}>ESI Deduction</label>
+            <label className={labelClasses}>ESI Deduction (0.75% if Gross &lt; ₹21000)</label>
             <input
               type="number"
               name="esiDeduction"
@@ -318,12 +347,14 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="10"
+              step="0.01"
+              readOnly
+              title="Auto-calculated: 0.75% of Gross if Gross < ₹21,000"
             />
           </div>
 
           <div>
-            <label className={labelClasses}>Professional Tax</label>
+            <label className={labelClasses}>Professional Tax (PT)</label>
             <input
               type="number"
               name="professionalTax"
@@ -331,20 +362,20 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="10"
+              step="0.01"
             />
           </div>
 
           <div>
-            <label className={labelClasses}>TDS (Tax Deducted at Source)</label>
+            <label className={labelClasses}>Mediclaim</label>
             <input
               type="number"
-              name="tds"
-              value={formData.tds || ''}
+              name="mediclaimDeduction"
+              value={formData.mediclaimDeduction || ''}
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="100"
+              step="0.01"
             />
           </div>
 
@@ -357,33 +388,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="100"
-            />
-          </div>
-
-          <div>
-            <label className={labelClasses}>Welfare Deduction</label>
-            <input
-              type="number"
-              name="welfareDeduction"
-              value={formData.welfareDeduction || ''}
-              onChange={handleChange}
-              className={inputClasses}
-              min="0"
-              step="100"
-            />
-          </div>
-
-          <div>
-            <label className={labelClasses}>Health Insurance</label>
-            <input
-              type="number"
-              name="healthInsurance"
-              value={formData.healthInsurance || ''}
-              onChange={handleChange}
-              className={inputClasses}
-              min="0"
-              step="100"
+              step="0.01"
             />
           </div>
 
@@ -396,7 +401,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
               min="0"
-              step="100"
+              step="0.01"
             />
           </div>
         </div>

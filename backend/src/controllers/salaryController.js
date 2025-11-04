@@ -161,43 +161,39 @@ const createSalary = async (req, res) => {
     // Calculate gross salary and net salary
     const basicSalary = parseFloat(salaryData.basic_salary) || 0;
     const hra = parseFloat(salaryData.hra) || 0;
-    const da = parseFloat(salaryData.da) || 0;
-    const conveyanceAllowance = parseFloat(salaryData.conveyance_allowance) || 0;
-    const medicalAllowance = parseFloat(salaryData.medical_allowance) || 0;
-    const otherAllowances = parseFloat(salaryData.other_allowances) || 0;
+    const incentiveAllowance = parseFloat(salaryData.incentive_allowance) || 0;
 
-    const pf = parseFloat(salaryData.pf) || 0;
-    const esi = parseFloat(salaryData.esi) || 0;
+    const pfDeduction = parseFloat(salaryData.pf_deduction) || 0;
+    const esiDeduction = parseFloat(salaryData.esi_deduction) || 0;
     const professionalTax = parseFloat(salaryData.professional_tax) || 0;
-    const tds = parseFloat(salaryData.tds) || 0;
+    const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction) || 0;
+    const advanceDeduction = parseFloat(salaryData.advance_deduction) || 0;
     const otherDeductions = parseFloat(salaryData.other_deductions) || 0;
 
-    const grossSalary = basicSalary + hra + da + conveyanceAllowance + medicalAllowance + otherAllowances;
-    const totalDeductions = pf + esi + professionalTax + tds + otherDeductions;
+    const grossSalary = basicSalary + hra + incentiveAllowance;
+    const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
     const netSalary = grossSalary - totalDeductions;
 
     const query = `
       INSERT INTO salaries (
-        employee_id, basic_salary, hra, da, conveyance_allowance,
-        medical_allowance, other_allowances, gross_salary,
-        pf, esi, professional_tax, tds, other_deductions,
-        total_deductions, net_salary, effective_from, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        employee_id, basic_salary, hra, incentive_allowance, gross_salary,
+        pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
+        advance_deduction, other_deductions, total_deductions, net_salary,
+        effective_from, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       salaryData.employee_id,
       basicSalary,
       hra,
-      da,
-      conveyanceAllowance,
-      medicalAllowance,
-      otherAllowances,
+      incentiveAllowance,
       grossSalary,
-      pf,
-      esi,
+      pfDeduction,
+      esiDeduction,
       professionalTax,
-      tds,
+      mediclaimDeduction,
+      advanceDeduction,
       otherDeductions,
       totalDeductions,
       netSalary,
