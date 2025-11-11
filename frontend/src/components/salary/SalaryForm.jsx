@@ -23,7 +23,6 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     mediclaimDeduction: 0,
     advanceDeduction: 0,
     otherDeductions: 0,
-    remarks: '',
   });
 
   useEffect(() => {
@@ -49,11 +48,28 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       setLoading(true);
       const response = await salaryService.getSalaryById(salaryId);
       if (response.success) {
-        setFormData(response.data);
+        const data = response.data;
+        // Convert snake_case from backend to camelCase for frontend
+        setFormData({
+          employeeId: data.employee_id,
+          employeeCode: data.employee_code,
+          employeeName: `${data.first_name} ${data.last_name}`,
+          effectiveFrom: data.effective_from ? data.effective_from.split('T')[0] : new Date().toISOString().split('T')[0],
+          basicSalary: parseFloat(data.basic_salary) || 0,
+          hra: parseFloat(data.hra) || 0,
+          incentiveAllowance: parseFloat(data.incentive_allowance) || 0,
+          pfDeduction: parseFloat(data.pf_deduction) || 0,
+          esiDeduction: parseFloat(data.esi_deduction) || 0,
+          professionalTax: parseFloat(data.professional_tax) || 0,
+          mediclaimDeduction: parseFloat(data.mediclaim_deduction) || 0,
+          advanceDeduction: parseFloat(data.advance_deduction) || 0,
+          otherDeductions: parseFloat(data.other_deductions) || 0,
+        });
         setSelectedEmployee({
-          employeeId: response.data.employeeId,
-          employeeName: response.data.employeeName,
-          employeeCode: response.data.employeeCode,
+          employee_id: data.employee_id,
+          employee_code: data.employee_code,
+          first_name: data.first_name,
+          last_name: data.last_name,
         });
       }
     } catch (error) {
@@ -85,7 +101,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     setFormData((prev) => {
       const newData = {
         ...prev,
-        [name]: (name === 'effectiveFrom' || name === 'remarks') ? value : numValue,
+        [name]: name === 'effectiveFrom' ? value : numValue,
       };
 
       // Auto-calculate PF based on Basic Salary
@@ -184,8 +200,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         mediclaim_deduction: formData.mediclaimDeduction,
         advance_deduction: formData.advanceDeduction,
         other_deductions: formData.otherDeductions,
-        effective_from: formData.effectiveFrom,
-        remarks: formData.remarks
+        effective_from: formData.effectiveFrom
       };
 
       let response;

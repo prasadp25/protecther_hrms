@@ -6,17 +6,31 @@ const { executeQuery } = require('../config/database');
 // ==============================================
 const authenticate = async (req, res, next) => {
   try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
+    // Debug logging
+    console.log('🔐 Auth middleware - Request:', req.method, req.path);
+    console.log('🍪 Cookies received:', req.cookies);
+    console.log('📋 Headers:', req.headers);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Get token from httpOnly cookie (primary) or Authorization header (fallback)
+    let token = req.cookies?.auth_token;
+
+    // Fallback to Authorization header for backward compatibility
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+
+    console.log('🎫 Token found:', token ? 'YES' : 'NO');
+
+    if (!token) {
+      console.log('❌ No token provided');
       return res.status(401).json({
         success: false,
         message: 'Access denied. No token provided.'
       });
     }
-
-    const token = authHeader.split(' ')[1];
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

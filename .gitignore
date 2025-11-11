@@ -1,3 +1,9 @@
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.local
+.env.production
+*.env.backup
+
 # ===== FRONTEND =====
 # Logs
 logs
@@ -15,6 +21,15 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# ===== BACKEND =====
+# Uploads
+uploads/
+backend/uploads/
+
+# Database backups
+backups/
+*.sql.backup
 
 # ===== BACKEND (Java/Spring Boot) =====
 # Maven

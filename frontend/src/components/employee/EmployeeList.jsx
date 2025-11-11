@@ -1,33 +1,58 @@
 import { useState, useEffect } from 'react';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
+import usePagination from '../../hooks/usePagination';
+import Pagination from '../common/Pagination';
 
 const EmployeeList = ({ onEdit, onAddNew }) => {
   const [employees, setEmployees] = useState([]);
-  const [filteredEmployees, setFilteredEmployees] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState('');
+  const [pagination, setPagination] = useState(null);
+
+  // Use pagination hook
+  const {
+    page,
+    limit,
+    search,
+    setPage,
+    setLimit,
+    setSearch,
+    toggleSort,
+    sortBy,
+    sortOrder,
+    setFilters,
+    filters,
+    getQueryParams
+  } = usePagination(1, 10);
+
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   useEffect(() => {
     loadEmployees();
-    loadSites();
-  }, []);
+  }, [page, limit, search, sortBy, sortOrder, statusFilter]);
 
   useEffect(() => {
-    filterEmployees();
-  }, [employees, searchKeyword, statusFilter]);
+    loadSites();
+  }, []);
 
   const loadEmployees = async () => {
     try {
       setLoading(true);
-      const response = await employeeService.getAllEmployees();
+      const params = getQueryParams();
+
+      // Add status filter if not ALL
+      if (statusFilter !== 'ALL') {
+        params.status = statusFilter;
+      }
+
+      const response = await employeeService.getAllEmployees(params);
       if (response.success) {
         setEmployees(response.data);
+        setPagination(response.pagination);
       }
     } catch (error) {
-      alert('Failed to load employees');
+      console.error('Failed to load employees:', error);
     } finally {
       setLoading(false);
     }
@@ -50,46 +75,13 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
     return site ? `${site.site_code} - ${site.site_name}` : '-';
   };
 
-  const filterEmployees = () => {
-    let filtered = employees;
-
-    // Filter by status
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter((emp) => emp.status === statusFilter);
-    }
-
-    // Filter by search keyword
-    if (searchKeyword.trim()) {
-      const keyword = searchKeyword.toLowerCase();
-      filtered = filtered.filter(
-        (emp) =>
-          emp.first_name?.toLowerCase().includes(keyword) ||
-          emp.last_name?.toLowerCase().includes(keyword) ||
-          emp.employee_code?.toLowerCase().includes(keyword) ||
-          emp.mobile?.includes(keyword) ||
-          emp.email?.toLowerCase().includes(keyword)
-      );
-    }
-
-    setFilteredEmployees(filtered);
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
   };
 
-  const handleSearch = async () => {
-    if (searchKeyword.trim()) {
-      try {
-        setLoading(true);
-        const response = await employeeService.searchEmployees(searchKeyword);
-        if (response.success) {
-          setEmployees(response.data);
-        }
-      } catch (error) {
-        alert('Search failed');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      loadEmployees();
-    }
+  const handleStatusFilterChange = (status) => {
+    setStatusFilter(status);
+    setPage(1); // Reset to first page when changing filter
   };
 
   const handleDelete = async (id, name) => {
@@ -109,23 +101,42 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
   const handleViewDocument = (url, type) => {
     if (!url) return;
     const backendUrl = 'http://localhost:5000';
-    let folderPath = '';
 
-    switch(type) {
-      case 'offer-letter':
-        folderPath = 'offer-letters';
-        break;
-      case 'aadhaar':
-        folderPath = 'aadhaar-cards';
-        break;
-      case 'pan':
-        folderPath = 'pan-cards';
-        break;
-      default:
-        folderPath = '';
+    // If URL already starts with /uploads/, use it directly
+    if (url.startsWith('/uploads/')) {
+      window.open(`${backendUrl}${url}`, '_blank');
+    } else {
+      // Otherwise, construct the full path
+      let folderPath = '';
+      switch(type) {
+        case 'offer-letter':
+          folderPath = 'offer-letters';
+          break;
+        case 'aadhaar':
+          folderPath = 'aadhaar-cards';
+          break;
+        case 'pan':
+          folderPath = 'pan-cards';
+          break;
+        default:
+          folderPath = '';
+      }
+      window.open(`${backendUrl}/uploads/${folderPath}/${url}`, '_blank');
     }
+  };
 
-    window.open(`${backendUrl}/uploads/${folderPath}/${url}`, '_blank');
+  const handleStatusChange = async (employeeId, newStatus, employeeName) => {
+    if (window.confirm(`Are you sure you want to change status of ${employeeName} to ${newStatus}?`)) {
+      try {
+        const response = await employeeService.updateEmployee(employeeId, { status: newStatus });
+        if (response.success) {
+          alert('Status updated successfully');
+          loadEmployees();
+        }
+      } catch (error) {
+        alert('Failed to update status');
+      }
+    }
   };
 
   const getStatusBadgeClass = (status) => {
@@ -141,6 +152,21 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
         return `${baseClasses} bg-yellow-100 text-yellow-800`;
       default:
         return baseClasses;
+    }
+  };
+
+  const getStatusSelectClass = (status) => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'RESIGNED':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'TERMINATED':
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'ON_LEAVE':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
@@ -161,22 +187,13 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
-            <div className="flex">
-              <input
-                type="text"
-                placeholder="Search by name, code, mobile, or email..."
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
-              />
-              <button
-                onClick={handleSearch}
-                className="px-6 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700"
-              >
-                Search
-              </button>
-            </div>
+            <input
+              type="text"
+              placeholder="Search by name, code, mobile, or email..."
+              value={search}
+              onChange={handleSearch}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+            />
           </div>
 
           <div>
@@ -195,7 +212,7 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
         </div>
 
         <div className="mt-2 text-sm text-gray-600">
-          Showing {filteredEmployees.length} of {employees.length} employees
+          Showing {employees.length} employees
         </div>
       </div>
 
@@ -206,7 +223,7 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <p className="mt-2 text-gray-600">Loading employees...</p>
           </div>
-        ) : filteredEmployees.length === 0 ? (
+        ) : employees.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600">No employees found</p>
           </div>
@@ -296,16 +313,16 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Hospital Insurance ID
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky bg-gray-50 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]" style={{ right: '90px' }}>
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredEmployees.map((employee) => (
+                {employees.map((employee) => (
                   <tr key={employee.employee_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                       {employee.employee_code}
@@ -402,17 +419,27 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {employee.hospital_insurance_id || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={getStatusBadgeClass(employee.status)}>
-                        {employee.status}
-                      </span>
+                    <td className="px-4 py-3 whitespace-nowrap sticky bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.1)]" style={{ right: '90px' }}>
+                      <select
+                        value={employee.status}
+                        onChange={(e) => handleStatusChange(employee.employee_id, e.target.value, `${employee.first_name} ${employee.last_name}`)}
+                        className={`text-xs font-semibold rounded-full px-2 py-1 border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${getStatusSelectClass(employee.status)}`}
+                      >
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="ON_LEAVE">ON_LEAVE</option>
+                        <option value="RESIGNED">RESIGNED</option>
+                        <option value="TERMINATED">TERMINATED</option>
+                      </select>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2 sticky right-0 bg-white">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2 sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.1)]">
                       <button
                         onClick={() => onEdit(employee.employee_id)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="Edit"
                       >
-                        Edit
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() =>
@@ -421,9 +448,12 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                             `${employee.first_name} ${employee.last_name}`
                           )
                         }
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 p-1"
+                        title="Delete"
                       >
-                        Delete
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -431,6 +461,15 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* Pagination */}
+        {pagination && (
+          <Pagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
         )}
       </div>
     </div>

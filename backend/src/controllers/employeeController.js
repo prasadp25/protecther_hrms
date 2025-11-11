@@ -1,60 +1,77 @@
 const { executeQuery } = require('../config/database');
+const {
+  parsePaginationParams,
+  parseSortParams,
+  parseSearchParams,
+  buildPaginatedResponse
+} = require('../utils/pagination');
+const { asyncHandler } = require('../utils/errors');
 
 // ==============================================
-// GET ALL EMPLOYEES
+// GET ALL EMPLOYEES (with pagination)
 // ==============================================
-const getAllEmployees = async (req, res) => {
-  try {
-    const { status, site_id, designation, search } = req.query;
+const getAllEmployees = asyncHandler(async (req, res) => {
+  // Parse pagination, sort, and search parameters
+  const { page, limit, offset } = parsePaginationParams(req.query);
+  const { sortBy, sortOrder } = parseSortParams(req.query,
+    ['employee_id', 'employee_code', 'first_name', 'last_name', 'designation', 'status', 'created_at'],
+    'created_at'
+  );
+  const { status, siteId, designation, search } = parseSearchParams(req.query);
 
-    let query = `
-      SELECT e.*, s.site_name, s.site_code
-      FROM employees e
-      LEFT JOIN sites s ON e.site_id = s.site_id
-      WHERE 1=1
-    `;
-    const params = [];
+  // Build WHERE clause
+  let whereConditions = [];
+  let params = [];
 
-    // Add filters
-    if (status) {
-      query += ' AND e.status = ?';
-      params.push(status);
-    }
-
-    if (site_id) {
-      query += ' AND e.site_id = ?';
-      params.push(site_id);
-    }
-
-    if (designation) {
-      query += ' AND e.designation = ?';
-      params.push(designation);
-    }
-
-    if (search) {
-      query += ` AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_code LIKE ? OR e.mobile LIKE ?)`;
-      const searchParam = `%${search}%`;
-      params.push(searchParam, searchParam, searchParam, searchParam);
-    }
-
-    query += ' ORDER BY e.created_at DESC';
-
-    const employees = await executeQuery(query, params);
-
-    res.status(200).json({
-      success: true,
-      count: employees.length,
-      data: employees
-    });
-  } catch (error) {
-    console.error('Get employees error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch employees',
-      error: error.message
-    });
+  if (status) {
+    whereConditions.push('e.status = ?');
+    params.push(status);
   }
-};
+
+  if (siteId) {
+    whereConditions.push('e.site_id = ?');
+    params.push(siteId);
+  }
+
+  if (designation) {
+    whereConditions.push('e.designation = ?');
+    params.push(designation);
+  }
+
+  if (search) {
+    whereConditions.push('(e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_code LIKE ? OR e.mobile LIKE ?)');
+    const searchParam = `%${search}%`;
+    params.push(searchParam, searchParam, searchParam, searchParam);
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  // Get total count
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM employees e
+    ${whereClause}
+  `;
+  const countResult = await executeQuery(countQuery, params);
+  const total = countResult[0].total;
+
+  // Get paginated data
+  const dataQuery = `
+    SELECT e.*, s.site_name, s.site_code
+    FROM employees e
+    LEFT JOIN sites s ON e.site_id = s.site_id
+    ${whereClause}
+    ORDER BY e.${sortBy} ${sortOrder}
+    LIMIT ? OFFSET ?
+  `;
+  const employees = await executeQuery(dataQuery, [...params, limit, offset]);
+
+  // Send paginated response
+  const response = buildPaginatedResponse(employees, total, page, limit);
+  res.json(response);
+});
 
 // ==============================================
 // GET ACTIVE EMPLOYEES
@@ -164,11 +181,11 @@ const createEmployee = async (req, res) => {
         dob, gender, marital_status, qualification, address, city, state, pincode,
         aadhaar_no, aadhaar_card_url, pan_no, pan_card_url, uan_no, pf_no, esi_no,
         account_number, ifsc_code, bank_name, branch_name,
-        designation, department, date_of_joining, date_of_leaving,
+        designation, grade, department, date_of_joining, date_of_leaving,
         offer_letter_issue_date, offer_letter_url, status, site_id,
         emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship,
         wp_policy, hospital_insurance_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -198,6 +215,7 @@ const createEmployee = async (req, res) => {
       employeeData.bank_name,
       employeeData.branch_name || null,
       employeeData.designation,
+      employeeData.grade || null,
       employeeData.department,
       employeeData.date_of_joining,
       employeeData.date_of_leaving || null,
@@ -211,18 +229,6 @@ const createEmployee = async (req, res) => {
       employeeData.wp_policy || 'No',
       employeeData.hospital_insurance_id || null
     ];
-
-    // Debug: Log any undefined values
-    console.log('Employee Data:', JSON.stringify(employeeData, null, 2));
-    console.log('\n=== Checking params array ===');
-    params.forEach((param, index) => {
-      if (param === undefined) {
-        console.log(`❌ Parameter ${index} is undefined`);
-      }
-    });
-    console.log(`Total params: ${params.length}`);
-    console.log(`Params: ${JSON.stringify(params)}`);
-    console.log('=== End params check ===\n');
 
     const result = await executeQuery(query, params);
 
@@ -287,14 +293,62 @@ const updateEmployee = async (req, res) => {
       }
     }
 
+    // Map frontend field names to database column names
+    const fieldMapping = {
+      'offerLetter': 'offer_letter_url',
+      'aadhaarCard': 'aadhaar_card_url',
+      'panCard': 'pan_card_url',
+      'alternateMobile': 'alternate_mobile',
+      'maritalStatus': 'marital_status',
+      'aadhaarNo': 'aadhaar_no',
+      'panNo': 'pan_no',
+      'uanNo': 'uan_no',
+      'pfNo': 'pf_no',
+      'esiNo': 'esi_no',
+      'accountNumber': 'account_number',
+      'ifscCode': 'ifsc_code',
+      'bankName': 'bank_name',
+      'branchName': 'branch_name',
+      'dateOfJoining': 'date_of_joining',
+      'dateOfLeaving': 'date_of_leaving',
+      'offerLetterIssueDate': 'offer_letter_issue_date',
+      'siteId': 'site_id',
+      'emergencyContactName': 'emergency_contact_name',
+      'emergencyContactMobile': 'emergency_contact_mobile',
+      'emergencyContactRelationship': 'emergency_contact_relationship',
+      'wpPolicy': 'wp_policy',
+      'hospitalInsuranceId': 'hospital_insurance_id',
+      'firstName': 'first_name',
+      'lastName': 'last_name'
+    };
+
     // Build update query dynamically
     const fields = [];
     const values = [];
 
     Object.keys(employeeData).forEach(key => {
       if (employeeData[key] !== undefined && key !== 'employee_id') {
-        fields.push(`${key} = ?`);
-        values.push(employeeData[key]);
+        // Use mapped field name if exists, otherwise use key as-is
+        const dbFieldName = fieldMapping[key] || key;
+
+        // Convert empty strings to null, handle objects/arrays
+        let value = employeeData[key];
+        if (value === '' || value === null) {
+          value = null;
+        } else if (typeof value === 'object') {
+          // For file upload fields, skip if empty object (no new file uploaded)
+          if (key === 'offerLetter' || key === 'aadhaarCard' || key === 'panCard' ||
+              key === 'offer_letter_url' || key === 'aadhaar_card_url' || key === 'pan_card_url') {
+            console.warn(`⚠️  Warning: Skipping file field ${key} with empty object value`);
+            return; // Skip this field entirely
+          }
+          // Convert other objects/arrays to null (shouldn't happen, but safety check)
+          console.warn(`⚠️  Warning: Field ${key} has object value, converting to null:`, value);
+          value = null;
+        }
+
+        fields.push(`${dbFieldName} = ?`);
+        values.push(value);
       }
     });
 

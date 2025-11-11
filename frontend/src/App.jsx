@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import ErrorBoundary from './components/error/ErrorBoundary';
 import Login from './components/auth/Login';
 import authService from './services/authService';
 import Dashboard from './components/dashboard/Dashboard';
@@ -10,9 +13,8 @@ import SiteForm from './components/site/SiteForm';
 import SalaryList from './components/salary/SalaryList';
 import SalaryForm from './components/salary/SalaryForm';
 import PayslipView from './components/salary/PayslipView';
-import AttendanceCalendar from './components/attendance/AttendanceCalendar';
-import MarkAttendance from './components/attendance/MarkAttendance';
-import AttendanceReport from './components/attendance/AttendanceReport';
+import AttendanceManagement from './components/attendance/AttendanceManagement';
+import Reports from './components/reports/Reports';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -22,8 +24,8 @@ const ProtectedRoute = ({ children }) => {
 
 // Main App Component
 const MainApp = () => {
-  const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'sites', 'salary', or 'attendance'
-  const [view, setView] = useState('list'); // 'list', 'form', 'payslips', 'calendar', 'mark', 'report'
+  const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'sites', 'salary', 'attendance', or 'reports'
+  const [view, setView] = useState('list'); // 'list', 'form', 'payslips'
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSalaryId, setSelectedSalaryId] = useState(null);
@@ -99,28 +101,10 @@ const MainApp = () => {
     setView('list');
   };
 
-  // Attendance handlers
-  const handleMarkAttendance = () => {
-    setView('mark');
-  };
-
-  const handleViewReports = () => {
-    setView('report');
-  };
-
-  const handleBackToCalendar = () => {
-    setView('calendar');
-  };
-
   // Module switch handler
   const handleModuleChange = (newModule) => {
     setModule(newModule);
-    // Set appropriate default view for each module
-    if (newModule === 'attendance') {
-      setView('calendar');
-    } else {
-      setView('list');
-    }
+    setView('list');
     setSelectedEmployeeId(null);
     setSelectedSiteId(null);
     setSelectedSalaryId(null);
@@ -189,6 +173,16 @@ const MainApp = () => {
             >
               Salary & Payroll
             </button>
+            <button
+              onClick={() => handleModuleChange('reports')}
+              className={`pb-2 px-4 font-medium ${
+                module === 'reports'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Reports
+            </button>
           </div>
         </div>
       </header>
@@ -226,20 +220,7 @@ const MainApp = () => {
             </>
           )}
 
-          {module === 'attendance' && (
-            <>
-              {view === 'calendar' ? (
-                <AttendanceCalendar
-                  onMarkAttendance={handleMarkAttendance}
-                  onViewReports={handleViewReports}
-                />
-              ) : view === 'mark' ? (
-                <MarkAttendance onBack={handleBackToCalendar} />
-              ) : view === 'report' ? (
-                <AttendanceReport onBack={handleBackToCalendar} />
-              ) : null}
-            </>
-          )}
+          {module === 'attendance' && <AttendanceManagement />}
 
           {module === 'salary' && (
             <>
@@ -260,6 +241,8 @@ const MainApp = () => {
               ) : null}
             </>
           )}
+
+          {module === 'reports' && <Reports />}
         </div>
       </main>
 
@@ -278,19 +261,34 @@ const MainApp = () => {
 // Router Wrapper
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <MainApp />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <MainApp />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+      {/* Toast Container for global notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+    </ErrorBoundary>
   );
 }
 

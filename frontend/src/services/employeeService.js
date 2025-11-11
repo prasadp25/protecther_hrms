@@ -12,8 +12,8 @@ let mockEmployeeData = [...mockEmployees];
 let nextId = mockEmployees.length + 1;
 
 export const employeeService = {
-  // Get all employees
-  getAllEmployees: async () => {
+  // Get all employees (with pagination support)
+  getAllEmployees: async (params = {}) => {
     if (USE_MOCK_DATA) {
       await delay(500);
       return {
@@ -22,7 +22,7 @@ export const employeeService = {
         message: 'Employees retrieved successfully (MOCK DATA)',
       };
     }
-    const response = await api.get(EMPLOYEE_ENDPOINT);
+    const response = await api.get(EMPLOYEE_ENDPOINT, { params });
     return response.data;
   },
 

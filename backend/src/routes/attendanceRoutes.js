@@ -1,30 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAttendance,
-  markAttendance,
-  bulkMarkAttendance,
-  updateAttendance,
+  getAttendanceByMonth,
   getEmployeeAttendance,
-  getAttendanceReport,
-  getDailyAttendanceSummary
+  saveAttendance,
+  finalizeAttendance,
+  deleteAttendance,
+  getAttendanceSummary
 } = require('../controllers/attendanceController');
-const { authenticate, authorize } = require('../middleware/auth');
-
-// All routes require authentication
-router.use(authenticate);
 
 // GET routes
-router.get('/', getAttendance);
-router.get('/report', getAttendanceReport);
-router.get('/summary/daily', getDailyAttendanceSummary);
-router.get('/employee/:id', getEmployeeAttendance);
+router.get('/month/:month', getAttendanceByMonth);  // GET /api/v1/attendance/month/2025-01
+router.get('/employee/:employeeId', getEmployeeAttendance);  // GET /api/v1/attendance/employee/1
+router.get('/summary/:month', getAttendanceSummary);  // GET /api/v1/attendance/summary/2025-01
 
-// POST routes - Admin/HR only
-router.post('/mark', authorize('ADMIN', 'HR'), markAttendance);
-router.post('/mark/bulk', authorize('ADMIN', 'HR'), bulkMarkAttendance);
+// POST routes
+router.post('/save', saveAttendance);  // POST /api/v1/attendance/save
+router.post('/finalize', finalizeAttendance);  // POST /api/v1/attendance/finalize
 
-// PUT routes - Admin/HR only
-router.put('/:id', authorize('ADMIN', 'HR'), updateAttendance);
+// DELETE routes
+router.delete('/:attendanceId', deleteAttendance);  // DELETE /api/v1/attendance/1
 
 module.exports = router;

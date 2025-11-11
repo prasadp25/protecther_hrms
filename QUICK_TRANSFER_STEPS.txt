@@ -1,0 +1,176 @@
+╔════════════════════════════════════════════════════════════════════╗
+║          HRMS PROJECT TRANSFER - QUICK STEPS                       ║
+║          From PC-05 (Development) to PC-09 (Production)            ║
+╚════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════
+OPTION 1: USB DRIVE TRANSFER (RECOMMENDED - EASIEST)
+═══════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ON PC-05 (Development Laptop) - YOUR CURRENT LAPTOP                │
+└─────────────────────────────────────────────────────────────────────┘
+
+Step 1: Reduce Size (Optional but Recommended)
+  □ Open Command Prompt
+  □ cd C:\Users\PC-05\hrms-frontend\backend
+  □ rmdir /s /q node_modules
+  □ cd ..\frontend
+  □ rmdir /s /q node_modules
+  □ rmdir /s /q dist
+
+Step 2: Copy to USB
+  □ Insert USB drive
+  □ Copy entire folder: C:\Users\PC-05\hrms-frontend
+  □ Paste to USB: E:\hrms-frontend (E: = your USB drive letter)
+  □ Wait for copy to complete (~200-500MB without node_modules)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ON PC-09 (Production Laptop) - THE SERVER LAPTOP                   │
+└─────────────────────────────────────────────────────────────────────┘
+
+Step 3: Copy from USB
+  □ Insert USB drive
+  □ Copy from USB: E:\hrms-frontend
+  □ Paste to: C:\hrms-frontend
+  □ Verify all files copied successfully
+
+Step 4: Install Required Software
+  □ Install Node.js v18+ from: https://nodejs.org/
+    → Download LTS version
+    → Run installer, use all defaults
+    → Verify: Open CMD, type: node --version
+
+  □ Install MySQL v8.0+ from: https://dev.mysql.com/downloads/installer/
+    → Choose "Server only" or "Developer Default"
+    → SET A STRONG ROOT PASSWORD (write it down!)
+    → Configure as Windows Service
+    → Verify: Open CMD, type: mysql --version
+
+  □ Install PM2 (after Node.js installed)
+    → Open CMD as Administrator
+    → Type: npm install -g pm2
+    → Type: npm install -g pm2-windows-startup
+    → Verify: pm2 --version
+
+  □ OPTIONAL: Install TeamViewer or AnyDesk for remote access
+    → TeamViewer: https://www.teamviewer.com/
+    → AnyDesk: https://anydesk.com/
+
+Step 5: Configure Windows for 24/7 Operation
+  □ Power Settings:
+    → Control Panel → Power Options
+    → Select "High Performance"
+    → Change plan settings → Set all to "Never"
+
+  □ Network Settings (Recommended):
+    → Set static IP address
+    → Note the IP address: _______________
+
+  □ Firewall Settings:
+    → Open PowerShell as Administrator
+    → Run: New-NetFirewallRule -DisplayName "HRMS Frontend" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+    → Run: New-NetFirewallRule -DisplayName "HRMS Backend" -Direction Inbound -LocalPort 8001 -Protocol TCP -Action Allow
+
+Step 6: Install Project Dependencies
+  □ Open Command Prompt
+  □ cd C:\hrms-frontend\backend
+  □ npm install --production
+    (Wait 5-10 minutes, downloads packages from internet)
+
+  □ cd ..\frontend
+  □ npm install
+    (Wait 5-10 minutes, downloads packages from internet)
+
+Step 7: Setup Database
+  □ cd C:\hrms-frontend
+  □ run-migrations.bat
+  □ Enter MySQL root password when prompted
+  □ Wait for all migrations to complete
+  □ Should see "SUCCESS" message
+
+Step 8: Configure Environment Files
+  □ cd backend
+  □ copy ..\DEPLOYMENT_CONFIG_PC09.env.backend .env
+  □ notepad .env
+    → Find line: DB_PASSWORD=YOUR_MYSQL_PASSWORD_HERE
+    → Replace YOUR_MYSQL_PASSWORD_HERE with actual MySQL password
+    → Find line: CORS_ORIGIN=http://localhost:8000,http://192.168.1.33:8000
+    → Replace 192.168.1.33 with your actual IP address
+    → Save and close
+
+  □ cd ..\frontend
+  □ copy ..\DEPLOYMENT_CONFIG_PC09.env.frontend .env
+  □ notepad .env
+    → Find line: VITE_API_URL=http://192.168.1.33:8001/api/v1
+    → Replace 192.168.1.33 with your actual IP address
+    → Save and close
+
+Step 9: Build Frontend for Production
+  □ cd C:\hrms-frontend\frontend
+  □ npm run build
+    (Wait 2-5 minutes, creates optimized production files)
+  □ Should see "dist" folder created
+
+Step 10: Start Application
+  □ cd C:\hrms-frontend
+  □ start-hrms.bat
+  □ Wait for startup messages
+  □ Should see "HRMS Application Started Successfully!"
+
+Step 11: Test Access
+  □ Open browser on production laptop
+  □ Go to: http://localhost:8000
+  □ Should see HRMS login page
+
+  □ From another device on same network
+  □ Go to: http://[YOUR_IP]:8000
+  □ Replace [YOUR_IP] with production laptop IP
+  □ Should see HRMS login page
+
+Step 12: Configure Auto-Startup (Run Once)
+  □ cd C:\hrms-frontend
+  □ setup-auto-startup.bat
+  □ Follow on-screen instructions
+  □ Copy the command shown
+  □ Open NEW Command Prompt as Administrator
+  □ Paste and run the command
+  □ Close and run setup-auto-startup.bat again if needed
+
+Step 13: Setup Automatic Backups (Run Once)
+  □ Right-click setup-backup-schedule.bat
+  □ Select "Run as Administrator"
+  □ Press any key to confirm
+  □ Should see "Scheduled Task Created Successfully!"
+
+Step 14: Final Verification
+  □ Restart the production laptop
+  □ Wait 2-3 minutes after boot
+  □ Open browser: http://localhost:8000
+  □ Should work automatically (no manual start needed)
+  □ Run: check-status.bat to verify
+
+═══════════════════════════════════════════════════════════════════════
+DONE! YOUR HRMS IS NOW RUNNING 24/7
+═══════════════════════════════════════════════════════════════════════
+
+Access URLs:
+  • From server laptop: http://localhost:8000
+  • From network: http://[SERVER_IP]:8000
+  • Backend API: http://[SERVER_IP]:8001/api/v1
+
+Daily Operations:
+  • Application starts automatically on boot
+  • Database backs up automatically at 2:00 AM
+  • Check status: check-status.bat
+  • View logs: pm2 logs
+  • Restart if needed: restart-hrms.bat
+
+═══════════════════════════════════════════════════════════════════════
+
+For detailed instructions, see:
+  → TRANSFER_GUIDE.md (complete transfer instructions)
+  → DEPLOYMENT_GUIDE.md (deployment details)
+  → PRE_DEPLOYMENT_CHECKLIST.md (comprehensive checklist)
+
+═══════════════════════════════════════════════════════════════════════

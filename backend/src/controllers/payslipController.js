@@ -112,7 +112,7 @@ const getPayslipById = async (req, res) => {
 // ==============================================
 const generatePayslip = async (req, res) => {
   try {
-    const { employee_id, month, year, days_present, advance_deduction, remarks } = req.body;
+    const { employee_id, month, year, advance_deduction, remarks } = req.body;
 
     // Validation
     if (!employee_id || !month || !year) {
@@ -151,6 +151,21 @@ const generatePayslip = async (req, res) => {
       });
     }
 
+    // Get attendance data from attendance table
+    const attendance = await executeQuery(
+      'SELECT days_present, total_days_in_month FROM attendance WHERE employee_id = ? AND attendance_month = ?',
+      [employee_id, monthStr]
+    );
+
+    if (attendance.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No attendance record found for this employee for the specified month. Please mark attendance first.'
+      });
+    }
+
+    const attendanceData = attendance[0];
+
     // Get active salary structure
     const salary = await executeQuery(
       'SELECT * FROM salaries WHERE employee_id = ? AND status = ? ORDER BY effective_from DESC LIMIT 1',
@@ -166,19 +181,20 @@ const generatePayslip = async (req, res) => {
 
     const salaryData = salary[0];
 
-    // Calculate working days for the month
-    const daysInMonth = new Date(year, month, 0).getDate(); // Calendar days (30/31)
-    const totalWorkingDays = 26; // Standard working days
+    // Calculate working days for the month (Calendar days)
+    const daysInMonth = attendanceData.total_days_in_month; // Calendar days from attendance (30/31)
+    const totalWorkingDays = daysInMonth; // Use calendar days for calculation
 
-    // Days present (includes weekly offs if present all working days)
-    const actualDaysPresent = days_present || daysInMonth;
+    // Days present from attendance record
+    const actualDaysPresent = attendanceData.days_present;
     const daysAbsent = daysInMonth - actualDaysPresent;
 
     // Fixed Salary Components (from salary structure)
     const fixedBasic = parseFloat(salaryData.basic_salary);
     const fixedHra = parseFloat(salaryData.hra || 0);
+    const fixedAllowance = parseFloat(salaryData.special_allowance || 0);
     const fixedIncentive = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
-    const fixedGross = fixedBasic + fixedHra + fixedIncentive;
+    const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive;
 
     // Fixed Deductions (constant regardless of attendance)
     const pfDeduction = parseFloat(salaryData.pf_deduction || 0);
@@ -196,19 +212,20 @@ const generatePayslip = async (req, res) => {
     // Calculate actual (prorated) components for display
     const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
     const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
+    const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
     const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
-    const actualGross = actualBasic + actualHra + actualIncentive;
+    const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
 
     // Insert payslip
     const query = `
       INSERT INTO payslips (
         employee_id, salary_id, month,
         total_working_days, total_days_in_month, days_present, days_absent,
-        basic_salary, hra, other_allowances, gross_salary,
+        basic_salary, hra, allowance, other_allowances, gross_salary,
         pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
         advance_deduction, other_deductions, total_deductions,
         net_salary, payment_status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -221,6 +238,7 @@ const generatePayslip = async (req, res) => {
       daysAbsent,
       actualBasic,  // Actual (prorated) basic
       actualHra,     // Actual (prorated) HRA
+      actualAllowance, // Actual (prorated) allowance
       actualIncentive, // Actual (prorated) incentive
       actualGross,   // Actual (prorated) gross
       pfDeduction,
@@ -242,7 +260,7 @@ const generatePayslip = async (req, res) => {
       message: 'Payslip generated successfully',
       data: {
         payslip_id: result.insertId,
-        gross_salary: grossSalary,
+        gross_salary: actualGross,
         net_salary: netSalary
       }
     });
@@ -313,16 +331,21 @@ const bulkGeneratePayslips = async (req, res) => {
           continue;
         }
 
-        // Get attendance for the month
+        // Get attendance from attendance table
         const attendance = await executeQuery(
-          `SELECT COUNT(*) as days_present
-           FROM attendance
-           WHERE employee_id = ? AND MONTH(attendance_date) = ? AND YEAR(attendance_date) = ?
-           AND status = 'PRESENT'`,
-          [emp.employee_id, month, year]
+          'SELECT days_present, total_days_in_month FROM attendance WHERE employee_id = ? AND attendance_month = ?',
+          [emp.employee_id, monthStr]
         );
 
-        const daysPresent = attendance[0]?.days_present || 26;
+        if (attendance.length === 0) {
+          results.failed++;
+          results.errors.push(`Employee ${emp.employee_id}: No attendance record found for ${monthStr}`);
+          continue;
+        }
+
+        const attendanceData = attendance[0];
+        const actualDaysPresent = attendanceData.days_present;
+        const daysInMonth = attendanceData.total_days_in_month;
 
         // Call generatePayslip logic
         const salary = await executeQuery(
@@ -337,43 +360,52 @@ const bulkGeneratePayslips = async (req, res) => {
         }
 
         const salaryData = salary[0];
-        const totalWorkingDays = 26;
-        const attendanceRatio = daysPresent / totalWorkingDays;
-        const daysAbsent = totalWorkingDays - daysPresent;
+        const totalWorkingDays = daysInMonth; // Use calendar days for calculation
+        const daysAbsent = daysInMonth - actualDaysPresent;
 
-        const basicSalary = Math.round(parseFloat(salaryData.basic_salary) * attendanceRatio);
-        const hra = Math.round(parseFloat(salaryData.hra) * attendanceRatio);
-        const otherAllowances = Math.round(
-          (parseFloat(salaryData.da || 0) +
-           parseFloat(salaryData.conveyance_allowance || 0) +
-           parseFloat(salaryData.medical_allowance || 0) +
-           parseFloat(salaryData.special_allowance || 0) +
-           parseFloat(salaryData.other_allowances || 0)) * attendanceRatio
-        );
+        // Fixed Salary Components (from salary structure)
+        const fixedBasic = parseFloat(salaryData.basic_salary);
+        const fixedHra = parseFloat(salaryData.hra || 0);
+        const fixedAllowance = parseFloat(salaryData.special_allowance || 0);
+        const fixedIncentive = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
+        const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive;
 
-        const grossSalary = basicSalary + hra + otherAllowances;
-
-        const pfDeduction = Math.round(parseFloat(salaryData.pf_deduction || 0) * attendanceRatio);
-        const esiDeduction = Math.round(parseFloat(salaryData.esi_deduction || 0) * attendanceRatio);
+        // Fixed Deductions
+        const pfDeduction = parseFloat(salaryData.pf_deduction || 0);
+        const esiDeduction = parseFloat(salaryData.esi_deduction || 0);
         const professionalTax = parseFloat(salaryData.professional_tax || 0);
-        const tds = Math.round(parseFloat(salaryData.tds || 0) * attendanceRatio);
-        const otherDeductions = Math.round(parseFloat(salaryData.other_deductions || 0) * attendanceRatio);
+        const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction || 0);
+        const advanceDeduction = parseFloat(salaryData.advance_deduction || 0);
+        const otherDeductions = parseFloat(salaryData.other_deductions || 0);
 
-        const totalDeductions = pfDeduction + esiDeduction + professionalTax + tds + otherDeductions;
-        const netSalary = grossSalary - totalDeductions;
+        const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
+
+        // NEW FORMULA: Net Payable = ((Gross - Deductions) / Days in Month) × Days Present
+        const netSalary = Math.round(((fixedGross - totalDeductions) / daysInMonth) * actualDaysPresent);
+
+        // Calculate actual (prorated) components for display
+        const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
+        const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
+        const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
+        const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
+        const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
 
         await executeQuery(
           `INSERT INTO payslips (
-            employee_id, salary_id, month, total_working_days, days_present, days_absent,
-            basic_salary, hra, other_allowances, overtime, overtime_amount, gross_salary,
-            pf_deduction, esi_deduction, professional_tax, tds, other_deductions,
-            total_deductions, net_salary, payment_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            employee_id, salary_id, month,
+            total_working_days, total_days_in_month, days_present, days_absent,
+            basic_salary, hra, allowance, other_allowances, gross_salary,
+            pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
+            advance_deduction, other_deductions, total_deductions,
+            net_salary, payment_status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            emp.employee_id, salaryData.salary_id, monthStr, totalWorkingDays, daysPresent, daysAbsent,
-            basicSalary, hra, otherAllowances, 0, 0, grossSalary,
-            pfDeduction, esiDeduction, professionalTax, tds, otherDeductions,
-            totalDeductions, netSalary, 'PENDING'
+            emp.employee_id, salaryData.salary_id, monthStr,
+            totalWorkingDays, daysInMonth, actualDaysPresent, daysAbsent,
+            actualBasic, actualHra, actualAllowance, actualIncentive, actualGross,
+            pfDeduction, esiDeduction, professionalTax, mediclaimDeduction,
+            advanceDeduction, otherDeductions, totalDeductions,
+            netSalary, 'PENDING'
           ]
         );
 
@@ -505,11 +537,72 @@ const getPayslipSummary = async (req, res) => {
   }
 };
 
+// ==============================================
+// GET PAYSLIPS BY MONTH
+// ==============================================
+const getPayslipsByMonth = async (req, res) => {
+  try {
+    const { month } = req.params; // Format: YYYY-MM
+
+    const query = `
+      SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
+             st.site_name, st.site_code
+      FROM payslips p
+      JOIN employees e ON p.employee_id = e.employee_id
+      LEFT JOIN sites st ON e.site_id = st.site_id
+      WHERE p.month = ?
+      ORDER BY st.site_name, e.employee_code
+    `;
+
+    const payslips = await executeQuery(query, [month]);
+
+    res.status(200).json({
+      success: true,
+      count: payslips.length,
+      data: payslips
+    });
+  } catch (error) {
+    console.error('Get payslips by month error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch payslips by month',
+      error: error.message
+    });
+  }
+};
+
+// ==============================================
+// DELETE PAYSLIPS BY MONTH
+// ==============================================
+const deletePayslipsByMonth = async (req, res) => {
+  try {
+    const { month } = req.params; // Format: YYYY-MM
+
+    const query = 'DELETE FROM payslips WHERE month = ?';
+    const result = await executeQuery(query, [month]);
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.affectedRows} payslips for ${month}`,
+      deletedCount: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Delete payslips by month error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete payslips',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllPayslips,
   getPayslipById,
   generatePayslip,
   bulkGeneratePayslips,
   updatePaymentStatus,
-  getPayslipSummary
+  getPayslipSummary,
+  getPayslipsByMonth,
+  deletePayslipsByMonth
 };

@@ -1,0 +1,159 @@
+╔════════════════════════════════════════════════════════════════════╗
+║     HRMS - Git Clone Instructions for Production Laptop           ║
+║     Use these commands on PC-09 (Production Server)               ║
+╚════════════════════════════════════════════════════════════════════╝
+
+STEP 1: Install Git on Production Laptop (PC-09)
+═══════════════════════════════════════════════════════════════════════
+
+1. Download Git:
+   https://git-scm.com/download/win
+
+2. Run the installer
+   → Use all default settings
+   → Click "Next" through all steps
+
+3. Verify installation:
+   → Open Command Prompt
+   → Type: git --version
+   → Should show: git version 2.x.x
+
+
+STEP 2: Clone Repository to Production Laptop
+═══════════════════════════════════════════════════════════════════════
+
+Open Command Prompt and run these commands:
+
+1. Navigate to C: drive
+   cd C:\
+
+2. Clone the repository
+   git clone https://github.com/YOUR_USERNAME/hrms-system.git hrms-frontend
+
+   REPLACE:
+   - YOUR_USERNAME with your actual GitHub username
+   - hrms-system with your repository name (if different)
+
+3. Enter credentials if prompted
+   → GitHub username
+   → GitHub password or Personal Access Token
+
+4. Wait for clone to complete
+   → Should see: "Cloning into 'hrms-frontend'..."
+   → Then: "done."
+
+
+EXAMPLE COMMANDS:
+═══════════════════════════════════════════════════════════════════════
+
+cd C:\
+git clone https://github.com/johnsmith/hrms-system.git hrms-frontend
+cd hrms-frontend
+
+
+AFTER CLONING:
+═══════════════════════════════════════════════════════════════════════
+
+Your files are now in: C:\hrms-frontend\
+
+Verify files are present:
+  dir
+
+You should see:
+  ✓ backend folder
+  ✓ frontend folder
+  ✓ All .bat files
+  ✓ ecosystem.config.js
+  ✓ DEPLOYMENT_GUIDE.md
+  ✓ And other files...
+
+
+NEXT STEPS:
+═══════════════════════════════════════════════════════════════════════
+
+1. Install Required Software:
+   □ Node.js v18+ from https://nodejs.org/
+   □ MySQL v8.0+ from https://dev.mysql.com/downloads/installer/
+   □ PM2: Open CMD and run: npm install -g pm2
+
+2. Follow the deployment guide:
+   □ Open: C:\hrms-frontend\DEPLOYMENT_GUIDE.md
+   □ Or run: notepad DEPLOYMENT_GUIDE.md
+
+3. Quick Setup Commands:
+
+   # Install dependencies
+   cd C:\hrms-frontend\backend
+   npm install --production
+
+   cd ..\frontend
+   npm install
+
+   # Setup database
+   cd C:\hrms-frontend
+   run-migrations.bat
+
+   # Create .env files
+   cd backend
+   copy ..\DEPLOYMENT_CONFIG_PC09.env.backend .env
+   notepad .env
+   (Update DB_PASSWORD and save)
+
+   cd ..\frontend
+   copy ..\DEPLOYMENT_CONFIG_PC09.env.frontend .env
+   notepad .env
+   (Update VITE_API_URL with your IP and save)
+
+   # Build and start
+   cd C:\hrms-frontend\frontend
+   npm run build
+
+   cd C:\hrms-frontend
+   start-hrms.bat
+
+
+TROUBLESHOOTING:
+═══════════════════════════════════════════════════════════════════════
+
+Error: "git is not recognized"
+→ Git not installed or not in PATH
+→ Reinstall Git with default settings
+
+Error: "Repository not found"
+→ Check repository URL is correct
+→ Ensure repository is accessible (private repos need authentication)
+
+Error: "Authentication failed"
+→ Check GitHub username/password
+→ May need Personal Access Token instead of password
+→ See: https://docs.github.com/en/authentication
+
+Error: "Permission denied"
+→ Check you have access to the repository
+→ Ensure repository is not deleted
+
+
+HELPFUL LINKS:
+═══════════════════════════════════════════════════════════════════════
+
+Git Download:
+https://git-scm.com/download/win
+
+GitHub Authentication:
+https://docs.github.com/en/authentication
+
+Node.js Download:
+https://nodejs.org/
+
+MySQL Download:
+https://dev.mysql.com/downloads/installer/
+
+
+═══════════════════════════════════════════════════════════════════════
+
+For complete instructions, see:
+  → C:\hrms-frontend\GIT_TRANSFER_GUIDE.md
+  → C:\hrms-frontend\DEPLOYMENT_GUIDE.md
+  → C:\hrms-frontend\PRE_DEPLOYMENT_CHECKLIST.md
+
+═══════════════════════════════════════════════════════════════════════

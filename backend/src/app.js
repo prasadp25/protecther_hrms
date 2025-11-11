@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const app = express();
@@ -13,12 +14,19 @@ const app = express();
 app.use(helmet());
 
 // ==============================================
-// CORS Configuration
+// Cookie Parser (must be before routes)
+// ==============================================
+app.use(cookieParser());
+
+// ==============================================
+// CORS Configuration (with credentials for cookies)
 // ==============================================
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5174',
-  credentials: process.env.CORS_CREDENTIALS === 'true',
-  optionsSuccessStatus: 200
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+  credentials: true, // Allow cookies to be sent
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 app.use(cors(corsOptions));
 
@@ -31,6 +39,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ==============================================
 // Logging Middleware
 // ==============================================
+// Custom logger to see ALL requests
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.path} from ${req.ip}`);
+  next();
+});
+
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
@@ -59,6 +73,7 @@ const siteRoutes = require('./routes/siteRoutes');
 const salaryRoutes = require('./routes/salaryRoutes');
 const payslipRoutes = require('./routes/payslipRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Mount routes
 app.use(`${apiPrefix}/auth`, authRoutes);
@@ -67,6 +82,7 @@ app.use(`${apiPrefix}/sites`, siteRoutes);
 app.use(`${apiPrefix}/salaries`, salaryRoutes);
 app.use(`${apiPrefix}/payslips`, payslipRoutes);
 app.use(`${apiPrefix}/attendance`, attendanceRoutes);
+app.use(`${apiPrefix}/reports`, reportRoutes);
 
 // ==============================================
 // Static Files (must be after API routes)
@@ -74,60 +90,14 @@ app.use(`${apiPrefix}/attendance`, attendanceRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ==============================================
-// 404 Handler (must be last)
+// Error Handling Middleware (must be last)
 // ==============================================
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-    path: req.originalUrl
-  });
-});
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
-// ==============================================
-// Global Error Handler
-// ==============================================
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
+// 404 Handler - catches all unmatched routes
+app.use(notFoundHandler);
 
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation Error',
-      errors: Object.values(err.errors).map(e => e.message)
-    });
-  }
-
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid token'
-    });
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Token expired'
-    });
-  }
-
-  // Multer file upload errors
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({
-      success: false,
-      message: 'File size too large. Maximum size is 5MB.'
-    });
-  }
-
-  // Default error
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
+// Global Error Handler - handles all errors
+app.use(errorHandler);
 
 module.exports = app;

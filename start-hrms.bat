@@ -1,47 +1,76 @@
 @echo off
-REM ====================================
-REM HRMS Quick Start Script
-REM ====================================
+REM ===================================================
+REM HRMS Application Startup Script
+REM ===================================================
+REM This script starts the HRMS application using PM2
+REM Run this script to start both frontend and backend
+REM ===================================================
 
-echo.
-echo ====================================
-echo Starting HRMS System
-echo ====================================
-echo.
-
-REM Start MySQL Server
-echo [1/3] Starting MySQL Server...
-start "MySQL Server" /MIN C:\mysql\bin\mysqld.exe --defaults-file=C:\mysql\my.ini --console
-timeout /t 3 /nobreak >nul
-echo ✓ MySQL Server started on port 3306
+echo ========================================
+echo Starting HRMS Application...
+echo ========================================
 echo.
 
-REM Start Backend
-echo [2/3] Starting Backend API...
-cd /d C:\Users\PC-05\hrms-frontend\backend
-start "HRMS Backend" cmd /k "npm run dev"
-echo ✓ Backend starting on http://localhost:5000
+REM Navigate to the project directory
+cd /d "%~dp0"
+
+REM Check if PM2 is installed
+call pm2 --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: PM2 is not installed!
+    echo Please install PM2 using: npm install -g pm2
+    pause
+    exit /b 1
+)
+
+REM Check if MySQL service is running
+echo Checking MySQL service...
+sc query MySQL | find "RUNNING" >nul
+if errorlevel 1 (
+    echo WARNING: MySQL service is not running!
+    echo Starting MySQL service...
+    net start MySQL
+    if errorlevel 1 (
+        echo ERROR: Failed to start MySQL service
+        echo Please start it manually from Services or check service name
+        echo Common service names: MySQL, MySQL80, MySQL57
+        pause
+        exit /b 1
+    )
+)
+
+echo MySQL service is running
 echo.
 
-REM Start Frontend
-echo [3/3] Starting Frontend...
-cd /d C:\Users\PC-05\hrms-frontend\frontend
-start "HRMS Frontend" cmd /k "npm run dev"
-echo ✓ Frontend starting on http://localhost:5173
-echo.
+REM Start the application using PM2
+echo Starting HRMS with PM2...
+call pm2 start ecosystem.config.js
 
-echo ====================================
-echo HRMS System Started Successfully!
-echo ====================================
+if errorlevel 1 (
+    echo ERROR: Failed to start HRMS application
+    pause
+    exit /b 1
+)
+
 echo.
-echo Services:
-echo - Frontend:  http://localhost:5173
-echo - Backend:   http://localhost:5000
-echo - MySQL:     localhost:3306
+echo ========================================
+echo HRMS Application Started Successfully!
+echo ========================================
 echo.
-echo Default Login:
-echo - Admin: username=admin, password=admin123
-echo - HR:    username=hr, password=hr123
+echo Frontend: http://localhost:8000
+echo Backend API: http://localhost:8001
 echo.
-echo Press any key to exit this window...
-pause >nul
+echo Useful Commands:
+echo   pm2 status          - Check application status
+echo   pm2 logs            - View application logs
+echo   pm2 monit           - Monitor applications
+echo   pm2 restart all     - Restart all applications
+echo   pm2 stop all        - Stop all applications
+echo.
+echo To access from other devices on network:
+echo   Frontend: http://YOUR_IP:8000
+echo   Backend API: http://YOUR_IP:8001
+echo.
+echo ========================================
+
+timeout /t 10

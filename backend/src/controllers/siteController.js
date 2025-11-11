@@ -1,45 +1,61 @@
 const { executeQuery } = require('../config/database');
+const {
+  parsePaginationParams,
+  parseSortParams,
+  parseSearchParams,
+  buildPaginatedResponse
+} = require('../utils/pagination');
+const { asyncHandler } = require('../utils/errors');
 
 // ==============================================
-// GET ALL SITES
+// GET ALL SITES (with pagination)
 // ==============================================
-const getAllSites = async (req, res) => {
-  try {
-    const { status, search } = req.query;
+const getAllSites = asyncHandler(async (req, res) => {
+  // Parse pagination, sort, and search parameters
+  const { page, limit, offset } = parsePaginationParams(req.query);
+  const { sortBy, sortOrder } = parseSortParams(req.query,
+    ['site_id', 'site_code', 'site_name', 'location', 'status', 'created_at'],
+    'created_at'
+  );
+  const { status, search } = parseSearchParams(req.query);
 
-    let query = 'SELECT * FROM sites WHERE 1=1';
-    const params = [];
+  // Build WHERE clause
+  let whereConditions = [];
+  let params = [];
 
-    // Add filters
-    if (status) {
-      query += ' AND status = ?';
-      params.push(status);
-    }
-
-    if (search) {
-      query += ' AND (site_name LIKE ? OR site_code LIKE ? OR location LIKE ?)';
-      const searchParam = `%${search}%`;
-      params.push(searchParam, searchParam, searchParam);
-    }
-
-    query += ' ORDER BY created_at DESC';
-
-    const sites = await executeQuery(query, params);
-
-    res.status(200).json({
-      success: true,
-      count: sites.length,
-      data: sites
-    });
-  } catch (error) {
-    console.error('Get sites error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch sites',
-      error: error.message
-    });
+  if (status) {
+    whereConditions.push('status = ?');
+    params.push(status);
   }
-};
+
+  if (search) {
+    whereConditions.push('(site_name LIKE ? OR site_code LIKE ? OR location LIKE ? OR client_name LIKE ?)');
+    const searchParam = `%${search}%`;
+    params.push(searchParam, searchParam, searchParam, searchParam);
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  // Get total count
+  const countQuery = `SELECT COUNT(*) as total FROM sites ${whereClause}`;
+  const countResult = await executeQuery(countQuery, params);
+  const total = countResult[0].total;
+
+  // Get paginated data
+  const dataQuery = `
+    SELECT * FROM sites
+    ${whereClause}
+    ORDER BY ${sortBy} ${sortOrder}
+    LIMIT ? OFFSET ?
+  `;
+  const sites = await executeQuery(dataQuery, [...params, limit, offset]);
+
+  // Send paginated response
+  const response = buildPaginatedResponse(sites, total, page, limit);
+  res.json(response);
+});
 
 // ==============================================
 // GET ACTIVE SITES

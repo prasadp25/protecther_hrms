@@ -1,9 +1,15 @@
 
-
 const app = require('./src/app');
 const { testConnection } = require('./src/config/database');
+const { unhandledRejectionHandler, uncaughtExceptionHandler } = require('./src/middleware/errorHandler');
 
 const PORT = process.env.PORT || 5000;
+
+// ==============================================
+// Setup Process-Level Error Handlers
+// ==============================================
+uncaughtExceptionHandler();
+unhandledRejectionHandler();
 
 // Test database connection before starting server
 const startServer = async () => {
@@ -32,17 +38,7 @@ const startServer = async () => {
   }
 };
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled Rejection:', error);
-  process.exit(1);
-});
+// Note: Process-level error handlers are now set up at the top of this file
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -57,3 +53,4 @@ process.on('SIGINT', () => {
 
 // Start the server
 startServer();
+

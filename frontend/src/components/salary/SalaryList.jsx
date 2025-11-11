@@ -90,9 +90,25 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
       filtered = filtered.filter(
         (sal) =>
           `${sal.first_name} ${sal.last_name}`.toLowerCase().includes(keyword) ||
-          sal.employee_code?.toLowerCase().includes(keyword)
+          sal.employee_code?.toLowerCase().includes(keyword) ||
+          sal.site_name?.toLowerCase().includes(keyword)
       );
     }
+
+    // Sort by site name, then by employee name
+    filtered.sort((a, b) => {
+      const siteA = a.site_name || 'Unassigned';
+      const siteB = b.site_name || 'Unassigned';
+
+      if (siteA === siteB) {
+        // If same site, sort by employee name
+        const nameA = `${a.first_name} ${a.last_name}`;
+        const nameB = `${b.first_name} ${b.last_name}`;
+        return nameA.localeCompare(nameB);
+      }
+
+      return siteA.localeCompare(siteB);
+    });
 
     setFilteredSalaries(filtered);
   };
@@ -160,9 +176,9 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
     // Create a sheet for each site
     Object.keys(salariesBySite).forEach(siteId => {
       const siteData = salariesBySite[siteId];
-      const site = sites.find(s => s.siteId === siteId);
-      const siteName = site ? site.siteName : 'Unassigned';
-      const siteCode = site ? site.siteCode : 'N/A';
+      const site = sites.find(s => s.site_id === parseInt(siteId));
+      const siteName = site ? site.site_name : 'Unassigned';
+      const siteCode = site ? site.site_code : 'N/A';
 
       // Create array of arrays (not JSON) to match the exact format
       const wsData = [];
@@ -187,8 +203,10 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         'Sr No',
         'EMP CODE',
         'EMP NAME',
+        "Father's Name",
         'Designation',
         'Location',
+        'DOJ',
         'Month Days',
         'No of days Present',
         'Monthly Pay Scale',
@@ -197,65 +215,68 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         'BASIC', 'HRA', 'Incentive/Other Allawance', 'GROSS PAYABLE',
         'BASIC', 'HRA', 'Incentive/Other Allawance', 'GROSS PAYABLE',
         'PF SHARE', 'MEDICLAIM', 'PT', 'Advance', 'ESIC', 'PPE Deposit', 'DEDUCTIONS', 'NET PAYABLE',
-        'REMARK', 'IFSC CODE', 'Account Number', '', '', '', ''
+        'REMARK', 'IFSC CODE', 'Account Number'
       ]);
 
       // Data rows
       siteData.forEach(({ employee, salary }, index) => {
-        const otherAllowances =
-          salary.da +
-          salary.conveyanceAllowance +
-          salary.medicalAllowance +
-          salary.specialAllowance +
-          salary.otherAllowances;
+        const incentiveAllowance = parseFloat(salary.incentive_allowance || 0);
+        const fixedGross = parseFloat(salary.basic_salary || 0) + parseFloat(salary.hra || 0) + incentiveAllowance;
 
         const row = [
-          index + 1,                              // Sr No
-          salary.employeeCode,                    // EMP CODE
-          salary.employeeName,                    // EMP NAME
-          employee?.designation || '-',           // Designation
-          siteName,                               // Location
-          workingDays,                            // Month Days
-          workingDays,                            // No of days Present (assuming full attendance)
-          '',                                     // Monthly Pay Scale (empty)
-          salary.grossSalary,                     // Gross
-          salary.netSalary,                       // Net Pay
+          index + 1,                                                  // Sr No
+          salary.employee_code,                                       // EMP CODE
+          `${salary.first_name} ${salary.last_name}`,                // EMP NAME
+          employee?.father_name || '-',                              // Father's Name
+          employee?.designation || '-',                              // Designation
+          siteName,                                                  // Location
+          employee?.date_of_joining ? new Date(employee.date_of_joining).toLocaleDateString('en-GB') : '-',  // DOJ
+          workingDays,                                               // Month Days
+          workingDays,                                               // No of days Present (assuming full attendance)
+          '',                                                        // Monthly Pay Scale (empty)
+          fixedGross,                                                // Gross
+          salary.net_salary,                                         // Net Pay
           // Fixed Salary
-          salary.basicSalary,                     // BASIC
-          salary.hra,                             // HRA
-          otherAllowances,                        // Incentive/Other Allawance
-          salary.grossSalary,                     // GROSS PAYABLE
-          // Earnings Salary (same as fixed for full attendance)
-          salary.basicSalary,                     // BASIC
-          salary.hra,                             // HRA
-          otherAllowances,                        // Incentive/Other Allawance
-          salary.grossSalary,                     // GROSS PAYABLE
+          salary.basic_salary,                                       // BASIC
+          salary.hra,                                                // HRA
+          incentiveAllowance,                                        // Incentive/Other Allawance
+          fixedGross,                                                // GROSS PAYABLE
+          // Actual Salary (same as fixed for full attendance)
+          salary.basic_salary,                                       // BASIC
+          salary.hra,                                                // HRA
+          incentiveAllowance,                                        // Incentive/Other Allawance
+          fixedGross,                                                // GROSS PAYABLE
           // Deductions
-          salary.pfDeduction,                     // PF SHARE
-          0,                                      // MEDICLAIM
-          salary.professionalTax,                 // PT
-          0,                                      // Advance
-          salary.esiDeduction,                    // ESIC
-          0,                                      // PPE Deposit
-          salary.totalDeductions,                 // DEDUCTIONS
-          salary.netSalary,                       // NET PAYABLE
-          employee?.status || 'ACTIVE',           // REMARK
-          employee?.ifscCode || '',               // IFSC CODE
-          employee?.accountNumber || '',          // Account Number
-          '', '', '', ''                          // Empty columns
+          salary.pf_deduction || 0,                                  // PF SHARE
+          salary.mediclaim_deduction || 0,                           // MEDICLAIM
+          salary.professional_tax || 0,                              // PT
+          salary.advance_deduction || 0,                             // Advance
+          salary.esi_deduction || 0,                                 // ESIC
+          0,                                                         // PPE Deposit
+          salary.total_deductions,                                   // DEDUCTIONS
+          salary.net_salary,                                         // NET PAYABLE
+          salary.remarks || '',                                      // REMARK
+          employee?.ifsc_code || '',                                 // IFSC CODE
+          employee?.account_number || ''                             // Account Number
         ];
         wsData.push(row);
       });
 
       // Summary row
-      const totalGross = siteData.reduce((sum, item) => sum + item.salary.grossSalary, 0);
-      const totalNet = siteData.reduce((sum, item) => sum + item.salary.netSalary, 0);
-      const totalBasic = siteData.reduce((sum, item) => sum + item.salary.basicSalary, 0);
-      const totalHRA = siteData.reduce((sum, item) => sum + item.salary.hra, 0);
-      const totalPF = siteData.reduce((sum, item) => sum + item.salary.pfDeduction, 0);
-      const totalESI = siteData.reduce((sum, item) => sum + item.salary.esiDeduction, 0);
-      const totalPT = siteData.reduce((sum, item) => sum + item.salary.professionalTax, 0);
-      const totalDeductions = siteData.reduce((sum, item) => sum + item.salary.totalDeductions, 0);
+      const totalGross = siteData.reduce((sum, item) => {
+        const incentive = parseFloat(item.salary.incentive_allowance || 0);
+        return sum + parseFloat(item.salary.basic_salary || 0) + parseFloat(item.salary.hra || 0) + incentive;
+      }, 0);
+      const totalNet = siteData.reduce((sum, item) => sum + parseFloat(item.salary.net_salary || 0), 0);
+      const totalBasic = siteData.reduce((sum, item) => sum + parseFloat(item.salary.basic_salary || 0), 0);
+      const totalHRA = siteData.reduce((sum, item) => sum + parseFloat(item.salary.hra || 0), 0);
+      const totalIncentive = siteData.reduce((sum, item) => sum + parseFloat(item.salary.incentive_allowance || 0), 0);
+      const totalPF = siteData.reduce((sum, item) => sum + parseFloat(item.salary.pf_deduction || 0), 0);
+      const totalMediclaim = siteData.reduce((sum, item) => sum + parseFloat(item.salary.mediclaim_deduction || 0), 0);
+      const totalESI = siteData.reduce((sum, item) => sum + parseFloat(item.salary.esi_deduction || 0), 0);
+      const totalPT = siteData.reduce((sum, item) => sum + parseFloat(item.salary.professional_tax || 0), 0);
+      const totalAdvance = siteData.reduce((sum, item) => sum + parseFloat(item.salary.advance_deduction || 0), 0);
+      const totalDeductions = siteData.reduce((sum, item) => sum + parseFloat(item.salary.total_deductions || 0), 0);
 
       wsData.push([
         '',
@@ -266,28 +287,29 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         '',
         '',
         '',
+        '',
+        '',
         totalGross,
         totalNet,
         totalBasic,
         totalHRA,
-        '',
-        '',
+        totalIncentive,
+        totalGross,
         totalBasic,
         totalHRA,
-        '',
-        '',
+        totalIncentive,
+        totalGross,
         totalPF,
-        '',
+        totalMediclaim,
         totalPT,
-        '',
+        totalAdvance,
         totalESI,
-        '',
+        0,
         totalDeductions,
         totalNet,
         '',
         '',
-        '',
-        '', '', '', ''
+        ''
       ]);
 
       // Create worksheet from array of arrays
@@ -299,13 +321,15 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
       // Merge company name header (Row 1, cols G to L)
       ws['!merges'].push({ s: { r: 0, c: 6 }, e: { r: 0, c: 11 } });
 
-      // Set column widths to match original format
+      // Set column widths to match the format
       ws['!cols'] = [
         { wch: 6 },   // Sr No
         { wch: 10 },  // EMP CODE
         { wch: 20 },  // EMP NAME
+        { wch: 18 },  // Father's Name
         { wch: 18 },  // Designation
         { wch: 15 },  // Location
+        { wch: 12 },  // DOJ
         { wch: 10 },  // Month Days
         { wch: 15 },  // No of days Present
         { wch: 15 },  // Monthly Pay Scale
@@ -315,10 +339,10 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         { wch: 10 },  // HRA (Fixed)
         { wch: 18 },  // Incentive (Fixed)
         { wch: 12 },  // GROSS PAYABLE (Fixed)
-        { wch: 12 },  // BASIC (Earnings)
-        { wch: 10 },  // HRA (Earnings)
-        { wch: 18 },  // Incentive (Earnings)
-        { wch: 12 },  // GROSS PAYABLE (Earnings)
+        { wch: 12 },  // BASIC (Actual)
+        { wch: 10 },  // HRA (Actual)
+        { wch: 18 },  // Incentive (Actual)
+        { wch: 12 },  // GROSS PAYABLE (Actual)
         { wch: 10 },  // PF SHARE
         { wch: 10 },  // MEDICLAIM
         { wch: 8 },   // PT
@@ -329,11 +353,7 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         { wch: 12 },  // NET PAYABLE
         { wch: 15 },  // REMARK
         { wch: 12 },  // IFSC CODE
-        { wch: 15 },  // Account Number
-        { wch: 5 },   // Empty
-        { wch: 5 },   // Empty
-        { wch: 5 },   // Empty
-        { wch: 5 }    // Empty
+        { wch: 15 }   // Account Number
       ];
 
       // Add sheet to workbook (Excel sheet names can't be longer than 31 chars)
@@ -343,7 +363,7 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
 
     // Generate filename
     const filterText = selectedSite !== 'ALL'
-      ? `_${sites.find(s => s.siteId === selectedSite)?.siteCode || 'Site'}`
+      ? `_${sites.find(s => s.site_id === selectedSite)?.site_code || 'Site'}`
       : '_AllSites';
     const filename = `Salary_Report${filterText}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
@@ -397,13 +417,13 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         <div className="flex flex-wrap gap-4">
           <select
             value={selectedSite}
-            onChange={(e) => setSelectedSite(e.target.value)}
+            onChange={(e) => setSelectedSite(e.target.value === 'ALL' ? 'ALL' : parseInt(e.target.value))}
             className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
           >
             <option value="ALL">All Sites</option>
             {sites.map((site) => (
-              <option key={site.siteId} value={site.siteId}>
-                {site.siteCode} - {site.siteName}
+              <option key={site.site_id} value={site.site_id}>
+                {site.site_code} - {site.site_name}
               </option>
             ))}
           </select>
@@ -432,7 +452,7 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         </div>
         <div className="mt-2 text-sm text-gray-600">
           Showing {filteredSalaries.length} of {salaries.length} salary structures
-          {selectedSite !== 'ALL' && ` (Filtered by: ${sites.find(s => s.siteId === selectedSite)?.siteName})`}
+          {selectedSite !== 'ALL' && ` (Filtered by: ${sites.find(s => s.site_id === selectedSite)?.site_name})`}
         </div>
       </div>
 

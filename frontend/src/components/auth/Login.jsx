@@ -150,7 +150,7 @@ const Login = () => {
           <div className="text-sm text-center text-gray-600">
             <p>Test Credentials:</p>
             <p className="font-mono text-xs mt-1">
-              Username: <span className="font-semibold">testadmin</span> | Password:{' '}
+              Username: <span className="font-semibold">admin</span> | Password:{' '}
               <span className="font-semibold">admin123</span>
             </p>
           </div>

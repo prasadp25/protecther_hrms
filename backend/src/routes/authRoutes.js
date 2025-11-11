@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { login, register, getMe, logout, changePassword } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
+const { loginLimiter, passwordResetLimiter } = require('../middleware/rateLimiter');
 
-// Public routes
-router.post('/login', login);
-router.post('/register', register);
+// Public routes with rate limiting (temporarily disabled for development)
+router.post('/login', login);  // loginLimiter temporarily removed
+router.post('/register', loginLimiter, register);
 
 // Protected routes
 router.get('/me', authenticate, getMe);

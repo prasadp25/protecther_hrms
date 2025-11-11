@@ -8,16 +8,24 @@ const authService = {
   // Login
   login: async (username, password) => {
     try {
+      console.log('🔐 [authService] Attempting login for:', username);
+      console.log('🌐 [authService] API URL:', api.defaults.baseURL);
+
       const response = await api.post('/auth/login', { username, password });
 
+      console.log('✅ [authService] Login response:', response);
+
       if (response.data.success) {
-        // Store token and user data
-        localStorage.setItem('auth_token', response.data.data.token);
+        // Store token in localStorage for Bearer token authentication
+        localStorage.setItem('token', response.data.data.token);
+        // Store user data in localStorage for UI convenience
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        console.log('💾 [authService] Token and user stored in localStorage');
       }
 
       return response.data;
     } catch (error) {
+      console.error('❌ [authService] Login error:', error);
       throw error;
     }
   },
@@ -39,8 +47,8 @@ const authService = {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear local storage regardless of API response
-      localStorage.removeItem('auth_token');
+      // Clear token and user data from localStorage
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
   },
@@ -68,20 +76,16 @@ const authService = {
     }
   },
 
-  // Check if user is authenticated
+  // Check if user is authenticated (check if user data exists)
   isAuthenticated: () => {
-    return !!localStorage.getItem('auth_token');
+    // User data presence indicates authentication (cookie is httpOnly, can't check directly)
+    return !!localStorage.getItem('user');
   },
 
   // Get stored user data
   getUser: () => {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
-  },
-
-  // Get auth token
-  getToken: () => {
-    return localStorage.getItem('auth_token');
   },
 };
 

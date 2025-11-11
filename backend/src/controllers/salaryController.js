@@ -1,56 +1,82 @@
 const { executeQuery } = require('../config/database');
+const {
+  parsePaginationParams,
+  parseSortParams,
+  parseSearchParams,
+  buildPaginatedResponse
+} = require('../utils/pagination');
+const { asyncHandler } = require('../utils/errors');
 
 // ==============================================
-// GET ALL SALARIES
+// GET ALL SALARIES (with pagination)
 // ==============================================
-const getAllSalaries = async (req, res) => {
-  try {
-    const { status, site_id, employee_id } = req.query;
+const getAllSalaries = asyncHandler(async (req, res) => {
+  // Parse pagination, sort, and search parameters
+  const { page, limit, offset } = parsePaginationParams(req.query);
+  const { sortBy, sortOrder } = parseSortParams(req.query,
+    ['salary_id', 'employee_id', 'basic_salary', 'net_salary', 'status', 'created_at'],
+    'created_at'
+  );
+  const { status, siteId, search } = parseSearchParams(req.query);
+  const employee_id = req.query.employee_id;
 
-    let query = `
-      SELECT s.*, e.employee_code, e.first_name, e.last_name, e.designation, e.site_id,
-             st.site_name, st.site_code
-      FROM salaries s
-      JOIN employees e ON s.employee_id = e.employee_id
-      LEFT JOIN sites st ON e.site_id = st.site_id
-      WHERE 1=1
-    `;
-    const params = [];
+  // Build WHERE clause
+  let whereConditions = [];
+  let params = [];
 
-    // Add filters
-    if (status) {
-      query += ' AND s.status = ?';
-      params.push(status);
-    }
-
-    if (site_id) {
-      query += ' AND e.site_id = ?';
-      params.push(site_id);
-    }
-
-    if (employee_id) {
-      query += ' AND s.employee_id = ?';
-      params.push(employee_id);
-    }
-
-    query += ' ORDER BY s.created_at DESC';
-
-    const salaries = await executeQuery(query, params);
-
-    res.status(200).json({
-      success: true,
-      count: salaries.length,
-      data: salaries
-    });
-  } catch (error) {
-    console.error('Get salaries error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch salaries',
-      error: error.message
-    });
+  if (status) {
+    whereConditions.push('s.status = ?');
+    params.push(status);
   }
-};
+
+  if (siteId) {
+    whereConditions.push('e.site_id = ?');
+    params.push(siteId);
+  }
+
+  if (employee_id) {
+    whereConditions.push('s.employee_id = ?');
+    params.push(employee_id);
+  }
+
+  if (search) {
+    whereConditions.push('(e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_code LIKE ? OR st.site_name LIKE ?)');
+    const searchParam = `%${search}%`;
+    params.push(searchParam, searchParam, searchParam, searchParam);
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  // Get total count
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM salaries s
+    JOIN employees e ON s.employee_id = e.employee_id
+    LEFT JOIN sites st ON e.site_id = st.site_id
+    ${whereClause}
+  `;
+  const countResult = await executeQuery(countQuery, params);
+  const total = countResult[0].total;
+
+  // Get paginated data
+  const dataQuery = `
+    SELECT s.*, e.employee_code, e.first_name, e.last_name, e.designation, e.site_id,
+           st.site_name, st.site_code
+    FROM salaries s
+    JOIN employees e ON s.employee_id = e.employee_id
+    LEFT JOIN sites st ON e.site_id = st.site_id
+    ${whereClause}
+    ORDER BY s.${sortBy} ${sortOrder}
+    LIMIT ? OFFSET ?
+  `;
+  const salaries = await executeQuery(dataQuery, [...params, limit, offset]);
+
+  // Send paginated response
+  const response = buildPaginatedResponse(salaries, total, page, limit);
+  res.json(response);
+});
 
 // ==============================================
 // GET SALARY BY ID
@@ -246,19 +272,17 @@ const updateSalary = async (req, res) => {
     // Recalculate if any salary components are updated
     const basicSalary = parseFloat(salaryData.basic_salary) || 0;
     const hra = parseFloat(salaryData.hra) || 0;
-    const da = parseFloat(salaryData.da) || 0;
-    const conveyanceAllowance = parseFloat(salaryData.conveyance_allowance) || 0;
-    const medicalAllowance = parseFloat(salaryData.medical_allowance) || 0;
-    const otherAllowances = parseFloat(salaryData.other_allowances) || 0;
+    const incentiveAllowance = parseFloat(salaryData.incentive_allowance) || 0;
 
-    const pf = parseFloat(salaryData.pf) || 0;
-    const esi = parseFloat(salaryData.esi) || 0;
+    const pfDeduction = parseFloat(salaryData.pf_deduction) || 0;
+    const esiDeduction = parseFloat(salaryData.esi_deduction) || 0;
     const professionalTax = parseFloat(salaryData.professional_tax) || 0;
-    const tds = parseFloat(salaryData.tds) || 0;
+    const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction) || 0;
+    const advanceDeduction = parseFloat(salaryData.advance_deduction) || 0;
     const otherDeductions = parseFloat(salaryData.other_deductions) || 0;
 
-    const grossSalary = basicSalary + hra + da + conveyanceAllowance + medicalAllowance + otherAllowances;
-    const totalDeductions = pf + esi + professionalTax + tds + otherDeductions;
+    const grossSalary = basicSalary + hra + incentiveAllowance;
+    const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
     const netSalary = grossSalary - totalDeductions;
 
     // Add calculated fields

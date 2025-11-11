@@ -1,477 +1,301 @@
 const { executeQuery } = require('../config/database');
 
 // ==============================================
-// GET ATTENDANCE RECORDS
+// GET ATTENDANCE BY MONTH
 // ==============================================
-const getAttendance = async (req, res) => {
+const getAttendanceByMonth = async (req, res) => {
   try {
-    const { employee_id, site_id, from_date, to_date, status } = req.query;
+    const { month } = req.params; // Format: YYYY-MM
 
-    let query = `
-      SELECT a.*, e.employee_code, e.first_name, e.last_name, e.designation,
-             st.site_name, st.site_code
+    const query = `
+      SELECT
+        a.*,
+        e.employee_code,
+        e.first_name,
+        e.last_name,
+        e.designation,
+        s.site_name,
+        s.site_code,
+        e.site_id
       FROM attendance a
-      JOIN employees e ON a.employee_id = e.employee_id
-      LEFT JOIN sites st ON e.site_id = st.site_id
-      WHERE 1=1
+      INNER JOIN employees e ON a.employee_id = e.employee_id
+      LEFT JOIN sites s ON e.site_id = s.site_id
+      WHERE a.attendance_month = ?
+      ORDER BY s.site_name, e.first_name, e.last_name
     `;
-    const params = [];
 
-    // Add filters
-    if (employee_id) {
-      query += ' AND a.employee_id = ?';
-      params.push(employee_id);
-    }
-
-    if (site_id) {
-      query += ' AND e.site_id = ?';
-      params.push(site_id);
-    }
-
-    if (from_date) {
-      query += ' AND a.attendance_date >= ?';
-      params.push(from_date);
-    }
-
-    if (to_date) {
-      query += ' AND a.attendance_date <= ?';
-      params.push(to_date);
-    }
-
-    if (status) {
-      query += ' AND a.status = ?';
-      params.push(status);
-    }
-
-    query += ' ORDER BY a.attendance_date DESC, e.first_name';
-
-    const attendance = await executeQuery(query, params);
+    const results = await executeQuery(query, [month]);
 
     res.status(200).json({
       success: true,
-      count: attendance.length,
-      data: attendance
+      data: results,
+      message: `Attendance records for ${month} retrieved successfully`
     });
   } catch (error) {
-    console.error('Get attendance error:', error);
+    console.error('Error fetching attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch attendance records',
+      message: 'Failed to retrieve attendance records',
       error: error.message
     });
   }
 };
 
 // ==============================================
-// MARK ATTENDANCE
+// GET ATTENDANCE FOR EMPLOYEE
 // ==============================================
-const markAttendance = async (req, res) => {
+const getEmployeeAttendance = async (req, res) => {
   try {
-    const { employee_id, attendance_date, status, check_in_time, check_out_time, overtime_hours, remarks } = req.body;
-
-    // Validation
-    if (!employee_id || !attendance_date || !status) {
-      return res.status(400).json({
-        success: false,
-        message: 'Employee ID, attendance date, and status are required'
-      });
-    }
-
-    // Check if employee exists
-    const employee = await executeQuery(
-      'SELECT employee_id FROM employees WHERE employee_id = ? AND status = ?',
-      [employee_id, 'ACTIVE']
-    );
-
-    if (employee.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Active employee not found'
-      });
-    }
-
-    // Check if attendance already marked for this date
-    const existing = await executeQuery(
-      'SELECT attendance_id FROM attendance WHERE employee_id = ? AND attendance_date = ?',
-      [employee_id, attendance_date]
-    );
-
-    if (existing.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: 'Attendance already marked for this date'
-      });
-    }
-
-    // Calculate working hours if check-in and check-out provided
-    let workingHours = null;
-    if (check_in_time && check_out_time) {
-      const checkIn = new Date(`${attendance_date} ${check_in_time}`);
-      const checkOut = new Date(`${attendance_date} ${check_out_time}`);
-      workingHours = (checkOut - checkIn) / (1000 * 60 * 60); // Convert to hours
-    }
+    const { employeeId } = req.params;
 
     const query = `
-      INSERT INTO attendance (
-        employee_id, attendance_date, status, check_in_time, check_out_time,
-        working_hours, overtime_hours, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      SELECT
+        a.*,
+        e.employee_code,
+        e.first_name,
+        e.last_name
+      FROM attendance a
+      INNER JOIN employees e ON a.employee_id = e.employee_id
+      WHERE a.employee_id = ?
+      ORDER BY a.attendance_month DESC
+      LIMIT 12
     `;
 
-    const params = [
-      employee_id,
-      attendance_date,
-      status,
-      check_in_time || null,
-      check_out_time || null,
-      workingHours,
-      overtime_hours || 0,
-      remarks || null
-    ];
+    const results = await executeQuery(query, [employeeId]);
 
-    const result = await executeQuery(query, params);
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: 'Attendance marked successfully',
-      data: {
-        attendance_id: result.insertId,
-        working_hours: workingHours
-      }
+      data: results,
+      message: 'Employee attendance history retrieved successfully'
     });
   } catch (error) {
-    console.error('Mark attendance error:', error);
+    console.error('Error fetching employee attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to mark attendance',
+      message: 'Failed to retrieve employee attendance',
       error: error.message
     });
   }
 };
 
 // ==============================================
-// BULK MARK ATTENDANCE
+// SAVE ATTENDANCE (BULK)
 // ==============================================
-const bulkMarkAttendance = async (req, res) => {
+const saveAttendance = async (req, res) => {
   try {
-    const { attendance_records } = req.body;
+    const { month, attendanceRecords } = req.body;
 
-    // Validation
-    if (!attendance_records || !Array.isArray(attendance_records) || attendance_records.length === 0) {
+    if (!month || !attendanceRecords || !Array.isArray(attendanceRecords)) {
       return res.status(400).json({
         success: false,
-        message: 'Attendance records array is required'
+        message: 'Month and attendance records array are required'
       });
     }
 
-    const results = {
-      success: 0,
-      failed: 0,
-      skipped: 0,
-      errors: []
-    };
+    // Validate month format
+    const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
+    if (!monthRegex.test(month)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid month format. Use YYYY-MM'
+      });
+    }
 
-    for (const record of attendance_records) {
+    // Calculate total days in month
+    const [year, monthNum] = month.split('-');
+    const totalDaysInMonth = new Date(year, monthNum, 0).getDate();
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (const record of attendanceRecords) {
       try {
-        const { employee_id, attendance_date, status, check_in_time, check_out_time, overtime_hours, remarks } = record;
+        const { employee_id, days_present, remarks } = record;
 
-        // Check if already marked
-        const existing = await executeQuery(
-          'SELECT attendance_id FROM attendance WHERE employee_id = ? AND attendance_date = ?',
-          [employee_id, attendance_date]
-        );
-
-        if (existing.length > 0) {
-          results.skipped++;
+        // Validate days_present
+        if (days_present < 0 || days_present > totalDaysInMonth) {
+          errors.push({
+            employee_id,
+            error: `Invalid days present (${days_present}). Must be between 0 and ${totalDaysInMonth}`
+          });
+          errorCount++;
           continue;
         }
 
-        // Calculate working hours
-        let workingHours = null;
-        if (check_in_time && check_out_time) {
-          const checkIn = new Date(`${attendance_date} ${check_in_time}`);
-          const checkOut = new Date(`${attendance_date} ${check_out_time}`);
-          workingHours = (checkOut - checkIn) / (1000 * 60 * 60);
-        }
+        // Insert or update attendance
+        const query = `
+          INSERT INTO attendance
+          (employee_id, attendance_month, days_present, total_days_in_month, remarks, status)
+          VALUES (?, ?, ?, ?, ?, 'DRAFT')
+          ON DUPLICATE KEY UPDATE
+            days_present = VALUES(days_present),
+            total_days_in_month = VALUES(total_days_in_month),
+            remarks = VALUES(remarks),
+            updated_at = CURRENT_TIMESTAMP
+        `;
 
-        await executeQuery(
-          `INSERT INTO attendance (
-            employee_id, attendance_date, status, check_in_time, check_out_time,
-            working_hours, overtime_hours, remarks
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            employee_id,
-            attendance_date,
-            status,
-            check_in_time || null,
-            check_out_time || null,
-            workingHours,
-            overtime_hours || 0,
-            remarks || null
-          ]
-        );
+        await executeQuery(query, [
+          employee_id,
+          month,
+          days_present,
+          totalDaysInMonth,
+          remarks || null
+        ]);
 
-        results.success++;
+        successCount++;
       } catch (err) {
-        results.failed++;
-        results.errors.push(`Employee ${record.employee_id} on ${record.attendance_date}: ${err.message}`);
+        errors.push({
+          employee_id: record.employee_id,
+          error: err.message
+        });
+        errorCount++;
       }
     }
 
     res.status(200).json({
       success: true,
-      message: 'Bulk attendance marking completed',
-      data: results
+      message: `Attendance saved: ${successCount} successful, ${errorCount} failed`,
+      stats: {
+        total: attendanceRecords.length,
+        successful: successCount,
+        failed: errorCount
+      },
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
-    console.error('Bulk mark attendance error:', error);
+    console.error('Error saving attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to bulk mark attendance',
+      message: 'Failed to save attendance',
       error: error.message
     });
   }
 };
 
 // ==============================================
-// UPDATE ATTENDANCE
+// FINALIZE ATTENDANCE
 // ==============================================
-const updateAttendance = async (req, res) => {
+const finalizeAttendance = async (req, res) => {
   try {
-    const { id } = req.params;
-    const attendanceData = req.body;
+    const { month } = req.body;
 
-    // Check if attendance record exists
-    const existing = await executeQuery(
-      'SELECT attendance_id FROM attendance WHERE attendance_id = ?',
-      [id]
+    if (!month) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month is required'
+      });
+    }
+
+    const query = `
+      UPDATE attendance
+      SET status = 'FINALIZED'
+      WHERE attendance_month = ? AND status = 'DRAFT'
+    `;
+
+    const result = await executeQuery(query, [month]);
+
+    res.status(200).json({
+      success: true,
+      message: `Attendance for ${month} finalized successfully`,
+      recordsUpdated: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Error finalizing attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to finalize attendance',
+      error: error.message
+    });
+  }
+};
+
+// ==============================================
+// DELETE ATTENDANCE
+// ==============================================
+const deleteAttendance = async (req, res) => {
+  try {
+    const { attendanceId } = req.params;
+
+    // Check if attendance is finalized
+    const checkResult = await executeQuery(
+      'SELECT status FROM attendance WHERE attendance_id = ?',
+      [attendanceId]
     );
 
-    if (existing.length === 0) {
+    if (checkResult.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Attendance record not found'
       });
     }
 
-    // Recalculate working hours if times are updated
-    if (attendanceData.check_in_time && attendanceData.check_out_time) {
-      const existing = await executeQuery(
-        'SELECT attendance_date FROM attendance WHERE attendance_id = ?',
-        [id]
-      );
-
-      const date = existing[0].attendance_date;
-      const checkIn = new Date(`${date} ${attendanceData.check_in_time}`);
-      const checkOut = new Date(`${date} ${attendanceData.check_out_time}`);
-      attendanceData.working_hours = (checkOut - checkIn) / (1000 * 60 * 60);
-    }
-
-    // Build update query dynamically
-    const fields = [];
-    const values = [];
-
-    Object.keys(attendanceData).forEach(key => {
-      if (attendanceData[key] !== undefined && key !== 'attendance_id' && key !== 'employee_id') {
-        fields.push(`${key} = ?`);
-        values.push(attendanceData[key]);
-      }
-    });
-
-    if (fields.length === 0) {
+    if (checkResult[0].status === 'FINALIZED') {
       return res.status(400).json({
         success: false,
-        message: 'No fields to update'
+        message: 'Cannot delete finalized attendance record'
       });
     }
 
-    values.push(id);
-
-    const query = `UPDATE attendance SET ${fields.join(', ')} WHERE attendance_id = ?`;
-    await executeQuery(query, values);
+    const query = 'DELETE FROM attendance WHERE attendance_id = ?';
+    await executeQuery(query, [attendanceId]);
 
     res.status(200).json({
       success: true,
-      message: 'Attendance updated successfully'
+      message: 'Attendance record deleted successfully'
     });
   } catch (error) {
-    console.error('Update attendance error:', error);
+    console.error('Error deleting attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update attendance',
+      message: 'Failed to delete attendance record',
       error: error.message
     });
   }
 };
 
 // ==============================================
-// GET EMPLOYEE ATTENDANCE
+// GET ATTENDANCE SUMMARY
 // ==============================================
-const getEmployeeAttendance = async (req, res) => {
+const getAttendanceSummary = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { from_date, to_date } = req.query;
+    const { month } = req.params;
 
-    let query = `
-      SELECT a.*, e.employee_code, e.first_name, e.last_name
-      FROM attendance a
-      JOIN employees e ON a.employee_id = e.employee_id
-      WHERE a.employee_id = ?
-    `;
-    const params = [id];
-
-    if (from_date) {
-      query += ' AND a.attendance_date >= ?';
-      params.push(from_date);
-    }
-
-    if (to_date) {
-      query += ' AND a.attendance_date <= ?';
-      params.push(to_date);
-    }
-
-    query += ' ORDER BY a.attendance_date DESC';
-
-    const attendance = await executeQuery(query, params);
-
-    // Calculate summary
-    const summary = {
-      total_days: attendance.length,
-      present: attendance.filter(a => a.status === 'PRESENT').length,
-      absent: attendance.filter(a => a.status === 'ABSENT').length,
-      halfday: attendance.filter(a => a.status === 'HALFDAY').length,
-      leave: attendance.filter(a => a.status === 'LEAVE').length,
-      total_overtime_hours: attendance.reduce((sum, a) => sum + (parseFloat(a.overtime_hours) || 0), 0)
-    };
-
-    res.status(200).json({
-      success: true,
-      count: attendance.length,
-      data: attendance,
-      summary: summary
-    });
-  } catch (error) {
-    console.error('Get employee attendance error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch employee attendance',
-      error: error.message
-    });
-  }
-};
-
-// ==============================================
-// GET ATTENDANCE REPORT
-// ==============================================
-const getAttendanceReport = async (req, res) => {
-  try {
-    const { site_id, from_date, to_date, month, year } = req.query;
-
-    let query = `
+    const query = `
       SELECT
-        e.employee_id, e.employee_code, e.first_name, e.last_name, e.designation,
-        st.site_name, st.site_code,
-        COUNT(a.attendance_id) as total_days,
-        SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) as present_days,
-        SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) as absent_days,
-        SUM(CASE WHEN a.status = 'HALFDAY' THEN 0.5 ELSE 0 END) as halfday_count,
-        SUM(CASE WHEN a.status = 'LEAVE' THEN 1 ELSE 0 END) as leave_days,
-        SUM(a.overtime_hours) as total_overtime_hours
-      FROM employees e
-      LEFT JOIN sites st ON e.site_id = st.site_id
-      LEFT JOIN attendance a ON e.employee_id = a.employee_id
-      WHERE e.status = 'ACTIVE'
+        COUNT(*) as total_employees,
+        SUM(days_present) as total_days_present,
+        AVG(days_present) as avg_days_present,
+        MIN(days_present) as min_days_present,
+        MAX(days_present) as max_days_present,
+        MAX(total_days_in_month) as days_in_month
+      FROM attendance
+      WHERE attendance_month = ?
     `;
-    const params = [];
 
-    if (site_id) {
-      query += ' AND e.site_id = ?';
-      params.push(site_id);
-    }
-
-    if (from_date && to_date) {
-      query += ' AND a.attendance_date BETWEEN ? AND ?';
-      params.push(from_date, to_date);
-    } else if (month && year) {
-      query += ' AND MONTH(a.attendance_date) = ? AND YEAR(a.attendance_date) = ?';
-      params.push(month, year);
-    }
-
-    query += ' GROUP BY e.employee_id, e.employee_code, e.first_name, e.last_name, e.designation, st.site_name, st.site_code';
-    query += ' ORDER BY st.site_name, e.first_name';
-
-    const report = await executeQuery(query, params);
+    const results = await executeQuery(query, [month]);
 
     res.status(200).json({
       success: true,
-      count: report.length,
-      data: report
+      data: results[0],
+      message: 'Attendance summary retrieved successfully'
     });
   } catch (error) {
-    console.error('Get attendance report error:', error);
+    console.error('Error fetching attendance summary:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch attendance report',
-      error: error.message
-    });
-  }
-};
-
-// ==============================================
-// GET DAILY ATTENDANCE SUMMARY
-// ==============================================
-const getDailyAttendanceSummary = async (req, res) => {
-  try {
-    const { date, site_id } = req.query;
-
-    if (!date) {
-      return res.status(400).json({
-        success: false,
-        message: 'Date is required'
-      });
-    }
-
-    let query = `
-      SELECT
-        COUNT(DISTINCT e.employee_id) as total_employees,
-        COUNT(CASE WHEN a.status = 'PRESENT' THEN 1 END) as present,
-        COUNT(CASE WHEN a.status = 'ABSENT' THEN 1 END) as absent,
-        COUNT(CASE WHEN a.status = 'HALFDAY' THEN 1 END) as halfday,
-        COUNT(CASE WHEN a.status = 'LEAVE' THEN 1 END) as on_leave,
-        COUNT(DISTINCT e.employee_id) - COUNT(a.attendance_id) as not_marked
-      FROM employees e
-      LEFT JOIN attendance a ON e.employee_id = a.employee_id AND a.attendance_date = ?
-      WHERE e.status = 'ACTIVE'
-    `;
-    const params = [date];
-
-    if (site_id) {
-      query += ' AND e.site_id = ?';
-      params.push(site_id);
-    }
-
-    const summary = await executeQuery(query, params);
-
-    res.status(200).json({
-      success: true,
-      data: summary[0]
-    });
-  } catch (error) {
-    console.error('Get daily attendance summary error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch daily attendance summary',
+      message: 'Failed to retrieve attendance summary',
       error: error.message
     });
   }
 };
 
 module.exports = {
-  getAttendance,
-  markAttendance,
-  bulkMarkAttendance,
-  updateAttendance,
+  getAttendanceByMonth,
   getEmployeeAttendance,
-  getAttendanceReport,
-  getDailyAttendanceSummary
+  saveAttendance,
+  finalizeAttendance,
+  deleteAttendance,
+  getAttendanceSummary
 };
+

@@ -361,4 +361,10 @@ export const salaryService = {
     const response = await api.get(`${SALARY_ENDPOINT}/summary`);
     return response.data;
   },
+
+  // Delete all payslips for a specific month
+  deletePayslipsByMonth: async (month) => {
+    const response = await api.delete(`${PAYSLIP_ENDPOINT}/month/${month}`);
+    return response.data;
+  },
 };
