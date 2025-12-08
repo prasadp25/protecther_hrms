@@ -2,16 +2,42 @@ import { useState, useEffect } from 'react';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
 
+// Percentage split configurations
+// HRA is calculated as percentage of Basic, not Gross
+const SPLIT_OPTIONS = {
+  'high-basic': { basic: 87.11, hraOfBasic: 5, label: 'High Basic (87.11%) - Best for PF' },
+  '40-40': { basic: 40, hraOfBasic: 40, label: '40% Basic, HRA 40% of Basic' },
+  '50-40': { basic: 50, hraOfBasic: 40, label: '50% Basic, HRA 40% of Basic' },
+};
+
+// State-wise Professional Tax rules (monthly)
+const PT_RULES = {
+  maharashtra: { name: 'Maharashtra', calculate: (gross) => gross > 10000 ? 200 : gross > 7500 ? 175 : 0 },
+  karnataka: { name: 'Karnataka', calculate: (gross) => gross > 15000 ? 200 : gross > 10000 ? 150 : 0 },
+  gujarat: { name: 'Gujarat', calculate: (gross) => gross > 12000 ? 200 : gross > 9000 ? 150 : 0 },
+  tamilnadu: { name: 'Tamil Nadu', calculate: (gross) => gross > 21000 ? 208 : gross > 15000 ? 180 : 0 },
+  westbengal: { name: 'West Bengal', calculate: (gross) => gross > 10000 ? 200 : gross > 6000 ? 150 : 0 },
+  custom: { name: 'Custom (Manual Entry)', calculate: () => 0 },
+};
+
 const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  // Backward calculation state
+  const [ctcAmount, setCtcAmount] = useState(0);
+  const [splitType, setSplitType] = useState('40-40');
+  const [ptState, setPtState] = useState('maharashtra');
+  const [isComponentsEdited, setIsComponentsEdited] = useState(false);
+
   const [formData, setFormData] = useState({
     employeeId: '',
     employeeCode: '',
     employeeName: '',
     effectiveFrom: new Date().toISOString().split('T')[0],
+    entryMode: 'backward', // Track calculation method
     // Earnings
     basicSalary: 0,
     hra: 0,
@@ -94,9 +120,87 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     }
   };
 
+  // Backward calculation: CTC → Components
+  const calculateFromCTC = (ctc, split, state) => {
+    if (ctc <= 0) return;
+
+    const splitConfig = SPLIT_OPTIONS[split];
+    const gross = ctc; // CTC = Gross in this context
+
+    // Calculate earnings based on split percentages
+    // Basic is percentage of Gross
+    const basic = Math.round((gross * splitConfig.basic) / 100);
+    // HRA is percentage of Basic (not Gross!)
+    const hra = Math.round((basic * splitConfig.hraOfBasic) / 100);
+    const incentive = gross - basic - hra; // Remaining goes to incentive
+
+    // Calculate PF: IF Basic >= 15000 THEN 1800, ELSE 12%
+    const pf = basic >= 15000 ? 1800 : Math.round(basic * 0.12);
+
+    // Calculate ESI: 0.75% if gross < 21000
+    const esi = gross < 21000 ? Math.round(gross * 0.0075) : 0;
+
+    // Calculate PT based on state
+    const pt = PT_RULES[state].calculate(gross);
+
+    setFormData(prev => ({
+      ...prev,
+      basicSalary: basic,
+      hra: hra,
+      incentiveAllowance: incentive,
+      pfDeduction: pf,
+      esiDeduction: esi,
+      professionalTax: pt,
+      entryMode: 'backward',
+    }));
+
+    setIsComponentsEdited(false);
+  };
+
+  // Handle CTC change
+  const handleCTCChange = (e) => {
+    const ctc = parseFloat(e.target.value) || 0;
+    setCtcAmount(ctc);
+    if (!isComponentsEdited) {
+      calculateFromCTC(ctc, splitType, ptState);
+    }
+  };
+
+  // Handle split type change
+  const handleSplitChange = (e) => {
+    const newSplit = e.target.value;
+    setSplitType(newSplit);
+    if (ctcAmount > 0 && !isComponentsEdited) {
+      calculateFromCTC(ctcAmount, newSplit, ptState);
+    }
+  };
+
+  // Handle state change for PT
+  const handleStateChange = (e) => {
+    const newState = e.target.value;
+    setPtState(newState);
+    if (ctcAmount > 0 && !isComponentsEdited) {
+      calculateFromCTC(ctcAmount, splitType, newState);
+    }
+  };
+
+  // Recalculate from current CTC
+  const handleRecalculate = () => {
+    if (ctcAmount > 0) {
+      calculateFromCTC(ctcAmount, splitType, ptState);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     const numValue = parseFloat(value) || 0;
+
+    // Mark components as manually edited
+    const earningFields = ['basicSalary', 'hra', 'incentiveAllowance'];
+    if (earningFields.includes(name)) {
+      setIsComponentsEdited(true);
+      setFormData(prev => ({ ...prev, entryMode: 'manual' }));
+    }
 
     setFormData((prev) => {
       const newData = {
@@ -105,7 +209,6 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       };
 
       // Auto-calculate PF based on Basic Salary
-      // IF Basic >= 15000 THEN PF = 1800, ELSE PF = Basic * 12%
       if (name === 'basicSalary') {
         if (numValue >= 15000) {
           newData.pfDeduction = 1800;
@@ -115,28 +218,27 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       }
 
       // Auto-calculate ESIC (0.75% of gross) if gross < 21000
-      if (name === 'basicSalary' || name === 'hra' || name === 'incentiveAllowance') {
+      if (earningFields.includes(name)) {
         const basic = name === 'basicSalary' ? numValue : newData.basicSalary;
         const hra = name === 'hra' ? numValue : newData.hra;
         const incentive = name === 'incentiveAllowance' ? numValue : newData.incentiveAllowance;
         const grossSalary = basic + hra + incentive;
 
         if (grossSalary < 21000) {
-          newData.esiDeduction = Math.round(grossSalary * 0.0075); // 0.75%
+          newData.esiDeduction = Math.round(grossSalary * 0.0075);
         } else {
           newData.esiDeduction = 0;
         }
+
+        // Also update PT based on state when components change
+        newData.professionalTax = PT_RULES[ptState].calculate(grossSalary);
       }
 
       return newData;
     });
 
-    // Clear error for this field
     if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: '',
-      }));
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -200,7 +302,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         mediclaim_deduction: formData.mediclaimDeduction,
         advance_deduction: formData.advanceDeduction,
         other_deductions: formData.otherDeductions,
-        effective_from: formData.effectiveFrom
+        effective_from: formData.effectiveFrom,
+        entry_mode: formData.entryMode,
+        split_type: splitType,
+        pt_state: ptState,
       };
 
       let response;
@@ -286,6 +391,75 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         </div>
       </div>
 
+      {/* CTC Entry - Backward Calculation */}
+      <div className="border-b pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          Quick Entry (CTC to Components)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className={labelClasses}>Monthly CTC (Gross)</label>
+            <input
+              type="number"
+              value={ctcAmount || ''}
+              onChange={handleCTCChange}
+              className={`${inputClasses} bg-white font-semibold text-lg`}
+              min="0"
+              placeholder="Enter CTC amount"
+            />
+          </div>
+
+          <div>
+            <label className={labelClasses}>Split Type</label>
+            <select
+              value={splitType}
+              onChange={handleSplitChange}
+              className={`${inputClasses} bg-white`}
+            >
+              {Object.entries(SPLIT_OPTIONS).map(([key, config]) => (
+                <option key={key} value={key}>{config.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClasses}>PT State</label>
+            <select
+              value={ptState}
+              onChange={handleStateChange}
+              className={`${inputClasses} bg-white`}
+            >
+              {Object.entries(PT_RULES).map(([key, config]) => (
+                <option key={key} value={key}>{config.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleRecalculate}
+              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              disabled={ctcAmount <= 0}
+            >
+              Recalculate
+            </button>
+          </div>
+        </div>
+
+        {isComponentsEdited && (
+          <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800">
+            Components have been manually edited. Click "Recalculate" to reset from CTC.
+          </div>
+        )}
+
+        {ctcAmount > 0 && !isComponentsEdited && (
+          <div className="mt-3 text-sm text-green-700">
+            Components auto-calculated from CTC. You can edit individual fields if needed.
+          </div>
+        )}
+      </div>
+
       {/* Earnings */}
       <div className="border-b pb-4">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Earnings</h3>
@@ -338,7 +512,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className={labelClasses}>
-              PF Deduction (≥₹15000: ₹1800, &lt;₹15000: 12%)
+              PF Deduction (≥15000: 1800, &lt;15000: 12%)
             </label>
             <input
               type="number"
@@ -354,7 +528,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>ESI Deduction (0.75% if Gross &lt; ₹21000)</label>
+            <label className={labelClasses}>ESI Deduction (0.75% if Gross &lt; 21000)</label>
             <input
               type="number"
               name="esiDeduction"
@@ -364,7 +538,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               min="0"
               step="0.01"
               readOnly
-              title="Auto-calculated: 0.75% of Gross if Gross < ₹21,000"
+              title="Auto-calculated: 0.75% of Gross if Gross < 21,000"
             />
           </div>
 
@@ -426,7 +600,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           <label className={labelClasses}>Other Deductions Remarks</label>
           <textarea
             name="otherDeductionsRemarks"
-            value={formData.otherDeductionsRemarks}
+            value={formData.otherDeductionsRemarks || ''}
             onChange={handleChange}
             rows="3"
             className={inputClasses}
