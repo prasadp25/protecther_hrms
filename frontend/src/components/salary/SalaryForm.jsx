@@ -137,8 +137,8 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     // Calculate PF: IF Basic >= 15000 THEN 1800, ELSE 12%
     const pf = basic >= 15000 ? 1800 : Math.round(basic * 0.12);
 
-    // Calculate ESI: 0.75% if gross < 21000
-    const esi = gross < 21000 ? Math.round(gross * 0.0075) : 0;
+    // ESI is now manual entry - default to 0
+    const esi = 0;
 
     // Calculate PT based on state
     const pt = PT_RULES[state].calculate(gross);
@@ -149,7 +149,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       hra: hra,
       incentiveAllowance: incentive,
       pfDeduction: pf,
-      esiDeduction: esi,
+      esiDeduction: prev.esiDeduction || esi, // Keep existing ESI if already set
       professionalTax: pt,
       entryMode: 'backward',
     }));
@@ -217,20 +217,14 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         }
       }
 
-      // Auto-calculate ESIC (0.75% of gross) if gross < 21000
+      // Update PT based on state when components change (ESI is now manual)
       if (earningFields.includes(name)) {
         const basic = name === 'basicSalary' ? numValue : newData.basicSalary;
         const hra = name === 'hra' ? numValue : newData.hra;
         const incentive = name === 'incentiveAllowance' ? numValue : newData.incentiveAllowance;
         const grossSalary = basic + hra + incentive;
 
-        if (grossSalary < 21000) {
-          newData.esiDeduction = Math.round(grossSalary * 0.0075);
-        } else {
-          newData.esiDeduction = 0;
-        }
-
-        // Also update PT based on state when components change
+        // Update PT based on state when components change
         newData.professionalTax = PT_RULES[ptState].calculate(grossSalary);
       }
 
@@ -528,7 +522,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>ESI Deduction (0.75% if Gross &lt; 21000)</label>
+            <label className={labelClasses}>ESI Deduction (Manual Entry)</label>
             <input
               type="number"
               name="esiDeduction"
@@ -537,8 +531,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               className={inputClasses}
               min="0"
               step="0.01"
-              readOnly
-              title="Auto-calculated: 0.75% of Gross if Gross < 21,000"
+              placeholder="Enter ESI amount (0 if not applicable)"
             />
           </div>
 
