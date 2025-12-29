@@ -1,6 +1,7 @@
 import { employeeService } from './employeeService';
 import { salaryService } from './salaryService';
 import { siteService } from './siteService';
+import { companyService } from './companyService';
 import api from '../config/api';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -228,6 +229,61 @@ export const dashboardService = {
       return {
         success: false,
         message: 'Failed to load quick stats',
+      };
+    }
+  },
+
+  // Get company-wise summary for SUPER_ADMIN
+  getCompanyWiseSummary: async () => {
+    try {
+      const companiesResponse = await companyService.getCompaniesSummary();
+
+      if (!companiesResponse.success) {
+        return { success: false, data: [] };
+      }
+
+      const companies = companiesResponse.data || [];
+
+      // For each company, get detailed stats
+      const companyStats = await Promise.all(
+        companies.map(async (company) => {
+          try {
+            const statsResponse = await companyService.getCompanyStats(company.company_id);
+            return {
+              company_id: company.company_id,
+              company_code: company.company_code,
+              company_name: company.company_name,
+              status: company.status,
+              employee_count: statsResponse.data?.employee_count || company.employee_count || 0,
+              site_count: statsResponse.data?.site_count || company.site_count || 0,
+              user_count: statsResponse.data?.user_count || company.user_count || 0,
+              total_salary_cost: statsResponse.data?.total_salary_cost || 0,
+            };
+          } catch (err) {
+            return {
+              company_id: company.company_id,
+              company_code: company.company_code,
+              company_name: company.company_name,
+              status: company.status,
+              employee_count: company.employee_count || 0,
+              site_count: company.site_count || 0,
+              user_count: company.user_count || 0,
+              total_salary_cost: 0,
+            };
+          }
+        })
+      );
+
+      return {
+        success: true,
+        data: companyStats,
+      };
+    } catch (error) {
+      console.error('Failed to get company-wise summary:', error);
+      return {
+        success: false,
+        data: [],
+        message: 'Failed to load company summary',
       };
     }
   },

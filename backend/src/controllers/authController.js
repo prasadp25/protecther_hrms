@@ -23,8 +23,13 @@ const login = asyncHandler(async (req, res) => {
     throw new ValidationError('Username and password are required');
   }
 
-  // Find user
-  const query = 'SELECT * FROM users WHERE username = ?';
+  // Find user with company info
+  const query = `
+    SELECT u.*, c.company_code, c.company_name
+    FROM users u
+    LEFT JOIN companies c ON u.company_id = c.company_id
+    WHERE u.username = ?
+  `;
   const users = await executeQuery(query, [username]);
 
   if (users.length === 0) {
@@ -115,12 +120,13 @@ const login = asyncHandler(async (req, res) => {
     [user.user_id]
   );
 
-  // Generate JWT token
+  // Generate JWT token (include company_id for filtering)
   const token = jwt.sign(
     {
       user_id: user.user_id,
       username: user.username,
-      role: user.role
+      role: user.role,
+      company_id: user.company_id
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
@@ -166,7 +172,10 @@ const login = asyncHandler(async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        employee_id: user.employee_id
+        employee_id: user.employee_id,
+        company_id: user.company_id,
+        company_code: user.company_code,
+        company_name: user.company_name
       }
     }
   });
@@ -176,11 +185,17 @@ const login = asyncHandler(async (req, res) => {
 // REGISTER
 // ==============================================
 const register = asyncHandler(async (req, res) => {
-  const { username, email, password, role, employee_id } = req.body;
+  const { username, email, password, role, employee_id, company_id } = req.body;
 
   // Validation
   if (!username || !email || !password) {
     throw new ValidationError('Username, email, and password are required');
+  }
+
+  // For non-SUPER_ADMIN roles, company_id is required
+  const targetRole = role || 'EMPLOYEE';
+  if (targetRole !== 'SUPER_ADMIN' && !company_id) {
+    throw new ValidationError('Company ID is required for non-SUPER_ADMIN users');
   }
 
   // Validate password strength
@@ -207,16 +222,17 @@ const register = asyncHandler(async (req, res) => {
 
   // Insert user
   const query = `
-    INSERT INTO users (username, email, password_hash, role, employee_id, status)
-    VALUES (?, ?, ?, ?, ?, 'ACTIVE')
+    INSERT INTO users (username, email, password_hash, role, employee_id, company_id, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')
   `;
 
   const result = await executeQuery(query, [
     username,
     email,
     passwordHash,
-    role || 'EMPLOYEE',
-    employee_id || null
+    targetRole,
+    employee_id || null,
+    targetRole === 'SUPER_ADMIN' ? null : company_id
   ]);
 
   res.status(201).json({
@@ -226,7 +242,8 @@ const register = asyncHandler(async (req, res) => {
       user_id: result.insertId,
       username,
       email,
-      role: role || 'EMPLOYEE'
+      role: targetRole,
+      company_id: targetRole === 'SUPER_ADMIN' ? null : company_id
     }
   });
 });
@@ -239,9 +256,11 @@ const getMe = asyncHandler(async (req, res) => {
 
   const query = `
     SELECT u.user_id, u.username, u.email, u.role, u.employee_id, u.last_login,
+           u.company_id, c.company_code, c.company_name,
            e.first_name, e.last_name, e.mobile, e.designation
     FROM users u
     LEFT JOIN employees e ON u.employee_id = e.employee_id
+    LEFT JOIN companies c ON u.company_id = c.company_id
     WHERE u.user_id = ?
   `;
 

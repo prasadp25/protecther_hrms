@@ -1,14 +1,53 @@
 import { useState, useEffect } from 'react';
 import { dashboardService } from '../../services/dashboardService';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import authService from '../../services/authService';
+import { getSelectedCompany } from '../../config/api';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
+  const [companyStats, setCompanyStats] = useState([]);
+  const [loadingCompanyStats, setLoadingCompanyStats] = useState(false);
+
+  const user = authService.getUser();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const selectedCompany = isSuperAdmin ? getSelectedCompany() : null;
 
   useEffect(() => {
     loadDashboardData();
+    // Load company stats for SUPER_ADMIN when viewing all companies
+    if (isSuperAdmin && !selectedCompany) {
+      loadCompanyStats();
+    }
   }, []);
+
+  // Reload when selected company changes (listen to storage events)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      loadDashboardData();
+      if (isSuperAdmin && !getSelectedCompany()) {
+        loadCompanyStats();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [isSuperAdmin]);
+
+  const loadCompanyStats = async () => {
+    try {
+      setLoadingCompanyStats(true);
+      const response = await dashboardService.getCompanyWiseSummary();
+      if (response.success) {
+        setCompanyStats(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load company stats:', error);
+    } finally {
+      setLoadingCompanyStats(false);
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -100,9 +139,125 @@ const Dashboard = () => {
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 text-white">
         <h1 className="text-3xl font-bold">Welcome to HRMS Dashboard</h1>
         <p className="mt-2 text-blue-100">
-          Overview of your construction staffing management system
+          {isSuperAdmin ? (
+            selectedCompany
+              ? `Viewing data for ${selectedCompany.company_name}`
+              : 'Overview of all companies in your organization'
+          ) : (
+            `Overview of ${user?.company_name || 'your company'}'s staffing management`
+          )}
         </p>
       </div>
+
+      {/* Company-wise Breakdown - SUPER_ADMIN only when viewing all companies */}
+      {isSuperAdmin && !selectedCompany && (
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg shadow-lg p-6 border-2 border-purple-200">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <svg className="w-8 h-8 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Company Overview
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Performance breakdown by company</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-purple-600">{companyStats.length}</p>
+              <p className="text-xs text-gray-600">Companies</p>
+            </div>
+          </div>
+
+          {loadingCompanyStats ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              <p className="mt-2 text-gray-600">Loading company stats...</p>
+            </div>
+          ) : (
+            <>
+              {/* Company Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {companyStats.map((company, index) => {
+                  const colors = [
+                    { bg: 'from-blue-500 to-blue-600', light: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600' },
+                    { bg: 'from-green-500 to-green-600', light: 'bg-green-50', border: 'border-green-200', text: 'text-green-600' },
+                    { bg: 'from-purple-500 to-purple-600', light: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600' },
+                    { bg: 'from-orange-500 to-orange-600', light: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-600' },
+                  ];
+                  const color = colors[index % colors.length];
+
+                  return (
+                    <div
+                      key={company.company_id}
+                      className={`${color.light} rounded-lg shadow-md border-2 ${color.border} overflow-hidden hover:shadow-lg transition-shadow`}
+                    >
+                      {/* Company Header */}
+                      <div className={`bg-gradient-to-r ${color.bg} p-4 text-white`}>
+                        <h3 className="font-bold text-lg truncate">{company.company_name}</h3>
+                        <p className="text-xs opacity-80">{company.company_code}</p>
+                      </div>
+
+                      {/* Company Stats */}
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Employees</span>
+                          <span className={`text-xl font-bold ${color.text}`}>{company.employee_count}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Sites</span>
+                          <span className={`text-lg font-semibold ${color.text}`}>{company.site_count}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Users</span>
+                          <span className={`text-lg font-semibold ${color.text}`}>{company.user_count}</span>
+                        </div>
+                        <div className="pt-2 border-t">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Salary Cost</span>
+                            <span className={`text-sm font-bold ${color.text}`}>
+                              {formatCurrency(company.total_salary_cost)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary Bar */}
+              <div className="bg-white rounded-lg p-4 shadow border border-purple-200">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {companyStats.reduce((sum, c) => sum + c.employee_count, 0)}
+                    </p>
+                    <p className="text-xs text-gray-600">Total Employees</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-green-600">
+                      {companyStats.reduce((sum, c) => sum + c.site_count, 0)}
+                    </p>
+                    <p className="text-xs text-gray-600">Total Sites</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {companyStats.reduce((sum, c) => sum + c.user_count, 0)}
+                    </p>
+                    <p className="text-xs text-gray-600">Total Users</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {formatCurrency(companyStats.reduce((sum, c) => sum + c.total_salary_cost, 0))}
+                    </p>
+                    <p className="text-xs text-gray-600">Total Salary Cost</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Quick Stats Cards - Row 1 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

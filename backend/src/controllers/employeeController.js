@@ -6,6 +6,7 @@ const {
   buildPaginatedResponse
 } = require('../utils/pagination');
 const { asyncHandler } = require('../utils/errors');
+const { getCompanyFilter } = require('../middleware/auth');
 
 // ==============================================
 // GET ALL EMPLOYEES (with pagination)
@@ -22,6 +23,13 @@ const getAllEmployees = asyncHandler(async (req, res) => {
   // Build WHERE clause
   let whereConditions = [];
   let params = [];
+
+  // Company filter - restrict to user's company
+  const companyId = getCompanyFilter(req);
+  if (companyId) {
+    whereConditions.push('e.company_id = ?');
+    params.push(companyId);
+  }
 
   if (status) {
     whereConditions.push('e.status = ?');
@@ -78,15 +86,23 @@ const getAllEmployees = asyncHandler(async (req, res) => {
 // ==============================================
 const getActiveEmployees = async (req, res) => {
   try {
-    const query = `
+    const companyId = getCompanyFilter(req);
+    let query = `
       SELECT e.*, s.site_name, s.site_code
       FROM employees e
       LEFT JOIN sites s ON e.site_id = s.site_id
       WHERE e.status = 'ACTIVE'
-      ORDER BY e.first_name, e.last_name
     `;
+    const params = [];
 
-    const employees = await executeQuery(query);
+    if (companyId) {
+      query += ` AND e.company_id = ?`;
+      params.push(companyId);
+    }
+
+    query += ` ORDER BY e.first_name, e.last_name`;
+
+    const employees = await executeQuery(query, params);
 
     res.status(200).json({
       success: true,
@@ -109,15 +125,22 @@ const getActiveEmployees = async (req, res) => {
 const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
+    const companyId = getCompanyFilter(req);
 
-    const query = `
+    let query = `
       SELECT e.*, s.site_name, s.site_code
       FROM employees e
       LEFT JOIN sites s ON e.site_id = s.site_id
       WHERE e.employee_id = ?
     `;
+    const params = [id];
 
-    const employees = await executeQuery(query, [id]);
+    if (companyId) {
+      query += ` AND e.company_id = ?`;
+      params.push(companyId);
+    }
+
+    const employees = await executeQuery(query, params);
 
     if (employees.length === 0) {
       return res.status(404).json({
@@ -146,6 +169,60 @@ const getEmployeeById = async (req, res) => {
 const createEmployee = async (req, res) => {
   try {
     const employeeData = req.body;
+    const companyId = getCompanyFilter(req);
+
+    // For non-SUPER_ADMIN users, company_id is required
+    if (!companyId && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(400).json({
+        success: false,
+        message: 'Company context is required'
+      });
+    }
+
+    // SUPER_ADMIN must provide company_id in request body
+    const targetCompanyId = companyId || employeeData.company_id;
+    if (!targetCompanyId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Company ID is required'
+      });
+    }
+
+    // Check if Aadhaar number already exists in ANY company
+    if (employeeData.aadhaar_no) {
+      const aadhaarCheck = await executeQuery(
+        `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.aadhaar_no = ?`,
+        [employeeData.aadhaar_no]
+      );
+      if (aadhaarCheck.length > 0) {
+        const existing = aadhaarCheck[0];
+        return res.status(409).json({
+          success: false,
+          message: `Aadhaar number already exists! Used by ${existing.first_name} ${existing.last_name} (${existing.employee_code}) in ${existing.company_name}`
+        });
+      }
+    }
+
+    // Check if PAN number already exists in ANY company
+    if (employeeData.pan_no) {
+      const panCheck = await executeQuery(
+        `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.pan_no = ?`,
+        [employeeData.pan_no]
+      );
+      if (panCheck.length > 0) {
+        const existing = panCheck[0];
+        return res.status(409).json({
+          success: false,
+          message: `PAN number already exists! Used by ${existing.first_name} ${existing.last_name} (${existing.employee_code}) in ${existing.company_name}`
+        });
+      }
+    }
 
     // Generate employee code if not provided
     if (!employeeData.employee_code) {
@@ -177,7 +254,7 @@ const createEmployee = async (req, res) => {
 
     const query = `
       INSERT INTO employees (
-        employee_code, first_name, last_name, mobile, alternate_mobile, email,
+        company_id, employee_code, first_name, last_name, mobile, alternate_mobile, email,
         dob, gender, marital_status, qualification, address, city, state, pincode,
         aadhaar_no, aadhaar_card_url, pan_no, pan_card_url, uan_no, pf_no, esi_no,
         account_number, ifsc_code, bank_name, branch_name,
@@ -185,10 +262,11 @@ const createEmployee = async (req, res) => {
         offer_letter_issue_date, offer_letter_url, status, site_id,
         emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship,
         wp_policy, hospital_insurance_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
+      targetCompanyId,
       employeeData.employee_code,
       employeeData.first_name,
       employeeData.last_name,
@@ -266,12 +344,18 @@ const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
     const employeeData = req.body;
+    const companyId = getCompanyFilter(req);
 
-    // Check if employee exists
-    const existing = await executeQuery(
-      'SELECT employee_id FROM employees WHERE employee_id = ?',
-      [id]
-    );
+    // Check if employee exists (within user's company)
+    let checkQuery = 'SELECT employee_id FROM employees WHERE employee_id = ?';
+    const checkParams = [id];
+
+    if (companyId) {
+      checkQuery += ' AND company_id = ?';
+      checkParams.push(companyId);
+    }
+
+    const existing = await executeQuery(checkQuery, checkParams);
 
     if (existing.length === 0) {
       return res.status(404).json({
@@ -392,12 +476,18 @@ const updateEmployee = async (req, res) => {
 const deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
+    const companyId = getCompanyFilter(req);
 
-    // Check if employee exists
-    const existing = await executeQuery(
-      'SELECT employee_id FROM employees WHERE employee_id = ?',
-      [id]
-    );
+    // Check if employee exists (within user's company)
+    let checkQuery = 'SELECT employee_id FROM employees WHERE employee_id = ?';
+    const checkParams = [id];
+
+    if (companyId) {
+      checkQuery += ' AND company_id = ?';
+      checkParams.push(companyId);
+    }
+
+    const existing = await executeQuery(checkQuery, checkParams);
 
     if (existing.length === 0) {
       return res.status(404).json({

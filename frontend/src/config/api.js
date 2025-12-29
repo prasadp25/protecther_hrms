@@ -28,13 +28,54 @@ const isRetryableError = (error) => {
   return RETRYABLE_STATUS_CODES.includes(error.response.status);
 };
 
-// Request interceptor - Add token from localStorage
+// Get selected company for SUPER_ADMIN
+export const getSelectedCompany = () => {
+  const companyStr = localStorage.getItem('selectedCompany');
+  if (companyStr) {
+    try {
+      return JSON.parse(companyStr);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+// Set selected company for SUPER_ADMIN
+export const setSelectedCompany = (company) => {
+  if (company) {
+    localStorage.setItem('selectedCompany', JSON.stringify(company));
+  } else {
+    localStorage.removeItem('selectedCompany');
+  }
+};
+
+// Request interceptor - Add token and company_id from localStorage
 api.interceptors.request.use(
   (config) => {
     // Get token from localStorage and add to headers
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Get user to check if SUPER_ADMIN
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        // If SUPER_ADMIN and a company is selected, add company_id to params
+        if (user.role === 'SUPER_ADMIN') {
+          const selectedCompany = getSelectedCompany();
+          if (selectedCompany) {
+            // Add company_id to query params
+            config.params = config.params || {};
+            config.params.company_id = selectedCompany.company_id;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
     }
 
     // Add retry count to config if not present

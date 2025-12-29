@@ -1,0 +1,264 @@
+╔════════════════════════════════════════════════════════════════════╗
+║                 SUCCESS! CODE PUSHED TO GITHUB                     ║
+║                                                                    ║
+║        Now follow these steps on Production Laptop (PC-09)        ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Your code is now on GitHub at:
+https://github.com/prasadp25/protecther_hrms.git
+
+═══════════════════════════════════════════════════════════════════════
+STEPS TO RUN ON PRODUCTION LAPTOP (PC-09)
+═══════════════════════════════════════════════════════════════════════
+
+STEP 1: Install Git
+───────────────────────────────────────────────────────────────────────
+1. Download Git from: https://git-scm.com/download/win
+2. Run installer with default settings
+3. Verify: Open Command Prompt and type: git --version
+
+
+STEP 2: Clone the Repository
+───────────────────────────────────────────────────────────────────────
+Open Command Prompt and run:
+
+cd C:\
+git clone https://github.com/prasadp25/protecther_hrms.git hrms-frontend
+cd hrms-frontend
+
+You may be asked for GitHub credentials:
+- Username: prasadp25
+- Password: Your GitHub password or Personal Access Token
+
+
+STEP 3: Install Required Software
+───────────────────────────────────────────────────────────────────────
+Install in this order:
+
+1. Node.js v18+
+   → https://nodejs.org/ (Download LTS version)
+   → Verify: node --version
+
+2. MySQL v8.0+
+   → https://dev.mysql.com/downloads/installer/
+   → Set root password during installation (WRITE IT DOWN!)
+   → Verify: mysql --version
+
+3. PM2 (after Node.js is installed)
+   → Open Command Prompt as Administrator
+   → npm install -g pm2
+   → npm install -g pm2-windows-startup
+   → Verify: pm2 --version
+
+
+STEP 4: Configure Windows for 24/7 Operation
+───────────────────────────────────────────────────────────────────────
+1. Power Settings:
+   → Control Panel → Power Options
+   → Select "High Performance" plan
+   → Change plan settings → Set sleep to "Never"
+
+2. Get your laptop's IP address:
+   → Open Command Prompt
+   → Type: ipconfig
+   → Look for "IPv4 Address" (e.g., 192.168.1.33)
+   → WRITE IT DOWN: _________________
+
+3. Configure Firewall:
+   → Open PowerShell as Administrator
+   → Run these commands:
+
+   New-NetFirewallRule -DisplayName "HRMS Frontend" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+   New-NetFirewallRule -DisplayName "HRMS Backend" -Direction Inbound -LocalPort 8001 -Protocol TCP -Action Allow
+
+
+STEP 5: Install Dependencies
+───────────────────────────────────────────────────────────────────────
+cd C:\hrms-frontend
+
+# Backend dependencies
+cd backend
+npm install --production
+
+# Frontend dependencies
+cd ..\frontend
+npm install
+
+
+STEP 6: Setup Database
+───────────────────────────────────────────────────────────────────────
+cd C:\hrms-frontend
+run-migrations.bat
+
+Enter your MySQL root password when prompted.
+Wait for "SUCCESS" message.
+
+
+STEP 7: Configure Environment Files
+───────────────────────────────────────────────────────────────────────
+
+Backend Configuration:
+──────────────────────
+cd C:\hrms-frontend\backend
+copy ..\DEPLOYMENT_CONFIG_PC09.env.backend .env
+notepad .env
+
+Edit these lines:
+- DB_PASSWORD=YOUR_MYSQL_PASSWORD_HERE
+  → Replace with your actual MySQL root password
+
+- CORS_ORIGIN=http://localhost:8000,http://192.168.1.33:8000
+  → Replace 192.168.1.33 with YOUR laptop's IP address
+
+Save and close.
+
+
+Frontend Configuration:
+──────────────────────
+cd ..\frontend
+copy ..\DEPLOYMENT_CONFIG_PC09.env.frontend .env
+notepad .env
+
+Edit this line:
+- VITE_API_URL=http://192.168.1.33:8001/api/v1
+  → Replace 192.168.1.33 with YOUR laptop's IP address
+
+Save and close.
+
+
+STEP 8: Build Frontend
+───────────────────────────────────────────────────────────────────────
+cd C:\hrms-frontend\frontend
+npm run build
+
+Wait for build to complete (creates "dist" folder).
+
+
+STEP 9: Start Application
+───────────────────────────────────────────────────────────────────────
+cd C:\hrms-frontend
+start-hrms.bat
+
+Should see "HRMS Application Started Successfully!"
+
+
+STEP 10: Test Access
+───────────────────────────────────────────────────────────────────────
+1. On production laptop browser:
+   → http://localhost:8000
+   → Should see HRMS login page
+
+2. From another device on network:
+   → http://YOUR_IP:8000
+   → Replace YOUR_IP with production laptop IP
+   → Should see HRMS login page
+
+
+STEP 11: Configure Auto-Startup (Run Once)
+───────────────────────────────────────────────────────────────────────
+cd C:\hrms-frontend
+setup-auto-startup.bat
+
+Follow the on-screen instructions:
+1. Copy the command shown
+2. Open NEW Command Prompt as Administrator
+3. Paste and run the command
+4. Then run: pm2 save
+
+
+STEP 12: Setup Automatic Backups (Run Once)
+───────────────────────────────────────────────────────────────────────
+Right-click: setup-backup-schedule.bat
+Select: "Run as administrator"
+
+This creates a daily backup at 2:00 AM.
+
+
+STEP 13: Final Test - Restart Computer
+───────────────────────────────────────────────────────────────────────
+1. Restart the production laptop
+2. Wait 2-3 minutes
+3. Open browser: http://localhost:8000
+4. Should work automatically!
+
+
+═══════════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════
+
+After setup, verify these:
+□ Frontend accessible: http://localhost:8000
+□ Backend running: pm2 status shows both apps online
+□ Can login successfully
+□ Can access from network: http://YOUR_IP:8000
+□ Auto-startup works (tested after restart)
+□ Backup schedule created (check Task Scheduler)
+
+
+═══════════════════════════════════════════════════════════════════════
+DAILY OPERATIONS
+═══════════════════════════════════════════════════════════════════════
+
+Access URLs:
+  Frontend: http://localhost:8000 or http://YOUR_IP:8000
+  Backend:  http://localhost:8001 or http://YOUR_IP:8001
+
+Management Commands:
+  Check status:    check-status.bat
+  Restart app:     restart-hrms.bat
+  Stop app:        stop-hrms.bat
+  View logs:       pm2 logs
+  Backup database: backup-database.bat
+
+
+═══════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════
+
+If something doesn't work:
+
+1. Check logs:
+   pm2 logs
+
+2. Check MySQL is running:
+   sc query MySQL
+
+3. Verify .env files are correct:
+   - backend/.env has correct DB_PASSWORD
+   - frontend/.env has correct VITE_API_URL
+
+4. See complete troubleshooting:
+   → Open: C:\hrms-frontend\DEPLOYMENT_GUIDE.md
+
+
+═══════════════════════════════════════════════════════════════════════
+NEED HELP?
+═══════════════════════════════════════════════════════════════════════
+
+Complete Documentation:
+  → DEPLOYMENT_GUIDE.md - Full deployment guide
+  → PRE_DEPLOYMENT_CHECKLIST.md - Detailed checklist
+  → GIT_TRANSFER_GUIDE.md - Git transfer details
+
+
+═══════════════════════════════════════════════════════════════════════
+IMPORTANT NOTES
+═══════════════════════════════════════════════════════════════════════
+
+✓ Application runs 24/7 automatically
+✓ Database backs up daily at 2:00 AM
+✓ Backups stored in: C:\hrms-frontend\backups\database\
+✓ Logs stored in: C:\hrms-frontend\logs\
+
+Security:
+✓ Never share .env files
+✓ Keep MySQL password secure
+✓ Repository is already on GitHub (you can update easily)
+
+
+═══════════════════════════════════════════════════════════════════════
+
+Repository: https://github.com/prasadp25/protecther_hrms.git
+Ready for deployment on PC-09!
+
+═══════════════════════════════════════════════════════════════════════

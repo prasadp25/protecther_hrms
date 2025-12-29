@@ -68,6 +68,7 @@ app.get(`${apiPrefix}/health`, (req, res) => {
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
+const companyRoutes = require('./routes/companyRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const siteRoutes = require('./routes/siteRoutes');
 const salaryRoutes = require('./routes/salaryRoutes');
@@ -77,6 +78,7 @@ const reportRoutes = require('./routes/reportRoutes');
 
 // Mount routes
 app.use(`${apiPrefix}/auth`, authRoutes);
+app.use(`${apiPrefix}/companies`, companyRoutes);
 app.use(`${apiPrefix}/employees`, employeeRoutes);
 app.use(`${apiPrefix}/sites`, siteRoutes);
 app.use(`${apiPrefix}/salaries`, salaryRoutes);

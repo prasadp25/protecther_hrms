@@ -15,6 +15,10 @@ import SalaryForm from './components/salary/SalaryForm';
 import PayslipView from './components/salary/PayslipView';
 import AttendanceManagement from './components/attendance/AttendanceManagement';
 import Reports from './components/reports/Reports';
+import CompanyList from './components/company/CompanyList';
+import CompanyForm from './components/company/CompanyForm';
+import CompanySwitcher from './components/common/CompanySwitcher';
+import { getSelectedCompany, setSelectedCompany } from './config/api';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -24,11 +28,60 @@ const ProtectedRoute = ({ children }) => {
 
 // Main App Component
 const MainApp = () => {
-  const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'sites', 'salary', 'attendance', or 'reports'
+  const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'sites', 'salary', 'attendance', 'reports', or 'companies'
   const [view, setView] = useState('list'); // 'list', 'form', 'payslips'
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSalaryId, setSelectedSalaryId] = useState(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(null);
+
+  // Get current user info
+  const user = authService.getUser();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  // Selected company state (for SUPER_ADMIN)
+  const [selectedCompany, setSelectedCompanyState] = useState(() => {
+    if (isSuperAdmin) {
+      return getSelectedCompany();
+    }
+    return null;
+  });
+
+  // Handle company change
+  const handleCompanyChange = (company) => {
+    setSelectedCompanyState(company);
+    setSelectedCompany(company); // Save to localStorage
+    // Reset to dashboard when switching companies
+    setModule('dashboard');
+    setView('list');
+  };
+
+  // Company handlers
+  const handleCompanyAddNew = () => {
+    setSelectedCompanyId(null);
+    setView('form');
+  };
+
+  const handleCompanyEdit = (companyId) => {
+    setSelectedCompanyId(companyId);
+    setView('form');
+  };
+
+  const handleCompanyFormSuccess = () => {
+    setView('list');
+    setSelectedCompanyId(null);
+  };
+
+  const handleCompanyBack = () => {
+    setView('list');
+    setSelectedCompanyId(null);
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    authService.logout();
+    window.location.href = '/login';
+  };
 
   // Employee handlers
   const handleEmployeeAddNew = () => {
@@ -108,6 +161,7 @@ const MainApp = () => {
     setSelectedEmployeeId(null);
     setSelectedSiteId(null);
     setSelectedSalaryId(null);
+    setSelectedCompanyId(null);
   };
 
   return (
@@ -116,9 +170,46 @@ const MainApp = () => {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900">
-              HRMS - Construction Staffing
-            </h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                HRMS - Construction Staffing
+              </h1>
+              {/* Show selected company for SUPER_ADMIN or user's company */}
+              {isSuperAdmin ? (
+                selectedCompany ? (
+                  <p className="text-sm text-blue-600 mt-1 font-medium">
+                    Viewing: {selectedCompany.company_name}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Viewing: All Companies
+                  </p>
+                )
+              ) : user?.company_name && (
+                <p className="text-sm text-gray-600 mt-1">
+                  {user.company_name}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center space-x-4">
+              {/* Company Switcher for SUPER_ADMIN */}
+              {isSuperAdmin && (
+                <CompanySwitcher
+                  selectedCompany={selectedCompany}
+                  onCompanyChange={handleCompanyChange}
+                />
+              )}
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-900">{user?.username}</p>
+                <p className="text-xs text-gray-500">{user?.role}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs */}
@@ -183,6 +274,18 @@ const MainApp = () => {
             >
               Reports
             </button>
+            {isSuperAdmin && (
+              <button
+                onClick={() => handleModuleChange('companies')}
+                className={`pb-2 px-4 font-medium ${
+                  module === 'companies'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Companies
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -190,7 +293,9 @@ const MainApp = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {module === 'dashboard' && <Dashboard />}
+          {module === 'dashboard' && (
+            <Dashboard key={selectedCompany?.company_id || 'all'} />
+          )}
 
           {module === 'employees' && (
             <>
@@ -243,6 +348,20 @@ const MainApp = () => {
           )}
 
           {module === 'reports' && <Reports />}
+
+          {module === 'companies' && isSuperAdmin && (
+            <>
+              {view === 'list' ? (
+                <CompanyList onEdit={handleCompanyEdit} onAddNew={handleCompanyAddNew} />
+              ) : (
+                <CompanyForm
+                  companyId={selectedCompanyId}
+                  onSuccess={handleCompanyFormSuccess}
+                  onBack={handleCompanyBack}
+                />
+              )}
+            </>
+          )}
         </div>
       </main>
 
