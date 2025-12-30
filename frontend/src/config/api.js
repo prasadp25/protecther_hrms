@@ -59,6 +59,11 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // If sending FormData (file uploads), let browser set Content-Type with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
     // Get user to check if SUPER_ADMIN
     const userStr = localStorage.getItem('user');
     if (userStr) {
