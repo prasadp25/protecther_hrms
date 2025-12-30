@@ -3,13 +3,13 @@ const router = express.Router();
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const { getAllAuditLogs, getAuditLogs } = require('../utils/auditLogger');
 
-// Only ADMIN and SUPER_ADMIN can view audit logs
-const adminOnly = authorizeRoles('ADMIN', 'SUPER_ADMIN');
+// Only SUPER_ADMIN can view audit logs
+const superAdminOnly = authorizeRoles('SUPER_ADMIN');
 
 // ==============================================
 // GET ALL AUDIT LOGS (with filters)
 // ==============================================
-router.get('/', authenticateToken, adminOnly, async (req, res) => {
+router.get('/', authenticateToken, superAdminOnly, async (req, res) => {
   try {
     const {
       page = 1,
@@ -49,7 +49,7 @@ router.get('/', authenticateToken, adminOnly, async (req, res) => {
 // ==============================================
 // GET AUDIT LOGS FOR SPECIFIC RECORD
 // ==============================================
-router.get('/:tableName/:recordId', authenticateToken, adminOnly, async (req, res) => {
+router.get('/:tableName/:recordId', authenticateToken, superAdminOnly, async (req, res) => {
   try {
     const { tableName, recordId } = req.params;
     const { limit = 50 } = req.query;

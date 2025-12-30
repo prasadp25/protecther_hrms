@@ -18,6 +18,7 @@ import Reports from './components/reports/Reports';
 import CompanyList from './components/company/CompanyList';
 import CompanyForm from './components/company/CompanyForm';
 import CompanySwitcher from './components/common/CompanySwitcher';
+import AuditLogs from './components/audit/AuditLogs';
 import { getSelectedCompany, setSelectedCompany } from './config/api';
 
 // Protected Route Component
@@ -286,6 +287,18 @@ const MainApp = () => {
                 Companies
               </button>
             )}
+            {isSuperAdmin && (
+              <button
+                onClick={() => handleModuleChange('audit')}
+                className={`pb-2 px-4 font-medium ${
+                  module === 'audit'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Audit Logs
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -362,6 +375,8 @@ const MainApp = () => {
               )}
             </>
           )}
+
+          {module === 'audit' && isSuperAdmin && <AuditLogs />}
         </div>
       </main>
 
