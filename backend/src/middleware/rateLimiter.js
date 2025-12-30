@@ -12,15 +12,15 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Strict limiter for login endpoint
+// Login limiter - disabled (unlimited attempts)
 const loginLimiter = rateLimit({
-  windowMs: parseInt(process.env.LOGIN_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX) || 100, // Temporarily increased for development
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 0, // 0 = unlimited attempts
   message: {
     success: false,
     message: 'Too many login attempts from this IP, please try again after 15 minutes.'
   },
-  skipSuccessfulRequests: true, // Don't count successful logins
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
 });

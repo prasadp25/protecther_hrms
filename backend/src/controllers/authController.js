@@ -43,80 +43,16 @@ const login = asyncHandler(async (req, res) => {
     throw new AuthorizationError('Account is not active. Please contact administrator.');
   }
 
-  // Check if account is locked
-  if (user.account_locked_until) {
-    const lockTime = new Date(user.account_locked_until);
-    const now = new Date();
-
-    if (lockTime > now) {
-      const minutesRemaining = Math.ceil((lockTime - now) / (1000 * 60));
-      const error = new AuthorizationError(
-        `Account is locked due to too many failed login attempts. Try again in ${minutesRemaining} minutes.`
-      );
-      error.lockedUntil = lockTime.toISOString();
-      throw error;
-    } else {
-      // Lock has expired, reset failed attempts
-      await executeQuery(
-        'UPDATE users SET failed_login_attempts = 0, account_locked_until = NULL WHERE user_id = ?',
-        [user.user_id]
-      );
-    }
-  }
-
   // Compare password
   const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
   if (!isPasswordValid) {
-    // Increment failed attempts
-    const maxAttempts = parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5;
-    const lockoutDuration = parseInt(process.env.ACCOUNT_LOCKOUT_DURATION_MINUTES) || 30;
-    const attempts = (user.failed_login_attempts || 0) + 1;
-
-    if (attempts >= maxAttempts) {
-      // Lock the account
-      const lockUntil = new Date(Date.now() + lockoutDuration * 60 * 1000);
-      await executeQuery(
-        `UPDATE users
-         SET failed_login_attempts = ?,
-             account_locked_until = ?,
-             last_failed_login = NOW()
-         WHERE user_id = ?`,
-        [attempts, lockUntil, user.user_id]
-      );
-
-      const error = new AuthorizationError(
-        `Account locked due to ${maxAttempts} failed login attempts. Try again in ${lockoutDuration} minutes.`
-      );
-      error.lockedUntil = lockUntil.toISOString();
-      throw error;
-    } else {
-      // Update failed attempts
-      await executeQuery(
-        `UPDATE users
-         SET failed_login_attempts = ?,
-             last_failed_login = NOW()
-         WHERE user_id = ?`,
-        [attempts, user.user_id]
-      );
-
-      const attemptsRemaining = maxAttempts - attempts;
-      const error = new AuthenticationError(
-        `Invalid credentials. ${attemptsRemaining} attempt(s) remaining before account lockout.`
-      );
-      error.attemptsRemaining = attemptsRemaining;
-      throw error;
-    }
+    throw new AuthenticationError('Invalid credentials');
   }
 
-  // Successful login - reset failed attempts
+  // Successful login - update last login time
   await executeQuery(
-    `UPDATE users
-     SET failed_login_attempts = 0,
-         account_locked_until = NULL,
-         last_failed_login = NULL,
-         last_login = NOW()
-     WHERE user_id = ?`,
+    'UPDATE users SET last_login = NOW() WHERE user_id = ?',
     [user.user_id]
   );
 
