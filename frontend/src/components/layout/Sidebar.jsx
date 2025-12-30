@@ -1,8 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout }) => {
-  const [collapsed, setCollapsed] = useState(false);
-
+const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout, collapsed, onCollapsedChange, mobileOpen, onMobileClose }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
     { id: 'employees', label: 'Employees', icon: UsersIcon },
@@ -17,25 +15,50 @@ const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout }) => {
     { id: 'audit', label: 'Audit Logs', icon: ShieldIcon },
   ];
 
+  const handleModuleClick = (id) => {
+    onModuleChange(id);
+    // Close mobile menu when item clicked
+    if (onMobileClose) onMobileClose();
+  };
+
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-slate-900 text-white transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'} z-50`}>
-      {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
-        {!collapsed && (
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">HR</span>
+    <>
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+
+      <aside className={`fixed left-0 top-0 h-screen bg-slate-900 text-white transition-all duration-300 z-50
+        ${collapsed ? 'w-16' : 'w-64'}
+        ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Logo */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
+          {!collapsed && (
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">HR</span>
+              </div>
+              <span className="font-semibold text-lg">HRMS</span>
             </div>
-            <span className="font-semibold text-lg">HRMS</span>
-          </div>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-        >
-          {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-        </button>
-      </div>
+          )}
+          <button
+            onClick={() => onCollapsedChange(!collapsed)}
+            className="p-1.5 rounded-lg hover:bg-slate-800 transition-colors hidden lg:block"
+          >
+            {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          </button>
+          {/* Mobile close button */}
+          <button
+            onClick={onMobileClose}
+            className="p-1.5 rounded-lg hover:bg-slate-800 transition-colors lg:hidden"
+          >
+            <CloseIcon />
+          </button>
+        </div>
 
       {/* User Info */}
       <div className={`p-4 border-b border-slate-700 ${collapsed ? 'hidden' : ''}`}>
@@ -52,62 +75,63 @@ const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout }) => {
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="p-2 flex-1 overflow-y-auto">
-        <div className="space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onModuleChange(item.id)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                module === item.id
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-            </button>
-          ))}
+        {/* Navigation */}
+        <nav className="p-2 flex-1 overflow-y-auto">
+          <div className="space-y-1">
+            {menuItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleModuleClick(item.id)}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  module === item.id
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+              </button>
+            ))}
+          </div>
+
+          {/* Admin Section */}
+          {isSuperAdmin && (
+            <>
+              <div className={`mt-6 mb-2 ${collapsed ? 'hidden' : ''}`}>
+                <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Admin</p>
+              </div>
+              <div className="space-y-1">
+                {adminItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleModuleClick(item.id)}
+                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                      module === item.id
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                    {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </nav>
+
+        {/* Logout Button */}
+        <div className="p-2 border-t border-slate-700">
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200"
+          >
+            <LogoutIcon className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">Logout</span>}
+          </button>
         </div>
-
-        {/* Admin Section */}
-        {isSuperAdmin && (
-          <>
-            <div className={`mt-6 mb-2 ${collapsed ? 'hidden' : ''}`}>
-              <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Admin</p>
-            </div>
-            <div className="space-y-1">
-              {adminItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onModuleChange(item.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                    module === item.id
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </nav>
-
-      {/* Logout Button */}
-      <div className="p-2 border-t border-slate-700">
-        <button
-          onClick={onLogout}
-          className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200"
-        >
-          <LogoutIcon className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span className="text-sm font-medium">Logout</span>}
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 
@@ -175,6 +199,18 @@ const ChevronLeftIcon = () => (
 const ChevronRightIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+export const MenuIcon = ({ className }) => (
+  <svg className={className || "w-6 h-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
   </svg>
 );
 

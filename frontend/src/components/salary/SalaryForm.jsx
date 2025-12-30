@@ -329,10 +329,11 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
 
   const { grossSalary, totalDeductions, netSalary } = calculateTotals();
 
-  const inputClasses =
-    'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border';
-  const labelClasses = 'block text-sm font-medium text-gray-700';
-  const errorClasses = 'mt-1 text-sm text-red-600';
+  const inputClasses = "mt-1.5 block w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-2.5 border text-slate-700 placeholder-slate-400 transition-colors";
+  const labelClasses = "block text-sm font-medium text-slate-600";
+  const errorClasses = "mt-1 text-sm text-red-500";
+  const sectionClasses = "bg-slate-50 rounded-xl p-5 border border-slate-100";
+  const sectionTitleClasses = "text-lg font-semibold text-slate-800 mb-4 flex items-center";
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -343,14 +344,21 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        {salaryId ? 'Edit Salary Structure' : 'Add New Salary Structure'}
-      </h2>
+    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-2xl font-bold text-slate-800">
+          {salaryId ? 'Edit Salary Structure' : 'Add New Salary Structure'}
+        </h2>
+      </div>
 
       {/* Employee Selection */}
-      <div className="border-b pb-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Employee Information</h3>
+      <div className={sectionClasses}>
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          Employee Information
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelClasses}>Select Employee *</label>
@@ -386,8 +394,11 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       </div>
 
       {/* CTC Entry - Backward Calculation */}
-      <div className="border-b pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
           Quick Entry (CTC to Components)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -433,7 +444,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
             <button
               type="button"
               onClick={handleRecalculate}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium shadow-lg shadow-indigo-500/25"
               disabled={ctcAmount <= 0}
             >
               Recalculate
@@ -442,21 +453,26 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         </div>
 
         {isComponentsEdited && (
-          <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800">
+          <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-xl text-sm text-yellow-800">
             Components have been manually edited. Click "Recalculate" to reset from CTC.
           </div>
         )}
 
         {ctcAmount > 0 && !isComponentsEdited && (
-          <div className="mt-3 text-sm text-green-700">
+          <div className="mt-3 text-sm text-green-700 font-medium">
             Components auto-calculated from CTC. You can edit individual fields if needed.
           </div>
         )}
       </div>
 
       {/* Earnings */}
-      <div className="border-b pb-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Earnings</h3>
+      <div className={sectionClasses}>
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Earnings
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className={labelClasses}>Basic Salary *</label>
@@ -501,24 +517,30 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       </div>
 
       {/* Deductions */}
-      <div className="border-b pb-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Deductions</h3>
+      <div className={sectionClasses}>
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Deductions
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className={labelClasses}>
-              PF Deduction (≥15000: 1800, &lt;15000: 12%)
+              PF Deduction (Auto-calculated)
             </label>
             <input
               type="number"
               name="pfDeduction"
               value={formData.pfDeduction || ''}
               onChange={handleChange}
-              className={inputClasses}
+              className={`${inputClasses} bg-slate-100`}
               min="0"
               step="0.01"
               readOnly
               title="Auto-calculated based on Basic Salary"
             />
+            <p className="mt-1 text-xs text-slate-500">Basic ≥15000: 1800, else 12%</p>
           </div>
 
           <div>
@@ -603,42 +625,55 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       </div>
 
       {/* Salary Summary */}
-      <div className="bg-blue-50 p-6 rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Salary Summary</h3>
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-6 rounded-xl border border-slate-200">
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Salary Summary
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <div className="text-sm text-gray-600">Gross Salary</div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+            <div className="text-sm text-slate-600">Gross Salary</div>
             <div className="text-2xl font-bold text-blue-600">{formatCurrency(grossSalary)}</div>
           </div>
-          <div>
-            <div className="text-sm text-gray-600">Total Deductions</div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+            <div className="text-sm text-slate-600">Total Deductions</div>
             <div className="text-2xl font-bold text-red-600">
               {formatCurrency(totalDeductions)}
             </div>
           </div>
-          <div>
-            <div className="text-sm text-gray-600">Net Salary</div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+            <div className="text-sm text-slate-600">Net Salary</div>
             <div className="text-2xl font-bold text-green-600">{formatCurrency(netSalary)}</div>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end space-x-4 pt-4">
+      <div className="flex justify-end space-x-4 pt-6 border-t border-slate-100">
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          className="px-6 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-colors"
           disabled={loading}
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+          className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 disabled:opacity-50 font-medium shadow-lg shadow-blue-500/25 transition-all"
           disabled={loading}
         >
-          {loading ? 'Saving...' : salaryId ? 'Update Salary' : 'Create Salary'}
+          {loading ? (
+            <span className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </span>
+          ) : salaryId ? 'Update Salary' : 'Create Salary'}
         </button>
       </div>
     </form>

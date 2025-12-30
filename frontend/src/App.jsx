@@ -19,7 +19,7 @@ import CompanyList from './components/company/CompanyList';
 import CompanyForm from './components/company/CompanyForm';
 import CompanySwitcher from './components/common/CompanySwitcher';
 import AuditLogs from './components/audit/AuditLogs';
-import Sidebar from './components/layout/Sidebar';
+import Sidebar, { MenuIcon } from './components/layout/Sidebar';
 import { getSelectedCompany, setSelectedCompany } from './config/api';
 
 // Protected Route Component
@@ -30,12 +30,16 @@ const ProtectedRoute = ({ children }) => {
 
 // Main App Component
 const MainApp = () => {
-  const [module, setModule] = useState('dashboard'); // 'dashboard', 'employees', 'sites', 'salary', 'attendance', 'reports', or 'companies'
-  const [view, setView] = useState('list'); // 'list', 'form', 'payslips'
+  const [module, setModule] = useState('dashboard');
+  const [view, setView] = useState('list');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSalaryId, setSelectedSalaryId] = useState(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
+
+  // Sidebar states
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Get current user info
   const user = authService.getUser();
@@ -175,41 +179,54 @@ const MainApp = () => {
         user={user}
         isSuperAdmin={isSuperAdmin}
         onLogout={handleLogout}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
       />
 
       {/* Main Content Area */}
-      <div className="ml-64 min-h-screen transition-all duration-300">
+      <div className={`min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
         {/* Top Header Bar */}
         <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
-          <div className="px-6 py-4">
+          <div className="px-4 lg:px-6 py-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-semibold text-slate-800">
-                  {module === 'dashboard' && 'Dashboard'}
-                  {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : 'Employees')}
-                  {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
-                  {module === 'attendance' && 'Attendance Management'}
-                  {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
-                  {module === 'reports' && 'Reports'}
-                  {module === 'companies' && (view === 'form' ? (selectedCompanyId ? 'Edit Company' : 'Add Company') : 'Companies')}
-                  {module === 'audit' && 'Audit Logs'}
-                </h1>
-                {/* Company indicator */}
-                {isSuperAdmin ? (
-                  selectedCompany ? (
-                    <p className="text-sm text-blue-600 mt-0.5 font-medium">
-                      Viewing: {selectedCompany.company_name}
-                    </p>
-                  ) : (
+              <div className="flex items-center space-x-4">
+                {/* Mobile Menu Button */}
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="p-2 rounded-lg hover:bg-slate-100 lg:hidden"
+                >
+                  <MenuIcon className="w-6 h-6 text-slate-600" />
+                </button>
+                <div>
+                  <h1 className="text-xl font-semibold text-slate-800">
+                    {module === 'dashboard' && 'Dashboard'}
+                    {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : 'Employees')}
+                    {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
+                    {module === 'attendance' && 'Attendance Management'}
+                    {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
+                    {module === 'reports' && 'Reports'}
+                    {module === 'companies' && (view === 'form' ? (selectedCompanyId ? 'Edit Company' : 'Add Company') : 'Companies')}
+                    {module === 'audit' && 'Audit Logs'}
+                  </h1>
+                  {/* Company indicator */}
+                  {isSuperAdmin ? (
+                    selectedCompany ? (
+                      <p className="text-sm text-blue-600 mt-0.5 font-medium">
+                        Viewing: {selectedCompany.company_name}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        Viewing: All Companies
+                      </p>
+                    )
+                  ) : user?.company_name && (
                     <p className="text-sm text-slate-500 mt-0.5">
-                      Viewing: All Companies
+                      {user.company_name}
                     </p>
-                  )
-                ) : user?.company_name && (
-                  <p className="text-sm text-slate-500 mt-0.5">
-                    {user.company_name}
-                  </p>
-                )}
+                  )}
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 {/* Company Switcher for SUPER_ADMIN */}
@@ -225,7 +242,7 @@ const MainApp = () => {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main className="p-4 lg:p-6">
           {module === 'dashboard' && (
             <Dashboard key={selectedCompany?.company_id || 'all'} />
           )}

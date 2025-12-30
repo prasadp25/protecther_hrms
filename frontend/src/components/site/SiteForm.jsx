@@ -139,299 +139,254 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
     }
   };
 
+  const inputClasses = "mt-1.5 block w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-2.5 border text-slate-700 placeholder-slate-400 transition-colors";
+  const labelClasses = "block text-sm font-medium text-slate-600";
+  const errorClasses = "mt-1 text-sm text-red-500";
+  const sectionClasses = "bg-slate-50 rounded-xl p-5 border border-slate-100";
+  const sectionTitleClasses = "text-lg font-semibold text-slate-800 mb-4 flex items-center";
+
   if (loading && isEditMode) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="ml-2 text-gray-600">Loading site data...</p>
+        <p className="ml-2 text-slate-600">Loading site data...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">
+    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-2xl font-bold text-slate-800">
           {isEditMode ? 'Edit Site/Client' : 'Add New Site/Client'}
         </h2>
-        <button
-          onClick={onBack}
-          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-        >
-          ← Back to List
-        </button>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
-        {/* Site Information */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Site Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="siteName"
-                value={formData.siteName}
-                onChange={handleChange}
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.siteName ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-                placeholder="Enter site name"
-              />
-              {errors.siteName && (
-                <p className="mt-1 text-sm text-red-600">{errors.siteName}</p>
-              )}
-            </div>
+      {/* Site Information */}
+      <div className={sectionClasses}>
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+          Site Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClasses}>Site Name *</label>
+            <input
+              type="text"
+              name="siteName"
+              value={formData.siteName}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="Enter site name"
+            />
+            {errors.siteName && <p className={errorClasses}>{errors.siteName}</p>}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Project Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="projectType"
-                value={formData.projectType}
-                onChange={handleChange}
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.projectType ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-              >
-                <option value="">Select project type</option>
-                <option value="Commercial Building">Commercial Building</option>
-                <option value="Residential Complex">Residential Complex</option>
-                <option value="Shopping Mall">Shopping Mall</option>
-                <option value="IT Park">IT Park</option>
-                <option value="Villas">Villas</option>
-                <option value="Industrial">Industrial</option>
-                <option value="Infrastructure">Infrastructure</option>
-                <option value="Other">Other</option>
-              </select>
-              {errors.projectType && (
-                <p className="mt-1 text-sm text-red-600">{errors.projectType}</p>
-              )}
-            </div>
+          <div>
+            <label className={labelClasses}>Project Type *</label>
+            <select
+              name="projectType"
+              value={formData.projectType}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="">Select project type</option>
+              <option value="Commercial Building">Commercial Building</option>
+              <option value="Residential Complex">Residential Complex</option>
+              <option value="Shopping Mall">Shopping Mall</option>
+              <option value="IT Park">IT Park</option>
+              <option value="Villas">Villas</option>
+              <option value="Industrial">Industrial</option>
+              <option value="Infrastructure">Infrastructure</option>
+              <option value="Other">Other</option>
+            </select>
+            {errors.projectType && <p className={errorClasses}>{errors.projectType}</p>}
+          </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Site Address <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="siteAddress"
-                value={formData.siteAddress}
-                onChange={handleChange}
-                rows="2"
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.siteAddress ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-                placeholder="Enter complete site address"
-              />
-              {errors.siteAddress && (
-                <p className="mt-1 text-sm text-red-600">{errors.siteAddress}</p>
-              )}
-            </div>
+          <div className="md:col-span-2">
+            <label className={labelClasses}>Site Address *</label>
+            <textarea
+              name="siteAddress"
+              value={formData.siteAddress}
+              onChange={handleChange}
+              rows="2"
+              className={inputClasses}
+              placeholder="Enter complete site address"
+            />
+            {errors.siteAddress && <p className={errorClasses}>{errors.siteAddress}</p>}
           </div>
         </div>
+      </div>
 
-        {/* Client Information */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Client Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="clientName"
-                value={formData.clientName}
-                onChange={handleChange}
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.clientName ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-                placeholder="Enter client/company name"
-              />
-              {errors.clientName && (
-                <p className="mt-1 text-sm text-red-600">{errors.clientName}</p>
-              )}
-            </div>
+      {/* Client Information */}
+      <div className={sectionClasses}>
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Client Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClasses}>Client Name *</label>
+            <input
+              type="text"
+              name="clientName"
+              value={formData.clientName}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="Enter client/company name"
+            />
+            {errors.clientName && <p className={errorClasses}>{errors.clientName}</p>}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Person <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="clientContactPerson"
-                value={formData.clientContactPerson}
-                onChange={handleChange}
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.clientContactPerson ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-                placeholder="Enter contact person name"
-              />
-              {errors.clientContactPerson && (
-                <p className="mt-1 text-sm text-red-600">{errors.clientContactPerson}</p>
-              )}
-            </div>
+          <div>
+            <label className={labelClasses}>Contact Person *</label>
+            <input
+              type="text"
+              name="clientContactPerson"
+              value={formData.clientContactPerson}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="Enter contact person name"
+            />
+            {errors.clientContactPerson && <p className={errorClasses}>{errors.clientContactPerson}</p>}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mobile Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="clientMobile"
-                value={formData.clientMobile}
-                onChange={handleChange}
-                maxLength="10"
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.clientMobile ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-                placeholder="Enter 10 digit mobile number"
-              />
-              {errors.clientMobile && (
-                <p className="mt-1 text-sm text-red-600">{errors.clientMobile}</p>
-              )}
-            </div>
+          <div>
+            <label className={labelClasses}>Mobile Number *</label>
+            <input
+              type="text"
+              name="clientMobile"
+              value={formData.clientMobile}
+              onChange={handleChange}
+              maxLength="10"
+              className={inputClasses}
+              placeholder="Enter 10 digit mobile number"
+            />
+            {errors.clientMobile && <p className={errorClasses}>{errors.clientMobile}</p>}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                name="clientEmail"
-                value={formData.clientEmail}
-                onChange={handleChange}
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.clientEmail ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-                placeholder="Enter email address"
-              />
-              {errors.clientEmail && (
-                <p className="mt-1 text-sm text-red-600">{errors.clientEmail}</p>
-              )}
-            </div>
+          <div>
+            <label className={labelClasses}>Email</label>
+            <input
+              type="email"
+              name="clientEmail"
+              value={formData.clientEmail}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="Enter email address"
+            />
+            {errors.clientEmail && <p className={errorClasses}>{errors.clientEmail}</p>}
           </div>
         </div>
+      </div>
 
-        {/* Project Details */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.startDate ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-              />
-              {errors.startDate && (
-                <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>
-              )}
-            </div>
+      {/* Project Details */}
+      <div className={sectionClasses}>
+        <h3 className={sectionTitleClasses}>
+          <svg className="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          Project Details
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClasses}>Start Date *</label>
+            <input
+              type="date"
+              name="startDate"
+              value={formData.startDate}
+              onChange={handleChange}
+              className={inputClasses}
+            />
+            {errors.startDate && <p className={errorClasses}>{errors.startDate}</p>}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Expected End Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                name="expectedEndDate"
-                value={formData.expectedEndDate}
-                onChange={handleChange}
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.expectedEndDate ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-              />
-              {errors.expectedEndDate && (
-                <p className="mt-1 text-sm text-red-600">{errors.expectedEndDate}</p>
-              )}
-            </div>
+          <div>
+            <label className={labelClasses}>Expected End Date *</label>
+            <input
+              type="date"
+              name="expectedEndDate"
+              value={formData.expectedEndDate}
+              onChange={handleChange}
+              className={inputClasses}
+            />
+            {errors.expectedEndDate && <p className={errorClasses}>{errors.expectedEndDate}</p>}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Project Value (₹)
-              </label>
-              <input
-                type="number"
-                name="projectValue"
-                value={formData.projectValue}
-                onChange={handleChange}
-                min="0"
-                step="1000"
-                className={`w-full rounded-md shadow-sm px-3 py-2 border ${
-                  errors.projectValue ? 'border-red-500' : 'border-gray-300'
-                } focus:border-blue-500 focus:ring-blue-500`}
-                placeholder="Enter project value"
-              />
-              {errors.projectValue && (
-                <p className="mt-1 text-sm text-red-600">{errors.projectValue}</p>
-              )}
-            </div>
+          <div>
+            <label className={labelClasses}>Project Value (₹)</label>
+            <input
+              type="number"
+              name="projectValue"
+              value={formData.projectValue}
+              onChange={handleChange}
+              min="0"
+              step="1000"
+              className={inputClasses}
+              placeholder="Enter project value"
+            />
+            {errors.projectValue && <p className={errorClasses}>{errors.projectValue}</p>}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full rounded-md shadow-sm px-3 py-2 border border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
-            </div>
+          <div>
+            <label className={labelClasses}>Status *</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Remarks
-              </label>
-              <textarea
-                name="remarks"
-                value={formData.remarks}
-                onChange={handleChange}
-                rows="3"
-                className="w-full rounded-md shadow-sm px-3 py-2 border border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                placeholder="Any additional notes or remarks about the site"
-              />
-            </div>
+          <div className="md:col-span-2">
+            <label className={labelClasses}>Remarks</label>
+            <textarea
+              name="remarks"
+              value={formData.remarks}
+              onChange={handleChange}
+              rows="3"
+              className={inputClasses}
+              placeholder="Any additional notes or remarks about the site"
+            />
           </div>
         </div>
+      </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end gap-4 pt-4 border-t">
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-            disabled={loading}
-          >
-            {loading ? 'Saving...' : isEditMode ? 'Update Site' : 'Add Site'}
-          </button>
-        </div>
-      </form>
-    </div>
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-4 pt-6 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={onBack}
+          className="px-6 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+          disabled={loading}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 disabled:opacity-50 font-medium shadow-lg shadow-blue-500/25 transition-all"
+          disabled={loading}
+        >
+          {loading ? (
+            <span className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </span>
+          ) : isEditMode ? 'Update Site' : 'Add Site'}
+        </button>
+      </div>
+    </form>
   );
 };
 
