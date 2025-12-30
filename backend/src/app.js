@@ -21,8 +21,30 @@ app.use(cookieParser());
 // ==============================================
 // CORS Configuration (with credentials for cookies)
 // ==============================================
+// Get allowed origins from environment variable
+// Example: CORS_ORIGINS=http://localhost:5173,http://localhost:3000,https://hrms.yourcompany.com
+const getAllowedOrigins = () => {
+  const envOrigins = process.env.CORS_ORIGINS;
+  if (envOrigins) {
+    return envOrigins.split(',').map(origin => origin.trim());
+  }
+  // Default for development
+  return ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://localhost:3001'];
+};
+
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+  origin: function (origin, callback) {
+    const allowedOrigins = getAllowedOrigins();
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS blocked request from: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow cookies to be sent
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

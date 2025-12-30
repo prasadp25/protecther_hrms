@@ -14,7 +14,7 @@ const parsePaginationParams = (query) => {
 
   // Validate and sanitize
   const sanitizedPage = Math.max(1, page);
-  const sanitizedLimit = Math.min(Math.max(1, limit), 100); // Max 100 items per page
+  const sanitizedLimit = Math.min(Math.max(1, limit), 500); // Max 500 items per page
   const sanitizedOffset = (sanitizedPage - 1) * sanitizedLimit;
 
   return {

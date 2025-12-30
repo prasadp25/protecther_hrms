@@ -37,11 +37,11 @@ const storage = multer.diskStorage({
 });
 
 // ==============================================
-// FILE FILTER
+// FILE FILTER (validates both MIME type AND extension)
 // ==============================================
 const fileFilter = (req, file, cb) => {
-  // Allowed file types
-  const allowedTypes = [
+  // Allowed MIME types
+  const allowedMimeTypes = [
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -50,9 +50,20 @@ const fileFilter = (req, file, cb) => {
     'image/png'
   ];
 
-  if (allowedTypes.includes(file.mimetype)) {
+  // Allowed extensions (must match MIME type)
+  const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+
+  // Get file extension
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  // Validate BOTH MIME type AND extension (prevents spoofing)
+  const isMimeValid = allowedMimeTypes.includes(file.mimetype);
+  const isExtValid = allowedExtensions.includes(ext);
+
+  if (isMimeValid && isExtValid) {
     cb(null, true);
   } else {
+    console.warn(`⚠️ File rejected: ${file.originalname} (MIME: ${file.mimetype}, Ext: ${ext})`);
     cb(new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, and PNG files are allowed.'), false);
   }
 };

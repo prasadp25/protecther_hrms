@@ -7,6 +7,7 @@ const {
 } = require('../utils/pagination');
 const { asyncHandler } = require('../utils/errors');
 const { getCompanyFilter } = require('../middleware/auth');
+const { validateEmployeeData } = require('../utils/validators');
 
 // ==============================================
 // GET ALL EMPLOYEES (with pagination)
@@ -168,7 +169,7 @@ const getEmployeeById = async (req, res) => {
 // ==============================================
 const createEmployee = async (req, res) => {
   try {
-    const employeeData = req.body;
+    let employeeData = req.body;
     const companyId = getCompanyFilter(req);
 
     // For non-SUPER_ADMIN users, company_id is required
@@ -188,20 +189,28 @@ const createEmployee = async (req, res) => {
       });
     }
 
+    // Validate employee data (Aadhaar, PAN, Mobile, etc.)
+    const validation = validateEmployeeData(employeeData);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validation.errors
+      });
+    }
+    // Use cleaned/validated data
+    employeeData = { ...employeeData, ...validation.data };
+
     // Check if Aadhaar number already exists in ANY company
     if (employeeData.aadhaar_no) {
       const aadhaarCheck = await executeQuery(
-        `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, c.company_name
-         FROM employees e
-         LEFT JOIN companies c ON e.company_id = c.company_id
-         WHERE e.aadhaar_no = ?`,
+        `SELECT employee_id FROM employees WHERE aadhaar_no = ?`,
         [employeeData.aadhaar_no]
       );
       if (aadhaarCheck.length > 0) {
-        const existing = aadhaarCheck[0];
         return res.status(409).json({
           success: false,
-          message: `Aadhaar number already exists! Used by ${existing.first_name} ${existing.last_name} (${existing.employee_code}) in ${existing.company_name}`
+          message: 'This Aadhaar number is already registered. Please contact HR for assistance.'
         });
       }
     }
@@ -209,17 +218,13 @@ const createEmployee = async (req, res) => {
     // Check if PAN number already exists in ANY company
     if (employeeData.pan_no) {
       const panCheck = await executeQuery(
-        `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, c.company_name
-         FROM employees e
-         LEFT JOIN companies c ON e.company_id = c.company_id
-         WHERE e.pan_no = ?`,
+        `SELECT employee_id FROM employees WHERE pan_no = ?`,
         [employeeData.pan_no]
       );
       if (panCheck.length > 0) {
-        const existing = panCheck[0];
         return res.status(409).json({
           success: false,
-          message: `PAN number already exists! Used by ${existing.first_name} ${existing.last_name} (${existing.employee_code}) in ${existing.company_name}`
+          message: 'This PAN number is already registered. Please contact HR for assistance.'
         });
       }
     }
