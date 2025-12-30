@@ -19,6 +19,7 @@ import CompanyList from './components/company/CompanyList';
 import CompanyForm from './components/company/CompanyForm';
 import CompanySwitcher from './components/common/CompanySwitcher';
 import AuditLogs from './components/audit/AuditLogs';
+import Sidebar from './components/layout/Sidebar';
 import { getSelectedCompany, setSelectedCompany } from './config/api';
 
 // Protected Route Component
@@ -166,146 +167,65 @@ const MainApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                HRMS - Construction Staffing
-              </h1>
-              {/* Show selected company for SUPER_ADMIN or user's company */}
-              {isSuperAdmin ? (
-                selectedCompany ? (
-                  <p className="text-sm text-blue-600 mt-1 font-medium">
-                    Viewing: {selectedCompany.company_name}
+    <div className="min-h-screen bg-slate-100">
+      {/* Sidebar Navigation */}
+      <Sidebar
+        module={module}
+        onModuleChange={handleModuleChange}
+        user={user}
+        isSuperAdmin={isSuperAdmin}
+        onLogout={handleLogout}
+      />
+
+      {/* Main Content Area */}
+      <div className="ml-64 min-h-screen transition-all duration-300">
+        {/* Top Header Bar */}
+        <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-semibold text-slate-800">
+                  {module === 'dashboard' && 'Dashboard'}
+                  {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : 'Employees')}
+                  {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
+                  {module === 'attendance' && 'Attendance Management'}
+                  {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
+                  {module === 'reports' && 'Reports'}
+                  {module === 'companies' && (view === 'form' ? (selectedCompanyId ? 'Edit Company' : 'Add Company') : 'Companies')}
+                  {module === 'audit' && 'Audit Logs'}
+                </h1>
+                {/* Company indicator */}
+                {isSuperAdmin ? (
+                  selectedCompany ? (
+                    <p className="text-sm text-blue-600 mt-0.5 font-medium">
+                      Viewing: {selectedCompany.company_name}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      Viewing: All Companies
+                    </p>
+                  )
+                ) : user?.company_name && (
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    {user.company_name}
                   </p>
-                ) : (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Viewing: All Companies
-                  </p>
-                )
-              ) : user?.company_name && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {user.company_name}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* Company Switcher for SUPER_ADMIN */}
-              {isSuperAdmin && (
-                <CompanySwitcher
-                  selectedCompany={selectedCompany}
-                  onCompanyChange={handleCompanyChange}
-                />
-              )}
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user?.username}</p>
-                <p className="text-xs text-gray-500">{user?.role}</p>
+                )}
               </div>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Logout
-              </button>
+              <div className="flex items-center space-x-4">
+                {/* Company Switcher for SUPER_ADMIN */}
+                {isSuperAdmin && (
+                  <CompanySwitcher
+                    selectedCompany={selectedCompany}
+                    onCompanyChange={handleCompanyChange}
+                  />
+                )}
+              </div>
             </div>
           </div>
+        </header>
 
-          {/* Navigation Tabs */}
-          <div className="mt-4 flex space-x-4 border-b">
-            <button
-              onClick={() => handleModuleChange('dashboard')}
-              className={`pb-2 px-4 font-medium ${
-                module === 'dashboard'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => handleModuleChange('employees')}
-              className={`pb-2 px-4 font-medium ${
-                module === 'employees'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Employees
-            </button>
-            <button
-              onClick={() => handleModuleChange('sites')}
-              className={`pb-2 px-4 font-medium ${
-                module === 'sites'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Sites/Clients
-            </button>
-            <button
-              onClick={() => handleModuleChange('attendance')}
-              className={`pb-2 px-4 font-medium ${
-                module === 'attendance'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Attendance
-            </button>
-            <button
-              onClick={() => handleModuleChange('salary')}
-              className={`pb-2 px-4 font-medium ${
-                module === 'salary'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Salary & Payroll
-            </button>
-            <button
-              onClick={() => handleModuleChange('reports')}
-              className={`pb-2 px-4 font-medium ${
-                module === 'reports'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Reports
-            </button>
-            {isSuperAdmin && (
-              <button
-                onClick={() => handleModuleChange('companies')}
-                className={`pb-2 px-4 font-medium ${
-                  module === 'companies'
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Companies
-              </button>
-            )}
-            {isSuperAdmin && (
-              <button
-                onClick={() => handleModuleChange('audit')}
-                className={`pb-2 px-4 font-medium ${
-                  module === 'audit'
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Audit Logs
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+        {/* Page Content */}
+        <main className="p-6">
           {module === 'dashboard' && (
             <Dashboard key={selectedCompany?.company_id || 'all'} />
           )}
@@ -377,17 +297,8 @@ const MainApp = () => {
           )}
 
           {module === 'audit' && isSuperAdmin && <AuditLogs />}
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white mt-12">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-gray-500 text-sm">
-            Construction Staffing HRMS - Employee Management System
-          </p>
-        </div>
-      </footer>
+        </main>
+      </div>
     </div>
   );
 };

@@ -87,15 +87,26 @@ const AuditLogs = () => {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Audit Logs</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Audit Logs</h1>
+        <p className="text-sm text-slate-500 mt-1">Track all system changes and user activities</p>
+      </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6 flex gap-4 flex-wrap">
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex gap-4 flex-wrap items-center">
+        <div className="flex items-center gap-2">
+          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          <span className="text-sm font-medium text-slate-600">Filters:</span>
+        </div>
+
         <select
           value={filter.table_name}
           onChange={(e) => setFilter({ ...filter, table_name: e.target.value, page: 1 })}
-          className="border rounded px-3 py-2"
+          className="rounded-xl border-slate-200 px-4 py-2.5 border text-slate-700 text-sm focus:border-blue-500 focus:ring-blue-500"
         >
           <option value="">All Tables</option>
           <option value="employees">Employees</option>
@@ -108,7 +119,7 @@ const AuditLogs = () => {
         <select
           value={filter.action}
           onChange={(e) => setFilter({ ...filter, action: e.target.value, page: 1 })}
-          className="border rounded px-3 py-2"
+          className="rounded-xl border-slate-200 px-4 py-2.5 border text-slate-700 text-sm focus:border-blue-500 focus:ring-blue-500"
         >
           <option value="">All Actions</option>
           <option value="CREATE">Create</option>
@@ -120,21 +131,33 @@ const AuditLogs = () => {
 
         <button
           onClick={() => setFilter({ table_name: '', action: '', page: 1 })}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          className="inline-flex items-center px-4 py-2.5 text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors text-sm font-medium"
         >
-          Clear Filters
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Clear
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center">Loading...</div>
+          <div className="p-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <p className="mt-3 text-slate-500">Loading audit logs...</p>
+          </div>
         ) : logs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No audit logs found</div>
+          <div className="p-12 text-center">
+            <svg className="w-16 h-16 mx-auto text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="mt-4 text-slate-500 font-medium">No audit logs found</p>
+            <p className="text-sm text-slate-400 mt-1">Try adjusting your filters</p>
+          </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
@@ -172,24 +195,30 @@ const AuditLogs = () => {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="px-4 py-3 border-t flex justify-between items-center">
-            <span className="text-sm text-gray-500">
-              Page {pagination.page} of {pagination.totalPages} ({pagination.total} records)
+          <div className="px-5 py-4 border-t border-slate-100 flex justify-between items-center bg-slate-50">
+            <span className="text-sm text-slate-600">
+              Page <span className="font-semibold">{pagination.page}</span> of <span className="font-semibold">{pagination.totalPages}</span> ({pagination.total} records)
             </span>
             <div className="flex gap-2">
               <button
                 onClick={() => setFilter({ ...filter, page: filter.page - 1 })}
                 disabled={filter.page === 1}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="inline-flex items-center px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
                 Previous
               </button>
               <button
                 onClick={() => setFilter({ ...filter, page: filter.page + 1 })}
                 disabled={filter.page >= pagination.totalPages}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="inline-flex items-center px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           </div>

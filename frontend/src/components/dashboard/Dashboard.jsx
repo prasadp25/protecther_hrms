@@ -110,9 +110,30 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="ml-4 text-gray-600">Loading dashboard...</p>
+      <div className="space-y-6 animate-pulse">
+        {/* Skeleton Header */}
+        <div className="bg-gradient-to-r from-slate-200 to-slate-300 rounded-xl h-32"></div>
+        {/* Skeleton Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm p-6">
+              <div className="h-4 bg-slate-200 rounded w-24 mb-4"></div>
+              <div className="h-8 bg-slate-200 rounded w-16 mb-2"></div>
+              <div className="h-3 bg-slate-100 rounded w-32"></div>
+            </div>
+          ))}
+        </div>
+        {/* Skeleton Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow-sm p-6 h-80">
+            <div className="h-4 bg-slate-200 rounded w-40 mb-6"></div>
+            <div className="h-48 bg-slate-100 rounded"></div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 h-80">
+            <div className="h-4 bg-slate-200 rounded w-40 mb-6"></div>
+            <div className="h-48 bg-slate-100 rounded"></div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -136,17 +157,24 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 text-white">
-        <h1 className="text-3xl font-bold">Welcome to HRMS Dashboard</h1>
-        <p className="mt-2 text-blue-100">
-          {isSuperAdmin ? (
-            selectedCompany
-              ? `Viewing data for ${selectedCompany.company_name}`
-              : 'Overview of all companies in your organization'
-          ) : (
-            `Overview of ${user?.company_name || 'your company'}'s staffing management`
-          )}
-        </p>
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 rounded-2xl shadow-xl p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Welcome back, {user?.username || 'User'}</h1>
+            <p className="mt-2 text-blue-100">
+              {isSuperAdmin ? (
+                selectedCompany
+                  ? `Viewing data for ${selectedCompany.company_name}`
+                  : 'Overview of all companies in your organization'
+              ) : (
+                `Overview of ${user?.company_name || 'your company'}'s staffing management`
+              )}
+            </p>
+          </div>
+          <div className="hidden md:block text-right">
+            <p className="text-sm text-blue-200">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+        </div>
       </div>
 
       {/* Company-wise Breakdown - SUPER_ADMIN only when viewing all companies */}
@@ -262,132 +290,90 @@ const Dashboard = () => {
       {/* Quick Stats Cards - Row 1 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Employees */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Employees</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{employees.total}</p>
+              <p className="text-sm font-medium text-slate-500">Total Employees</p>
+              <p className="text-3xl font-bold text-slate-800 mt-2">{employees.total}</p>
             </div>
-            <div className="bg-blue-100 rounded-full p-3">
-              <svg
-                className="w-8 h-8 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
+            <div className="bg-blue-50 rounded-xl p-3">
+              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <div className="mt-4">
-            <span className="text-green-600 text-sm font-semibold">
+          <div className="mt-4 flex items-center space-x-3">
+            <span className="inline-flex items-center px-2 py-1 rounded-lg bg-green-50 text-green-700 text-xs font-semibold">
               {employees.active} Active
             </span>
-            <span className="text-gray-400 mx-2">•</span>
-            <span className="text-red-600 text-sm">{employees.resigned} Resigned</span>
+            <span className="inline-flex items-center px-2 py-1 rounded-lg bg-red-50 text-red-700 text-xs font-semibold">
+              {employees.resigned} Resigned
+            </span>
           </div>
         </div>
 
         {/* Monthly Salary */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Monthly Salary</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-sm font-medium text-slate-500">Monthly Salary</p>
+              <p className="text-3xl font-bold text-slate-800 mt-2">
                 {formatCurrency(salary.totalMonthly)}
               </p>
             </div>
-            <div className="bg-green-100 rounded-full p-3">
-              <svg
-                className="w-8 h-8 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
+            <div className="bg-green-50 rounded-xl p-3">
+              <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-gray-600 text-sm">Avg: {formatCurrency(salary.average)}</span>
+            <span className="text-slate-500 text-sm">Avg: <span className="font-semibold text-slate-700">{formatCurrency(salary.average)}</span></span>
           </div>
         </div>
 
         {/* Payslips This Month */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Payslips (This Month)</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-sm font-medium text-slate-500">Payslips (This Month)</p>
+              <p className="text-3xl font-bold text-slate-800 mt-2">
                 {payslips.currentMonth.total}
               </p>
             </div>
-            <div className="bg-purple-100 rounded-full p-3">
-              <svg
-                className="w-8 h-8 text-purple-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+            <div className="bg-purple-50 rounded-xl p-3">
+              <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
           </div>
-          <div className="mt-4">
-            <span className="text-green-600 text-sm font-semibold">
+          <div className="mt-4 flex items-center space-x-3">
+            <span className="inline-flex items-center px-2 py-1 rounded-lg bg-green-50 text-green-700 text-xs font-semibold">
               {payslips.currentMonth.paid} Paid
             </span>
-            <span className="text-gray-400 mx-2">•</span>
-            <span className="text-yellow-600 text-sm">
+            <span className="inline-flex items-center px-2 py-1 rounded-lg bg-amber-50 text-amber-700 text-xs font-semibold">
               {payslips.currentMonth.pending} Pending
             </span>
           </div>
         </div>
 
         {/* Pending Payments */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 border border-slate-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Pending Payments</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-sm font-medium text-slate-500">Pending Payments</p>
+              <p className="text-3xl font-bold text-slate-800 mt-2">
                 {formatCurrency(payslips.currentMonth.pendingAmount)}
               </p>
             </div>
-            <div className="bg-yellow-100 rounded-full p-3">
-              <svg
-                className="w-8 h-8 text-yellow-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
+            <div className="bg-amber-50 rounded-xl p-3">
+              <svg className="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-gray-600 text-sm">
-              Paid: {formatCurrency(payslips.currentMonth.paidAmount)}
-            </span>
+            <span className="text-slate-500 text-sm">Paid: <span className="font-semibold text-green-600">{formatCurrency(payslips.currentMonth.paidAmount)}</span></span>
           </div>
         </div>
       </div>
@@ -1119,8 +1105,11 @@ const Dashboard = () => {
       <div className="text-center">
         <button
           onClick={loadDashboardData}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          className="inline-flex items-center px-6 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all shadow-sm hover:shadow-md font-medium"
         >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
           Refresh Dashboard
         </button>
       </div>
