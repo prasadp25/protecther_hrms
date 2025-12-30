@@ -517,18 +517,19 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Site-wise Breakdown - Comprehensive Construction Staffing View */}
-      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg shadow-lg p-6 border-2 border-blue-200">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-              <svg className="w-8 h-8 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              Site-wise Breakdown
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">Construction staffing and salary distribution by project/site</p>
-          </div>
+      {/* Site-wise Breakdown - SUPER_ADMIN only (Financial Analytics) */}
+      {isSuperAdmin && (
+        <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg shadow-lg p-6 border-2 border-blue-200">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <svg className="w-8 h-8 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Site-wise Breakdown
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Construction staffing and salary distribution by project/site</p>
+            </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-blue-600">{sites.active}</p>
             <p className="text-xs text-gray-600">Active Projects</p>
@@ -751,7 +752,8 @@ const Dashboard = () => {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Employee Status Distribution - PIE CHART */}
@@ -850,11 +852,12 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Charts Section - Bar and Line Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* BAR CHART - Salary Comparison */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Salary Comparison</h3>
+      {/* Charts Section - SUPER_ADMIN only (Financial Analytics) */}
+      {isSuperAdmin && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* BAR CHART - Salary Comparison */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Salary Comparison</h3>
 
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
@@ -961,7 +964,8 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Recent Activities, Birthdays & Recent Payslips */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
