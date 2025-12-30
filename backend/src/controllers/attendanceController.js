@@ -1,4 +1,5 @@
 const { executeQuery } = require('../config/database');
+const { logAttendanceFinalize } = require('../utils/auditLogger');
 
 // ==============================================
 // GET ATTENDANCE BY MONTH
@@ -178,7 +179,7 @@ const saveAttendance = async (req, res) => {
 // ==============================================
 const finalizeAttendance = async (req, res) => {
   try {
-    const { month } = req.body;
+    const { month, site_id } = req.body;
 
     if (!month) {
       return res.status(400).json({
@@ -187,13 +188,22 @@ const finalizeAttendance = async (req, res) => {
       });
     }
 
-    const query = `
+    let query = `
       UPDATE attendance
       SET status = 'FINALIZED'
       WHERE attendance_month = ? AND status = 'DRAFT'
     `;
+    const params = [month];
 
-    const result = await executeQuery(query, [month]);
+    if (site_id) {
+      query += ' AND site_id = ?';
+      params.push(site_id);
+    }
+
+    const result = await executeQuery(query, params);
+
+    // Log audit trail
+    await logAttendanceFinalize(month, site_id || 'all', result.affectedRows, req);
 
     res.status(200).json({
       success: true,

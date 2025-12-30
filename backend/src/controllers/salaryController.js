@@ -6,6 +6,7 @@ const {
   buildPaginatedResponse
 } = require('../utils/pagination');
 const { asyncHandler } = require('../utils/errors');
+const { logSalaryCreate, logSalaryUpdate } = require('../utils/auditLogger');
 
 // ==============================================
 // GET ALL SALARIES (with pagination)
@@ -229,6 +230,14 @@ const createSalary = async (req, res) => {
 
     const result = await executeQuery(query, params);
 
+    // Log audit trail
+    await logSalaryCreate(result.insertId, {
+      employee_id: salaryData.employee_id,
+      basic_salary: basicSalary,
+      gross_salary: grossSalary,
+      net_salary: netSalary
+    }, req);
+
     res.status(201).json({
       success: true,
       message: 'Salary created successfully',
@@ -256,9 +265,9 @@ const updateSalary = async (req, res) => {
     const { id } = req.params;
     const salaryData = req.body;
 
-    // Check if salary exists
+    // Get existing salary for audit log
     const existing = await executeQuery(
-      'SELECT salary_id FROM salaries WHERE salary_id = ?',
+      'SELECT * FROM salaries WHERE salary_id = ?',
       [id]
     );
 
@@ -268,6 +277,8 @@ const updateSalary = async (req, res) => {
         message: 'Salary record not found'
       });
     }
+
+    const oldSalaryData = existing[0];
 
     // Recalculate if any salary components are updated
     const basicSalary = parseFloat(salaryData.basic_salary) || 0;
@@ -308,10 +319,23 @@ const updateSalary = async (req, res) => {
       });
     }
 
+    // Add changed_by for audit
+    fields.push('changed_by = ?');
+    values.push(req.user?.user_id || null);
     values.push(id);
 
     const query = `UPDATE salaries SET ${fields.join(', ')} WHERE salary_id = ?`;
     await executeQuery(query, values);
+
+    // Log audit trail
+    await logSalaryUpdate(id, oldSalaryData, {
+      basic_salary: basicSalary,
+      hra: hra,
+      gross_salary: grossSalary,
+      net_salary: netSalary,
+      pf_deduction: pfDeduction,
+      esi_deduction: esiDeduction
+    }, req, salaryData.change_reason || null);
 
     res.status(200).json({
       success: true,

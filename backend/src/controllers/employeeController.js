@@ -8,6 +8,7 @@ const {
 const { asyncHandler } = require('../utils/errors');
 const { getCompanyFilter } = require('../middleware/auth');
 const { validateEmployeeData } = require('../utils/validators');
+const { logEmployeeCreate, logEmployeeUpdate, logEmployeeDelete } = require('../utils/auditLogger');
 
 // ==============================================
 // GET ALL EMPLOYEES (with pagination)
@@ -315,6 +316,9 @@ const createEmployee = async (req, res) => {
 
     const result = await executeQuery(query, params);
 
+    // Log audit trail
+    await logEmployeeCreate(result.insertId, employeeData, req);
+
     res.status(201).json({
       success: true,
       message: 'Employee created successfully',
@@ -351,8 +355,8 @@ const updateEmployee = async (req, res) => {
     const employeeData = req.body;
     const companyId = getCompanyFilter(req);
 
-    // Check if employee exists (within user's company)
-    let checkQuery = 'SELECT employee_id FROM employees WHERE employee_id = ?';
+    // Get existing employee data (for audit log)
+    let checkQuery = 'SELECT * FROM employees WHERE employee_id = ?';
     const checkParams = [id];
 
     if (companyId) {
@@ -368,6 +372,9 @@ const updateEmployee = async (req, res) => {
         message: 'Employee not found'
       });
     }
+
+    // Store old values for audit
+    const oldEmployeeData = existing[0];
 
     // Handle file uploads
     if (req.files) {
@@ -448,10 +455,15 @@ const updateEmployee = async (req, res) => {
       });
     }
 
+    // Add audit fields
+    values.push(req.user?.user_id || null);
     values.push(id);
 
-    const query = `UPDATE employees SET ${fields.join(', ')} WHERE employee_id = ?`;
+    const query = `UPDATE employees SET ${fields.join(', ')}, last_modified_by = ?, last_modified_at = NOW() WHERE employee_id = ?`;
     await executeQuery(query, values);
+
+    // Log audit trail
+    await logEmployeeUpdate(id, oldEmployeeData, employeeData, req);
 
     res.status(200).json({
       success: true,
@@ -483,8 +495,8 @@ const deleteEmployee = async (req, res) => {
     const { id } = req.params;
     const companyId = getCompanyFilter(req);
 
-    // Check if employee exists (within user's company)
-    let checkQuery = 'SELECT employee_id FROM employees WHERE employee_id = ?';
+    // Get employee data for audit log
+    let checkQuery = 'SELECT * FROM employees WHERE employee_id = ?';
     const checkParams = [id];
 
     if (companyId) {
@@ -501,10 +513,12 @@ const deleteEmployee = async (req, res) => {
       });
     }
 
+    const employeeData = existing[0];
+
     // Soft delete - set status to INACTIVE
     await executeQuery(
-      'UPDATE employees SET status = ?, date_of_leaving = NOW() WHERE employee_id = ?',
-      ['INACTIVE', id]
+      'UPDATE employees SET status = ?, date_of_leaving = NOW(), last_modified_by = ? WHERE employee_id = ?',
+      ['INACTIVE', req.user?.user_id || null, id]
     );
 
     // Also deactivate salary records
@@ -512,6 +526,9 @@ const deleteEmployee = async (req, res) => {
       'UPDATE salaries SET status = ? WHERE employee_id = ?',
       ['INACTIVE', id]
     );
+
+    // Log audit trail
+    await logEmployeeDelete(id, employeeData, req);
 
     res.status(200).json({
       success: true,
