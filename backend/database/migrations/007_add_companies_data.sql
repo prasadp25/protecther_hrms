@@ -26,18 +26,43 @@ ON DUPLICATE KEY UPDATE company_name = VALUES(company_name), status = VALUES(sta
 SELECT company_id, company_code, company_name, status FROM companies;
 
 -- ==============================================
--- OPTIONAL: Update existing data to correct company
--- Uncomment and modify as needed
+-- ASSIGN ALL EXISTING DATA TO PROTECTHER LLP
 -- ==============================================
 
--- Example: If all existing employees belong to S&S
--- UPDATE employees SET company_id = (SELECT company_id FROM companies WHERE company_code = 'S&S') WHERE company_id IS NULL OR company_id = 1;
+-- Get PROTECTHER company ID
+SET @protecther_id = (SELECT company_id FROM companies WHERE company_code = 'PROTECTHER');
 
--- Example: If all existing sites belong to S&S
--- UPDATE sites SET company_id = (SELECT company_id FROM companies WHERE company_code = 'S&S') WHERE company_id IS NULL OR company_id = 1;
+-- Update all existing employees to PROTECTHER LLP
+UPDATE employees SET company_id = @protecther_id WHERE company_id IS NULL OR company_id = 1;
 
--- Example: If all existing salaries belong to S&S
--- UPDATE salaries SET company_id = (SELECT company_id FROM companies WHERE company_code = 'S&S') WHERE company_id IS NULL OR company_id = 1;
+-- Update all existing sites to PROTECTHER LLP
+UPDATE sites SET company_id = @protecther_id WHERE company_id IS NULL OR company_id = 1;
+
+-- Update all existing salaries to PROTECTHER LLP
+UPDATE salaries SET company_id = @protecther_id WHERE company_id IS NULL OR company_id = 1;
+
+-- Update all existing payslips to PROTECTHER LLP
+UPDATE payslips SET company_id = @protecther_id WHERE company_id IS NULL OR company_id = 1;
+
+-- Update all existing attendance to PROTECTHER LLP
+UPDATE attendance SET company_id = @protecther_id WHERE company_id IS NULL OR company_id = 1;
+
+-- Update all existing users (except SUPER_ADMIN) to PROTECTHER LLP
+UPDATE users SET company_id = @protecther_id WHERE company_id IS NULL AND role != 'SUPER_ADMIN';
+
+-- Update all existing audit logs to PROTECTHER LLP
+UPDATE audit_logs SET company_id = @protecther_id WHERE company_id IS NULL;
+
+-- ==============================================
+-- VERIFY DATA MIGRATION
+-- ==============================================
+SELECT 'Employees' as table_name, COUNT(*) as count FROM employees WHERE company_id = @protecther_id
+UNION ALL
+SELECT 'Sites', COUNT(*) FROM sites WHERE company_id = @protecther_id
+UNION ALL
+SELECT 'Salaries', COUNT(*) FROM salaries WHERE company_id = @protecther_id
+UNION ALL
+SELECT 'Users', COUNT(*) FROM users WHERE company_id = @protecther_id;
 
 -- ==============================================
 -- CREATE SUPER_ADMIN USER
