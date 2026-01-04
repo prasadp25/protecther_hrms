@@ -219,9 +219,28 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     }
   };
 
+  // Prevent special characters in number inputs
+  const handleKeyDown = (e) => {
+    // Block: minus, plus, 'e' (exponential)
+    if (['-', '+', 'e', 'E'].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  // Sanitize number input - remove leading zeros and non-numeric chars
+  const sanitizeNumber = (value) => {
+    // Remove any non-numeric characters except decimal
+    let sanitized = value.replace(/[^0-9.]/g, '');
+    // Remove leading zeros (but keep "0" and "0.x")
+    sanitized = sanitized.replace(/^0+(?=\d)/, '');
+    return parseFloat(sanitized) || 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const numValue = parseFloat(value) || 0;
+
+    // For number fields, sanitize the input
+    const numValue = name === 'effectiveFrom' ? value : sanitizeNumber(value);
 
     // Mark components as manually edited
     const earningFields = ['basicSalary', 'hra', 'incentiveAllowance'];
@@ -233,7 +252,7 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     setFormData((prev) => {
       const newData = {
         ...prev,
-        [name]: name === 'effectiveFrom' ? value : numValue,
+        [name]: numValue,
       };
 
       // Skip auto-calculations for manual entry companies (S&S)
@@ -532,9 +551,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="basicSalary"
               value={formData.basicSalary}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
             />
             {errors.basicSalary && <p className={errorClasses}>{errors.basicSalary}</p>}
           </div>
@@ -546,9 +566,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="hra"
               value={formData.hra || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
             />
           </div>
 
@@ -559,9 +580,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="incentiveAllowance"
               value={formData.incentiveAllowance || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
             />
           </div>
         </div>
@@ -585,9 +607,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="pfDeduction"
               value={formData.pfDeduction || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={isManualEntryCompany ? inputClasses : `${inputClasses} bg-slate-100`}
               min="0"
-              step="0.01"
+              step="1"
               readOnly={!isManualEntryCompany}
               title={isManualEntryCompany ? "Enter PF amount manually" : "Auto-calculated based on Basic Salary"}
             />
@@ -603,9 +626,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="esiDeduction"
               value={formData.esiDeduction || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
               placeholder="Enter ESI amount (0 if not applicable)"
             />
           </div>
@@ -617,9 +641,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="professionalTax"
               value={formData.professionalTax || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
             />
           </div>
 
@@ -630,9 +655,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="mediclaimDeduction"
               value={formData.mediclaimDeduction || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
             />
           </div>
 
@@ -643,9 +669,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="advanceDeduction"
               value={formData.advanceDeduction || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
             />
           </div>
 
@@ -656,9 +683,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               name="otherDeductions"
               value={formData.otherDeductions || ''}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className={inputClasses}
               min="0"
-              step="0.01"
+              step="1"
             />
           </div>
         </div>
