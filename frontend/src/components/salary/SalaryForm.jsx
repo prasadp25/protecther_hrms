@@ -219,10 +219,19 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     }
   };
 
-  // Prevent special characters in number inputs
+  // Only allow numbers in salary inputs
   const handleKeyDown = (e) => {
-    // Block: minus, plus, 'e' (exponential)
-    if (['-', '+', 'e', 'E'].includes(e.key)) {
+    // Allow: backspace, delete, tab, escape, enter, arrows
+    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    if (allowedKeys.includes(e.key)) {
+      return;
+    }
+    // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+    if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) {
+      return;
+    }
+    // Block anything that's not a number or decimal point
+    if (!/^[0-9.]$/.test(e.key)) {
       e.preventDefault();
     }
   };
@@ -547,14 +556,14 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           <div>
             <label className={labelClasses}>Basic Salary *</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="basicSalary"
-              value={formData.basicSalary}
+              value={formData.basicSalary || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
+              placeholder="Enter basic salary"
             />
             {errors.basicSalary && <p className={errorClasses}>{errors.basicSalary}</p>}
           </div>
@@ -562,28 +571,28 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           <div>
             <label className={labelClasses}>HRA (House Rent Allowance)</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="hra"
               value={formData.hra || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
+              placeholder="Enter HRA"
             />
           </div>
 
           <div>
             <label className={labelClasses}>Incentive / Other Allowances</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="incentiveAllowance"
               value={formData.incentiveAllowance || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
+              placeholder="Enter incentive"
             />
           </div>
         </div>
@@ -603,15 +612,15 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
               PF Deduction {!isManualEntryCompany && '(Auto-calculated)'}
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="pfDeduction"
               value={formData.pfDeduction || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={isManualEntryCompany ? inputClasses : `${inputClasses} bg-slate-100`}
-              min="0"
-              step="1"
               readOnly={!isManualEntryCompany}
+              placeholder={isManualEntryCompany ? "Enter PF amount" : ""}
               title={isManualEntryCompany ? "Enter PF amount manually" : "Auto-calculated based on Basic Salary"}
             />
             {!isManualEntryCompany && (
@@ -622,71 +631,70 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           <div>
             <label className={labelClasses}>ESI Deduction (Manual Entry)</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="esiDeduction"
               value={formData.esiDeduction || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
-              placeholder="Enter ESI amount (0 if not applicable)"
+              placeholder="Enter ESI amount"
             />
           </div>
 
           <div>
             <label className={labelClasses}>Professional Tax (PT)</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="professionalTax"
               value={formData.professionalTax || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
+              placeholder="Enter PT amount"
             />
           </div>
 
           <div>
             <label className={labelClasses}>Mediclaim</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="mediclaimDeduction"
               value={formData.mediclaimDeduction || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
+              placeholder="Enter mediclaim"
             />
           </div>
 
           <div>
             <label className={labelClasses}>Advance Deduction</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="advanceDeduction"
               value={formData.advanceDeduction || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
+              placeholder="Enter advance"
             />
           </div>
 
           <div>
             <label className={labelClasses}>Other Deductions</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="otherDeductions"
               value={formData.otherDeductions || ''}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               className={inputClasses}
-              min="0"
-              step="1"
+              placeholder="Enter other deductions"
             />
           </div>
         </div>
