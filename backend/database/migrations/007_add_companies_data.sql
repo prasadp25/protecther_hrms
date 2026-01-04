@@ -40,9 +40,25 @@ SELECT company_id, company_code, company_name, status FROM companies;
 -- UPDATE salaries SET company_id = (SELECT company_id FROM companies WHERE company_code = 'S&S') WHERE company_id IS NULL OR company_id = 1;
 
 -- ==============================================
+-- CREATE SUPER_ADMIN USER
+-- ==============================================
+-- Username: superadmin
+-- Password: SuperAdmin@123 (CHANGE THIS AFTER FIRST LOGIN!)
+
+INSERT INTO users (username, email, password_hash, role, company_id, status) VALUES
+('superadmin', 'superadmin@hrms.com', '$2b$10$cfqJXs1//JNP1cbNQrWK2uTJANxJVu3vmXtUovZsz8XsKWTxaDs5O', 'SUPER_ADMIN', NULL, 'ACTIVE')
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = 'SUPER_ADMIN', status = 'ACTIVE';
+
+-- ==============================================
+-- VERIFY SUPER_ADMIN CREATED
+-- ==============================================
+SELECT user_id, username, email, role, company_id, status FROM users WHERE role = 'SUPER_ADMIN';
+
+-- ==============================================
 -- NOTES FOR PRODUCTION:
 -- ==============================================
 -- 1. First run: 005_add_multi_company_support.sql (if not already done)
 -- 2. Then run: this file (007_add_companies_data.sql)
 -- 3. Update existing data to correct company if needed
--- 4. Create/update users with correct company_id
+-- 4. Login as superadmin / SuperAdmin@123
+-- 5. CHANGE THE PASSWORD IMMEDIATELY!
