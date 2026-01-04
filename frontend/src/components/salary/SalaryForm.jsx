@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
+import authService from '../../services/authService';
+import { getSelectedCompany } from '../../config/api';
+
+// Company codes that use MANUAL salary entry (no auto-calculation)
+const MANUAL_ENTRY_COMPANIES = ['SNS', 'S&S']; // Add S&S company codes here
 
 // Percentage split configurations
 // HRA is calculated as percentage of Basic, not Gross
@@ -25,6 +30,29 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  // Check if current company uses manual entry
+  const [isManualEntryCompany, setIsManualEntryCompany] = useState(false);
+
+  // Detect company on mount
+  useEffect(() => {
+    const user = authService.getUser();
+    let companyCode = null;
+
+    if (user?.role === 'SUPER_ADMIN') {
+      // For SUPER_ADMIN, check selected company
+      const selectedCompany = getSelectedCompany();
+      companyCode = selectedCompany?.company_code;
+    } else {
+      // For regular users, use their company
+      companyCode = user?.company_code;
+    }
+
+    // Check if this company uses manual entry
+    if (companyCode && MANUAL_ENTRY_COMPANIES.includes(companyCode.toUpperCase())) {
+      setIsManualEntryCompany(true);
+    }
+  }, []);
 
   // Backward calculation state
   const [ctcAmount, setCtcAmount] = useState(0);
@@ -208,24 +236,26 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         [name]: name === 'effectiveFrom' ? value : numValue,
       };
 
-      // Auto-calculate PF based on Basic Salary
-      if (name === 'basicSalary') {
-        if (numValue >= 15000) {
-          newData.pfDeduction = 1800;
-        } else {
-          newData.pfDeduction = Math.round(numValue * 0.12);
+      // Skip auto-calculations for manual entry companies (S&S)
+      if (!isManualEntryCompany) {
+        // Auto-calculate PF based on Basic Salary
+        if (name === 'basicSalary') {
+          if (numValue >= 15000) {
+            newData.pfDeduction = 1800;
+          } else {
+            newData.pfDeduction = Math.round(numValue * 0.12);
+          }
         }
-      }
-
-      // Update PT based on state when components change (ESI is now manual)
-      if (earningFields.includes(name)) {
-        const basic = name === 'basicSalary' ? numValue : newData.basicSalary;
-        const hra = name === 'hra' ? numValue : newData.hra;
-        const incentive = name === 'incentiveAllowance' ? numValue : newData.incentiveAllowance;
-        const grossSalary = basic + hra + incentive;
 
         // Update PT based on state when components change
-        newData.professionalTax = PT_RULES[ptState].calculate(grossSalary);
+        if (earningFields.includes(name)) {
+          const basic = name === 'basicSalary' ? numValue : newData.basicSalary;
+          const hra = name === 'hra' ? numValue : newData.hra;
+          const incentive = name === 'incentiveAllowance' ? numValue : newData.incentiveAllowance;
+          const grossSalary = basic + hra + incentive;
+
+          newData.professionalTax = PT_RULES[ptState].calculate(grossSalary);
+        }
       }
 
       return newData;
@@ -346,9 +376,16 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-slate-100">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-2xl font-bold text-slate-800">
-          {salaryId ? 'Edit Salary Structure' : 'Add New Salary Structure'}
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-slate-800">
+            {salaryId ? 'Edit Salary Structure' : 'Add New Salary Structure'}
+          </h2>
+          {isManualEntryCompany && (
+            <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full border border-orange-200">
+              Manual Entry Mode
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Employee Selection */}
@@ -393,77 +430,91 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         </div>
       </div>
 
-      {/* CTC Entry - Backward Calculation */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
-        <h3 className={sectionTitleClasses}>
-          <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-          Quick Entry (CTC to Components)
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className={labelClasses}>Monthly CTC (Gross)</label>
-            <input
-              type="number"
-              value={ctcAmount || ''}
-              onChange={handleCTCChange}
-              className={`${inputClasses} bg-white font-semibold text-lg`}
-              min="0"
-              placeholder="Enter CTC amount"
-            />
+      {/* CTC Entry - Backward Calculation (Hidden for manual entry companies like S&S) */}
+      {!isManualEntryCompany && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+          <h3 className={sectionTitleClasses}>
+            <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Quick Entry (CTC to Components)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className={labelClasses}>Monthly CTC (Gross)</label>
+              <input
+                type="number"
+                value={ctcAmount || ''}
+                onChange={handleCTCChange}
+                className={`${inputClasses} bg-white font-semibold text-lg`}
+                min="0"
+                placeholder="Enter CTC amount"
+              />
+            </div>
+
+            <div>
+              <label className={labelClasses}>Split Type</label>
+              <select
+                value={splitType}
+                onChange={handleSplitChange}
+                className={`${inputClasses} bg-white`}
+              >
+                {Object.entries(SPLIT_OPTIONS).map(([key, config]) => (
+                  <option key={key} value={key}>{config.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClasses}>PT State</label>
+              <select
+                value={ptState}
+                onChange={handleStateChange}
+                className={`${inputClasses} bg-white`}
+              >
+                {Object.entries(PT_RULES).map(([key, config]) => (
+                  <option key={key} value={key}>{config.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleRecalculate}
+                className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium shadow-lg shadow-indigo-500/25"
+                disabled={ctcAmount <= 0}
+              >
+                Recalculate
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className={labelClasses}>Split Type</label>
-            <select
-              value={splitType}
-              onChange={handleSplitChange}
-              className={`${inputClasses} bg-white`}
-            >
-              {Object.entries(SPLIT_OPTIONS).map(([key, config]) => (
-                <option key={key} value={key}>{config.label}</option>
-              ))}
-            </select>
-          </div>
+          {isComponentsEdited && (
+            <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-xl text-sm text-yellow-800">
+              Components have been manually edited. Click "Recalculate" to reset from CTC.
+            </div>
+          )}
 
-          <div>
-            <label className={labelClasses}>PT State</label>
-            <select
-              value={ptState}
-              onChange={handleStateChange}
-              className={`${inputClasses} bg-white`}
-            >
-              {Object.entries(PT_RULES).map(([key, config]) => (
-                <option key={key} value={key}>{config.name}</option>
-              ))}
-            </select>
-          </div>
+          {ctcAmount > 0 && !isComponentsEdited && (
+            <div className="mt-3 text-sm text-green-700 font-medium">
+              Components auto-calculated from CTC. You can edit individual fields if needed.
+            </div>
+          )}
+        </div>
+      )}
 
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={handleRecalculate}
-              className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium shadow-lg shadow-indigo-500/25"
-              disabled={ctcAmount <= 0}
-            >
-              Recalculate
-            </button>
+      {/* Manual Entry Notice for S&S */}
+      {isManualEntryCompany && (
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-5 border border-orange-100">
+          <div className="flex items-center text-orange-700">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span className="font-medium">Manual Entry Mode - Enter all salary components manually. No auto-calculations.</span>
           </div>
         </div>
-
-        {isComponentsEdited && (
-          <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-xl text-sm text-yellow-800">
-            Components have been manually edited. Click "Recalculate" to reset from CTC.
-          </div>
-        )}
-
-        {ctcAmount > 0 && !isComponentsEdited && (
-          <div className="mt-3 text-sm text-green-700 font-medium">
-            Components auto-calculated from CTC. You can edit individual fields if needed.
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Earnings */}
       <div className={sectionClasses}>
@@ -527,20 +578,22 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className={labelClasses}>
-              PF Deduction (Auto-calculated)
+              PF Deduction {!isManualEntryCompany && '(Auto-calculated)'}
             </label>
             <input
               type="number"
               name="pfDeduction"
               value={formData.pfDeduction || ''}
               onChange={handleChange}
-              className={`${inputClasses} bg-slate-100`}
+              className={isManualEntryCompany ? inputClasses : `${inputClasses} bg-slate-100`}
               min="0"
               step="0.01"
-              readOnly
-              title="Auto-calculated based on Basic Salary"
+              readOnly={!isManualEntryCompany}
+              title={isManualEntryCompany ? "Enter PF amount manually" : "Auto-calculated based on Basic Salary"}
             />
-            <p className="mt-1 text-xs text-slate-500">Basic ≥15000: 1800, else 12%</p>
+            {!isManualEntryCompany && (
+              <p className="mt-1 text-xs text-slate-500">Basic ≥15000: 1800, else 12%</p>
+            )}
           </div>
 
           <div>
