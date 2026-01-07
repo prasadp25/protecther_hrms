@@ -455,11 +455,9 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    // Add audit fields
-    values.push(req.user?.user_id || null);
     values.push(id);
 
-    const query = `UPDATE employees SET ${fields.join(', ')}, last_modified_by = ?, last_modified_at = NOW() WHERE employee_id = ?`;
+    const query = `UPDATE employees SET ${fields.join(', ')} WHERE employee_id = ?`;
     await executeQuery(query, values);
 
     // Log audit trail
@@ -517,8 +515,8 @@ const deleteEmployee = async (req, res) => {
 
     // Soft delete - set status to INACTIVE
     await executeQuery(
-      'UPDATE employees SET status = ?, date_of_leaving = NOW(), last_modified_by = ? WHERE employee_id = ?',
-      ['INACTIVE', req.user?.user_id || null, id]
+      'UPDATE employees SET status = ?, date_of_leaving = NOW() WHERE employee_id = ?',
+      ['INACTIVE', id]
     );
 
     // Also deactivate salary records
