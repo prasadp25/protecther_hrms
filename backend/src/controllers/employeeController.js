@@ -67,11 +67,13 @@ const getAllEmployees = asyncHandler(async (req, res) => {
   const countResult = await executeQuery(countQuery, params);
   const total = countResult[0].total;
 
-  // Get paginated data
+  // Get paginated data (includes salary status)
   const dataQuery = `
-    SELECT e.*, s.site_name, s.site_code
+    SELECT e.*, s.site_name, s.site_code,
+           CASE WHEN sal.salary_id IS NOT NULL THEN 1 ELSE 0 END as has_salary
     FROM employees e
     LEFT JOIN sites s ON e.site_id = s.site_id
+    LEFT JOIN salaries sal ON e.employee_id = sal.employee_id AND sal.status = 'ACTIVE'
     ${whereClause}
     ORDER BY e.${sortBy} ${sortOrder}
     LIMIT ? OFFSET ?
@@ -116,6 +118,45 @@ const getActiveEmployees = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch active employees',
+      error: error.message
+    });
+  }
+};
+
+// ==============================================
+// GET EMPLOYEES WITHOUT ACTIVE SALARY
+// ==============================================
+const getEmployeesWithoutSalary = async (req, res) => {
+  try {
+    const companyId = getCompanyFilter(req);
+    let query = `
+      SELECT e.*, s.site_name, s.site_code
+      FROM employees e
+      LEFT JOIN sites s ON e.site_id = s.site_id
+      LEFT JOIN salaries sal ON e.employee_id = sal.employee_id AND sal.status = 'ACTIVE'
+      WHERE e.status = 'ACTIVE' AND sal.salary_id IS NULL
+    `;
+    const params = [];
+
+    if (companyId) {
+      query += ` AND e.company_id = ?`;
+      params.push(companyId);
+    }
+
+    query += ` ORDER BY e.first_name, e.last_name`;
+
+    const employees = await executeQuery(query, params);
+
+    res.status(200).json({
+      success: true,
+      count: employees.length,
+      data: employees
+    });
+  } catch (error) {
+    console.error('Get employees without salary error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch employees without salary',
       error: error.message
     });
   }
@@ -193,6 +234,8 @@ const createEmployee = async (req, res) => {
     // Validate employee data (Aadhaar, PAN, Mobile, etc.)
     const validation = validateEmployeeData(employeeData);
     if (!validation.valid) {
+      console.log('❌ Employee validation failed:', validation.errors);
+      console.log('📋 Employee data received:', JSON.stringify(employeeData, null, 2));
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -264,11 +307,11 @@ const createEmployee = async (req, res) => {
         dob, gender, marital_status, qualification, address, city, state, pincode,
         aadhaar_no, aadhaar_card_url, pan_no, pan_card_url, uan_no, pf_no, esi_no,
         account_number, ifsc_code, bank_name, branch_name,
-        designation, grade, department, date_of_joining, date_of_leaving,
+        designation, department, date_of_joining, date_of_leaving,
         offer_letter_issue_date, offer_letter_url, status, site_id,
         emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship,
         wp_policy, hospital_insurance_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -279,37 +322,36 @@ const createEmployee = async (req, res) => {
       employeeData.mobile,
       employeeData.alternate_mobile || null,
       employeeData.email || null,
-      employeeData.dob,
+      employeeData.dob || null,
       employeeData.gender || null,
       employeeData.marital_status || null,
       employeeData.qualification || null,
-      employeeData.address,
+      employeeData.address || null,
       employeeData.city || null,
       employeeData.state || null,
       employeeData.pincode || null,
-      employeeData.aadhaar_no,
+      employeeData.aadhaar_no || null,
       employeeData.aadhaar_card_url || null,
-      employeeData.pan_no,
+      employeeData.pan_no || null,
       employeeData.pan_card_url || null,
       employeeData.uan_no || null,
       employeeData.pf_no || null,
       employeeData.esi_no || null,
-      employeeData.account_number,
-      employeeData.ifsc_code,
-      employeeData.bank_name,
+      employeeData.account_number || null,
+      employeeData.ifsc_code || null,
+      employeeData.bank_name || null,
       employeeData.branch_name || null,
-      employeeData.designation,
-      employeeData.grade || null,
-      employeeData.department,
-      employeeData.date_of_joining,
+      employeeData.designation || null,
+      employeeData.department || null,
+      employeeData.date_of_joining || null,
       employeeData.date_of_leaving || null,
-      employeeData.offer_letter_issue_date,
+      employeeData.offer_letter_issue_date || null,
       employeeData.offer_letter_url || null,
       employeeData.status || 'ACTIVE',
       employeeData.site_id || null,
-      employeeData.emergency_contact_name,
-      employeeData.emergency_contact_mobile,
-      employeeData.emergency_contact_relationship,
+      employeeData.emergency_contact_name || null,
+      employeeData.emergency_contact_mobile || null,
+      employeeData.emergency_contact_relationship || null,
       employeeData.wp_policy || 'No',
       employeeData.hospital_insurance_id || null
     ];
@@ -545,6 +587,7 @@ const deleteEmployee = async (req, res) => {
 module.exports = {
   getAllEmployees,
   getActiveEmployees,
+  getEmployeesWithoutSalary,
   getEmployeeById,
   createEmployee,
   updateEmployee,

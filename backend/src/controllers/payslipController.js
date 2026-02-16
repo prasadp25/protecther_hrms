@@ -155,7 +155,7 @@ const generatePayslip = async (req, res) => {
 
     // Get attendance data from attendance table
     const attendance = await executeQuery(
-      'SELECT days_present, total_days_in_month FROM attendance WHERE employee_id = ? AND attendance_month = ?',
+      'SELECT days_present, total_days_in_month, status FROM attendance WHERE employee_id = ? AND attendance_month = ?',
       [employee_id, monthStr]
     );
 
@@ -167,6 +167,14 @@ const generatePayslip = async (req, res) => {
     }
 
     const attendanceData = attendance[0];
+
+    // Check if attendance is finalized
+    if (attendanceData.status !== 'FINALIZED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance must be FINALIZED before generating payslip. Please finalize attendance first.'
+      });
+    }
 
     // Get active salary structure
     const salary = await executeQuery(

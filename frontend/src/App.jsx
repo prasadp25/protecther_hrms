@@ -36,6 +36,7 @@ const MainApp = () => {
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSalaryId, setSelectedSalaryId] = useState(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
+  const [preSelectedEmployeeForSalary, setPreSelectedEmployeeForSalary] = useState(null);
 
   // Sidebar states
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -100,8 +101,16 @@ const MainApp = () => {
     setView('form');
   };
 
-  const handleEmployeeFormSuccess = () => {
-    setView('list');
+  const handleEmployeeFormSuccess = (employeeData) => {
+    if (employeeData && employeeData.employee_id) {
+      // User wants to add salary structure for newly created employee
+      setPreSelectedEmployeeForSalary(employeeData.employee_id);
+      setModule('salary');
+      setView('form');
+      setSelectedSalaryId(null);
+    } else {
+      setView('list');
+    }
     setSelectedEmployeeId(null);
   };
 
@@ -288,8 +297,15 @@ const MainApp = () => {
               ) : view === 'form' ? (
                 <SalaryForm
                   salaryId={selectedSalaryId}
-                  onSuccess={handleSalaryFormSuccess}
-                  onCancel={handleSalaryCancel}
+                  preSelectedEmployeeId={preSelectedEmployeeForSalary}
+                  onSuccess={() => {
+                    setPreSelectedEmployeeForSalary(null);
+                    handleSalaryFormSuccess();
+                  }}
+                  onCancel={() => {
+                    setPreSelectedEmployeeForSalary(null);
+                    handleSalaryCancel();
+                  }}
                 />
               ) : view === 'payslips' ? (
                 <PayslipView onBack={handleBackToSalaries} />

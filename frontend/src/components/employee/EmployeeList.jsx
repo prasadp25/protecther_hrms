@@ -27,10 +27,11 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
   } = usePagination(1, 10);
 
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [siteFilter, setSiteFilter] = useState('ALL');
 
   useEffect(() => {
     loadEmployees();
-  }, [page, limit, search, sortBy, sortOrder, statusFilter]);
+  }, [page, limit, search, sortBy, sortOrder, statusFilter, siteFilter]);
 
   useEffect(() => {
     loadSites();
@@ -44,6 +45,11 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
       // Add status filter if not ALL
       if (statusFilter !== 'ALL') {
         params.status = statusFilter;
+      }
+
+      // Add site filter if not ALL
+      if (siteFilter !== 'ALL') {
+        params.site_id = siteFilter;
       }
 
       const response = await employeeService.getAllEmployees(params);
@@ -191,7 +197,7 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
 
       {/* Search and Filters */}
       <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2">
             <div className="relative">
               <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,6 +224,21 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
               <option value="RESIGNED">Resigned</option>
               <option value="TERMINATED">Terminated</option>
               <option value="ON_LEAVE">On Leave</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={siteFilter}
+              onChange={(e) => setSiteFilter(e.target.value)}
+              className="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-2.5 border text-slate-700"
+            >
+              <option value="ALL">All Sites</option>
+              {sites.map(site => (
+                <option key={site.site_id} value={site.site_id}>
+                  {site.site_code} - {site.site_name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -343,7 +364,14 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                 {employees.map((employee) => (
                   <tr key={employee.employee_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {employee.employee_code}
+                      <div className="flex items-center gap-2">
+                        {employee.employee_code}
+                        {!employee.has_salary && employee.status === 'ACTIVE' && (
+                          <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded" title="No salary structure defined">
+                            No Salary
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                       {employee.first_name}

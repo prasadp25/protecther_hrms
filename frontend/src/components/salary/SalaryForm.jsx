@@ -25,7 +25,7 @@ const PT_RULES = {
   custom: { name: 'Custom (Manual Entry)', calculate: () => 0 },
 };
 
-const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
+const SalaryForm = ({ salaryId, preSelectedEmployeeId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
@@ -86,9 +86,29 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
     }
   }, [salaryId]);
 
+  // Auto-select employee if preSelectedEmployeeId is provided (coming from employee creation)
+  useEffect(() => {
+    if (preSelectedEmployeeId && employees.length > 0 && !salaryId) {
+      const emp = employees.find(e => e.employee_id === preSelectedEmployeeId);
+      if (emp) {
+        setSelectedEmployee(emp);
+        setFormData(prev => ({
+          ...prev,
+          employeeId: emp.employee_id,
+          employeeCode: emp.employee_code,
+          employeeName: `${emp.first_name} ${emp.last_name}`,
+        }));
+      }
+    }
+  }, [preSelectedEmployeeId, employees, salaryId]);
+
   const loadEmployees = async () => {
     try {
-      const response = await employeeService.getActiveEmployees();
+      // When creating new salary, only show employees without active salary
+      // When editing, show all active employees
+      const response = salaryId
+        ? await employeeService.getActiveEmployees()
+        : await employeeService.getEmployeesWithoutSalary();
       if (response.success) {
         setEmployees(response.data);
       }
@@ -103,15 +123,21 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
       const response = await salaryService.getSalaryById(salaryId);
       if (response.success) {
         const data = response.data;
+
+        const basic = parseFloat(data.basic_salary) || 0;
+        const hra = parseFloat(data.hra) || 0;
+        const incentive = parseFloat(data.incentive_allowance) || 0;
+        const grossSalary = basic + hra + incentive;
+
         // Convert snake_case from backend to camelCase for frontend
         setFormData({
           employeeId: data.employee_id,
           employeeCode: data.employee_code,
           employeeName: `${data.first_name} ${data.last_name}`,
           effectiveFrom: data.effective_from ? data.effective_from.split('T')[0] : new Date().toISOString().split('T')[0],
-          basicSalary: parseFloat(data.basic_salary) || 0,
-          hra: parseFloat(data.hra) || 0,
-          incentiveAllowance: parseFloat(data.incentive_allowance) || 0,
+          basicSalary: basic,
+          hra: hra,
+          incentiveAllowance: incentive,
           pfDeduction: parseFloat(data.pf_deduction) || 0,
           esiDeduction: parseFloat(data.esi_deduction) || 0,
           professionalTax: parseFloat(data.professional_tax) || 0,
@@ -119,6 +145,10 @@ const SalaryForm = ({ salaryId, onSuccess, onCancel }) => {
           advanceDeduction: parseFloat(data.advance_deduction) || 0,
           otherDeductions: parseFloat(data.other_deductions) || 0,
         });
+
+        // Set CTC amount from existing gross salary for recalculation
+        setCtcAmount(grossSalary);
+
         setSelectedEmployee({
           employee_id: data.employee_id,
           employee_code: data.employee_code,

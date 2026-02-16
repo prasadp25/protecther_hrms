@@ -320,6 +320,28 @@ const PayslipView = ({ onBack }) => {
     }
   };
 
+  const handleRevertToPending = async (payslipId) => {
+    if (!window.confirm('Revert this payslip to PENDING status?')) return;
+
+    try {
+      const response = await salaryService.updatePaymentStatus(payslipId, {
+        paymentStatus: 'PENDING',
+        paymentMethod: null,
+        paymentDate: null,
+      });
+      if (response.success) {
+        alert('Payslip reverted to PENDING');
+        loadPayslips();
+        if (selectedPayslip?.payslipId === payslipId) {
+          const updatedPayslip = { ...response.data, month: String(response.data.month || '') };
+          setSelectedPayslip(updatedPayslip);
+        }
+      }
+    } catch (error) {
+      alert('Failed to revert payment status');
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -828,6 +850,15 @@ const PayslipView = ({ onBack }) => {
                             className="text-green-600 hover:text-green-900"
                           >
                             Mark Paid
+                          </button>
+                        )}
+                        {payslip.paymentStatus === 'PAID' && (
+                          <button
+                            onClick={() => handleRevertToPending(payslip.payslipId)}
+                            className="text-orange-600 hover:text-orange-900"
+                            title="Revert to Pending"
+                          >
+                            Revert
                           </button>
                         )}
                       </td>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
+import authService from '../../services/authService';
+import api from '../../config/api';
 
 const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
@@ -9,7 +11,10 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   const [aadhaarFile, setAadhaarFile] = useState(null);
   const [panFile, setPanFile] = useState(null);
   const [activeSites, setActiveSites] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [formData, setFormData] = useState({
+    companyId: '',
     firstName: '',
     lastName: '',
     mobileNo: '',
@@ -43,11 +48,29 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   });
 
   useEffect(() => {
+    // Check if user is SUPER_ADMIN
+    const user = authService.getUser();
+    setIsSuperAdmin(user?.role === 'SUPER_ADMIN');
+
     loadActiveSites();
+    if (user?.role === 'SUPER_ADMIN') {
+      loadCompanies();
+    }
     if (employeeId) {
       loadEmployee();
     }
   }, [employeeId]);
+
+  const loadCompanies = async () => {
+    try {
+      const response = await api.get('/companies');
+      if (response.data.success) {
+        setCompanies(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to load companies:', error);
+    }
+  };
 
   const loadActiveSites = async () => {
     try {
@@ -68,6 +91,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         // Map backend field names (snake_case) to frontend (camelCase)
         const employee = response.data;
         setFormData({
+          companyId: employee.company_id || '',
           firstName: employee.first_name || '',
           lastName: employee.last_name || '',
           mobileNo: employee.mobile || '',
@@ -188,6 +212,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   const validateForm = () => {
     const newErrors = {};
 
+    // Only Name and Mobile are mandatory
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
 
@@ -197,52 +222,27 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       newErrors.mobileNo = 'Mobile number must be 10 digits';
     }
 
+    // Optional field validations (only validate format if provided)
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
 
-    if (!formData.aadhaarNo.trim()) {
-      newErrors.aadhaarNo = 'Aadhaar number is required';
-    } else if (!/^[0-9]{12}$/.test(formData.aadhaarNo)) {
+    if (formData.aadhaarNo && !/^[0-9]{12}$/.test(formData.aadhaarNo)) {
       newErrors.aadhaarNo = 'Aadhaar number must be 12 digits';
     }
 
-    if (!formData.panNo.trim()) {
-      newErrors.panNo = 'PAN number is required';
-    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNo.trim())) {
+    if (formData.panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNo.trim())) {
       newErrors.panNo = 'Invalid PAN format (e.g., ABCDE1234F)';
     }
 
-    if (!formData.accountNo.trim()) newErrors.accountNo = 'Account number is required';
-    if (!formData.bankName.trim()) newErrors.bankName = 'Bank name is required';
-
-    if (!formData.ifscCode.trim()) {
-      newErrors.ifscCode = 'IFSC code is required';
-    } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
+    if (formData.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
       newErrors.ifscCode = 'Invalid IFSC code format';
     }
 
-    if (!formData.dob) newErrors.dob = 'Date of birth is required';
-    if (!formData.gender) newErrors.gender = 'Gender is required';
-    if (!formData.dateOfJoining) newErrors.dateOfJoining = 'Date of joining is required';
-    if (!formData.designation.trim()) newErrors.designation = 'Designation is required';
-    if (!formData.department.trim()) newErrors.department = 'Department is required';
-    if (!formData.offerLetterIssueDate) newErrors.offerLetterIssueDate = 'Offer letter issue date is required';
-    if (!formData.offerLetterUrl && !employeeId) newErrors.offerLetter = 'Offer letter is required';
-    if (!formData.aadhaarCardUrl && !employeeId) newErrors.aadhaarCard = 'Aadhaar card is required';
-    if (!formData.panCardUrl && !employeeId) newErrors.panCard = 'PAN card is required';
-    if (!formData.address.trim()) newErrors.address = 'Address is required';
-
-    // Emergency contact validation
-    if (!formData.emergencyContactName.trim()) newErrors.emergencyContactName = 'Emergency contact name is required';
-    if (!formData.emergencyContactMobile.trim()) {
-      newErrors.emergencyContactMobile = 'Emergency contact mobile is required';
-    } else if (!/^[0-9]{10}$/.test(formData.emergencyContactMobile)) {
+    if (formData.emergencyContactMobile && !/^[0-9]{10}$/.test(formData.emergencyContactMobile)) {
       newErrors.emergencyContactMobile = 'Mobile number must be 10 digits';
     }
-    if (!formData.emergencyContactRelationship) newErrors.emergencyContactRelationship = 'Relationship is required';
 
-    // Hospital Insurance validation (if provided)
     if (formData.hospitalInsuranceId && !/^[0-9]{12,15}$/.test(formData.hospitalInsuranceId)) {
       newErrors.hospitalInsuranceId = 'Insurance ID must be 12-15 digits';
     }
@@ -265,6 +265,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       const formDataToSend = new FormData();
 
       // Add text fields
+      if (formData.companyId) formDataToSend.append('company_id', formData.companyId);
       formDataToSend.append('first_name', formData.firstName);
       formDataToSend.append('last_name', formData.lastName);
       formDataToSend.append('mobile', formData.mobileNo);
@@ -313,8 +314,17 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       }
 
       if (response.success) {
-        alert(response.message);
-        if (onSuccess) onSuccess();
+        if (!employeeId) {
+          // New employee created - ask if they want to add salary structure
+          const addSalary = window.confirm(
+            `${response.message}\n\nWould you like to add a salary structure for this employee now?`
+          );
+          if (onSuccess) onSuccess(addSalary ? response.data : null);
+        } else {
+          // Editing existing employee
+          alert(response.message);
+          if (onSuccess) onSuccess();
+        }
       }
     } catch (error) {
       if (error.response?.data?.message) {
@@ -799,6 +809,33 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               <option value="ON_LEAVE">On Leave</option>
             </select>
           </div>
+
+          {isSuperAdmin && (
+            <div>
+              <label className={labelClasses}>
+                Company {!employeeId && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                name="companyId"
+                value={formData.companyId}
+                onChange={handleChange}
+                className={inputClasses}
+                required={!employeeId}
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.company_id} value={company.company_id}>
+                    {company.company_name}
+                  </option>
+                ))}
+              </select>
+              {employeeId && (
+                <p className="mt-1 text-xs text-slate-500">
+                  ⚠️ Transfer this employee to a different company
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <label className={labelClasses}>Assigned Site/Client</label>
