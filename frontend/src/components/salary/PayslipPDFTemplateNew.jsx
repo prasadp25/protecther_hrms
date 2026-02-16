@@ -334,11 +334,12 @@ const numberToWords = (num) => {
 
 // Main PDF Document Component
 const PayslipPDFTemplateNew = ({ payslip, employee }) => {
-  // Format month
-  const monthYear = new Date(payslip.month + '-01').toLocaleDateString('en-US', {
+  // Format month - ensure month is a string
+  const monthStr = payslip?.month ? String(payslip.month) : '';
+  const monthYear = monthStr ? new Date(monthStr + '-01').toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
-  });
+  }) : '-';
 
   // Calculate totals
   const grossPay = parseFloat(payslip.grossSalary) || 0;

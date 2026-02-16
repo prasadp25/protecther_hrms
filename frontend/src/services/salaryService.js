@@ -31,7 +31,8 @@ export const salaryService = {
         message: 'Salary structures retrieved successfully (MOCK DATA)',
       };
     }
-    const response = await api.get(SALARY_ENDPOINT);
+    // Request all records (limit=500) to show all employees
+    const response = await api.get(`${SALARY_ENDPOINT}?limit=500`);
     return response.data;
   },
 
@@ -290,6 +291,12 @@ export const salaryService = {
       };
     }
     const response = await api.post(`${PAYSLIP_ENDPOINT}/generate`, payslipData);
+    return response.data;
+  },
+
+  // Bulk generate payslips for all employees with finalized attendance
+  bulkGeneratePayslips: async (data) => {
+    const response = await api.post(`${PAYSLIP_ENDPOINT}/generate/bulk`, data);
     return response.data;
   },
 

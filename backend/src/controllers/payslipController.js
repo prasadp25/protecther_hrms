@@ -112,10 +112,12 @@ const getPayslipById = async (req, res) => {
 // ==============================================
 const generatePayslip = async (req, res) => {
   try {
+    console.log('📝 Generate payslip request body:', JSON.stringify(req.body));
     const { employee_id, month, year, advance_deduction, remarks } = req.body;
 
     // Validation
     if (!employee_id || !month || !year) {
+      console.log('❌ Validation failed - employee_id:', employee_id, 'month:', month, 'year:', year);
       return res.status(400).json({
         success: false,
         message: 'Employee ID, month, and year are required'
@@ -221,11 +223,11 @@ const generatePayslip = async (req, res) => {
       INSERT INTO payslips (
         employee_id, salary_id, month,
         total_working_days, total_days_in_month, days_present, days_absent,
-        basic_salary, hra, allowance, other_allowances, gross_salary,
+        basic_salary, hra, other_allowances, gross_salary,
         pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
         advance_deduction, other_deductions, total_deductions,
         net_salary, payment_status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -238,8 +240,7 @@ const generatePayslip = async (req, res) => {
       daysAbsent,
       actualBasic,  // Actual (prorated) basic
       actualHra,     // Actual (prorated) HRA
-      actualAllowance, // Actual (prorated) allowance
-      actualIncentive, // Actual (prorated) incentive
+      actualAllowance + actualIncentive, // Combined allowances (actual prorated)
       actualGross,   // Actual (prorated) gross
       pfDeduction,
       esiDeduction,
@@ -279,7 +280,7 @@ const generatePayslip = async (req, res) => {
 // ==============================================
 const bulkGeneratePayslips = async (req, res) => {
   try {
-    const { month, year, site_id } = req.body;
+    const { month, year, site_id, regenerate } = req.body;
 
     // Validation
     if (!month || !year) {
@@ -289,21 +290,32 @@ const bulkGeneratePayslips = async (req, res) => {
       });
     }
 
-    // Get all active employees
-    let employeeQuery = 'SELECT employee_id FROM employees WHERE status = ?';
-    const employeeParams = ['ACTIVE'];
+    // Format month as YYYY-MM
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+
+    // Get all employees with FINALIZED attendance for this month
+    let query = `
+      SELECT DISTINCT e.employee_id, e.employee_code, e.first_name, e.last_name,
+             a.days_present, a.total_days_in_month
+      FROM employees e
+      INNER JOIN attendance a ON e.employee_id = a.employee_id
+      WHERE e.status = 'ACTIVE'
+        AND a.attendance_month = ?
+        AND a.status = 'FINALIZED'
+    `;
+    const params = [monthStr];
 
     if (site_id) {
-      employeeQuery += ' AND site_id = ?';
-      employeeParams.push(site_id);
+      query += ' AND e.site_id = ?';
+      params.push(site_id);
     }
 
-    const employees = await executeQuery(employeeQuery, employeeParams);
+    const employees = await executeQuery(query, params);
 
     if (employees.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No active employees found'
+        message: `No employees found with FINALIZED attendance for ${monthStr}. Please finalize attendance first.`
       });
     }
 
@@ -311,11 +323,10 @@ const bulkGeneratePayslips = async (req, res) => {
       success: 0,
       failed: 0,
       skipped: 0,
-      errors: []
+      regenerated: 0,
+      errors: [],
+      details: []
     };
-
-    // Format month as YYYY-MM
-    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
 
     // Generate payslip for each employee
     for (const emp of employees) {
@@ -327,25 +338,20 @@ const bulkGeneratePayslips = async (req, res) => {
         );
 
         if (existing.length > 0) {
-          results.skipped++;
-          continue;
+          if (regenerate) {
+            // Delete existing payslip and regenerate
+            await executeQuery('DELETE FROM payslips WHERE payslip_id = ?', [existing[0].payslip_id]);
+            results.regenerated++;
+          } else {
+            results.skipped++;
+            results.details.push(`${emp.employee_code}: Skipped (payslip exists)`);
+            continue;
+          }
         }
 
-        // Get attendance from attendance table
-        const attendance = await executeQuery(
-          'SELECT days_present, total_days_in_month FROM attendance WHERE employee_id = ? AND attendance_month = ?',
-          [emp.employee_id, monthStr]
-        );
-
-        if (attendance.length === 0) {
-          results.failed++;
-          results.errors.push(`Employee ${emp.employee_id}: No attendance record found for ${monthStr}`);
-          continue;
-        }
-
-        const attendanceData = attendance[0];
-        const actualDaysPresent = attendanceData.days_present;
-        const daysInMonth = attendanceData.total_days_in_month;
+        // Attendance data already loaded from join
+        const actualDaysPresent = emp.days_present;
+        const daysInMonth = emp.total_days_in_month;
 
         // Call generatePayslip logic
         const salary = await executeQuery(
@@ -394,15 +400,15 @@ const bulkGeneratePayslips = async (req, res) => {
           `INSERT INTO payslips (
             employee_id, salary_id, month,
             total_working_days, total_days_in_month, days_present, days_absent,
-            basic_salary, hra, allowance, other_allowances, gross_salary,
+            basic_salary, hra, other_allowances, gross_salary,
             pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
             advance_deduction, other_deductions, total_deductions,
             net_salary, payment_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             emp.employee_id, salaryData.salary_id, monthStr,
             totalWorkingDays, daysInMonth, actualDaysPresent, daysAbsent,
-            actualBasic, actualHra, actualAllowance, actualIncentive, actualGross,
+            actualBasic, actualHra, actualAllowance + actualIncentive, actualGross,
             pfDeduction, esiDeduction, professionalTax, mediclaimDeduction,
             advanceDeduction, otherDeductions, totalDeductions,
             netSalary, 'PENDING'
@@ -410,15 +416,17 @@ const bulkGeneratePayslips = async (req, res) => {
         );
 
         results.success++;
+        results.details.push(`${emp.employee_code} (${emp.first_name}): ₹${netSalary}`);
       } catch (err) {
         results.failed++;
-        results.errors.push(`Employee ${emp.employee_id}: ${err.message}`);
+        results.errors.push(`${emp.employee_code}: ${err.message}`);
       }
     }
 
+    const totalProcessed = results.success + results.regenerated;
     res.status(200).json({
       success: true,
-      message: 'Bulk payslip generation completed',
+      message: `Generated ${totalProcessed} payslips (${results.regenerated} regenerated, ${results.skipped} skipped, ${results.failed} failed)`,
       data: results
     });
   } catch (error) {

@@ -3,6 +3,11 @@ import api from '../config/api';
 export const attendanceService = {
   // Get attendance records for a specific month
   getAttendanceByMonth: async (month) => {
+    // Validate month parameter
+    if (!month) {
+      console.warn('getAttendanceByMonth called without month parameter');
+      return { success: true, data: [] };
+    }
     try {
       const response = await api.get(`/attendance/month/${month}`);
       return response.data;

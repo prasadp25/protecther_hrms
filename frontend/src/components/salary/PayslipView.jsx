@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
@@ -13,6 +13,7 @@ const PayslipView = ({ onBack }) => {
   const [payslips, setPayslips] = useState([]);
   const [selectedPayslip, setSelectedPayslip] = useState(null);
   const [loading, setLoading] = useState(false);
+  const isSubmittingRef = useRef(false); // Prevent duplicate submissions
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toISOString().slice(0, 7)
   );
@@ -30,6 +31,12 @@ const PayslipView = ({ onBack }) => {
     advance_deduction: 0,
     remarks: '',
   });
+
+  // Bulk generate state
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkMonth, setBulkMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [bulkRegenerate, setBulkRegenerate] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
 
   useEffect(() => {
     loadPayslips();
@@ -53,6 +60,7 @@ const PayslipView = ({ onBack }) => {
           employeeId: p.employee_id,
           employeeName: `${p.first_name} ${p.last_name}`,
           employeeCode: p.employee_code,
+          month: String(p.month || ''), // Ensure month is always a string
           grossSalary: p.gross_salary,
           netSalary: p.net_salary,
           basicSalary: p.basic_salary,
@@ -71,6 +79,7 @@ const PayslipView = ({ onBack }) => {
           daysPresent: p.days_present,
           daysAbsent: p.days_absent,
           totalWorkingDays: p.total_working_days,
+          totalDaysInMonth: p.total_days_in_month || 31,
           overtime: p.overtime || 0,
           paymentStatus: p.payment_status,
           paymentDate: p.payment_date,
@@ -184,7 +193,7 @@ const PayslipView = ({ onBack }) => {
     const { name, value } = e.target;
     setGenerateFormData((prev) => ({
       ...prev,
-      [name]: name === 'remarks' ? value : parseFloat(value) || 0,
+      [name]: name === 'month' || name === 'remarks' ? value : parseFloat(value) || 0,
     }));
 
     // Reload attendance when month changes
@@ -196,6 +205,11 @@ const PayslipView = ({ onBack }) => {
   // Removed calculatePayslipData - backend now handles all calculations using attendance data
 
   const handleGeneratePayslip = async () => {
+    // Prevent duplicate submissions
+    if (isSubmittingRef.current) {
+      return;
+    }
+
     if (!selectedEmployee || !salaryStructure) {
       alert('Please select an employee');
       return;
@@ -207,7 +221,8 @@ const PayslipView = ({ onBack }) => {
     }
 
     // Extract month and year from the month string (YYYY-MM)
-    const [year, month] = generateFormData.month.split('-');
+    const monthStr = String(generateFormData.month || '');
+    const [year, month] = monthStr.split('-');
 
     const payslipData = {
       employee_id: selectedEmployee.employee_id,
@@ -218,6 +233,7 @@ const PayslipView = ({ onBack }) => {
     };
 
     try {
+      isSubmittingRef.current = true;
       setLoading(true);
       const response = await salaryService.generatePayslip(payslipData);
       if (response.success) {
@@ -230,6 +246,7 @@ const PayslipView = ({ onBack }) => {
       const errorMsg = error.response?.data?.message || 'Failed to generate payslip';
       alert(errorMsg);
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
@@ -243,6 +260,37 @@ const PayslipView = ({ onBack }) => {
       advance_deduction: 0,
       remarks: '',
     });
+  };
+
+  // Bulk generate payslips
+  const handleBulkGenerate = async () => {
+    if (!bulkMonth) {
+      alert('Please select a month');
+      return;
+    }
+
+    const [year, month] = bulkMonth.split('-');
+
+    try {
+      setLoading(true);
+      setBulkResult(null);
+
+      const response = await salaryService.bulkGeneratePayslips({
+        month: parseInt(month),
+        year: parseInt(year),
+        regenerate: bulkRegenerate
+      });
+
+      if (response.success) {
+        setBulkResult(response.data);
+        loadPayslips(); // Refresh the list
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to generate payslips';
+      alert(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleViewPayslip = (payslip) => {
@@ -262,7 +310,9 @@ const PayslipView = ({ onBack }) => {
         alert(response.message);
         loadPayslips();
         if (selectedPayslip?.payslipId === payslipId) {
-          setSelectedPayslip(response.data);
+          // Ensure month is a string
+          const updatedPayslip = { ...response.data, month: String(response.data.month || '') };
+          setSelectedPayslip(updatedPayslip);
         }
       }
     } catch (error) {
@@ -613,12 +663,20 @@ const PayslipView = ({ onBack }) => {
             </button>
             <h2 className="text-2xl font-bold text-gray-900">Payslip Management</h2>
           </div>
-          <button
-            onClick={() => setView('generate')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            + Generate Payslip
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Generate All Payslips
+            </button>
+            <button
+              onClick={() => setView('generate')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              + Generate Single
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -729,10 +787,10 @@ const PayslipView = ({ onBack }) => {
                         <div className="text-sm text-gray-500">{payslip.employeeCode}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(payslip.month + '-01').toLocaleDateString('en-US', {
+                        {payslip.month ? new Date(String(payslip.month) + '-01').toLocaleDateString('en-US', {
                           month: 'long',
                           year: 'numeric',
-                        })}
+                        }) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {payslip.daysPresent} / {payslip.totalDaysInMonth || payslip.totalWorkingDays}
@@ -780,6 +838,91 @@ const PayslipView = ({ onBack }) => {
             </div>
           )}
         </div>
+
+        {/* Bulk Generate Modal */}
+        {showBulkModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+              <h3 className="text-xl font-bold mb-4">Generate All Payslips</h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Month *
+                  </label>
+                  <input
+                    type="month"
+                    value={bulkMonth}
+                    onChange={(e) => setBulkMonth(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="regenerate"
+                    checked={bulkRegenerate}
+                    onChange={(e) => setBulkRegenerate(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="regenerate" className="text-sm text-gray-700">
+                    Regenerate existing payslips (update with latest attendance)
+                  </label>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800">
+                  <strong>Note:</strong> Only employees with <strong>FINALIZED</strong> attendance for this month will be processed.
+                </div>
+
+                {/* Results */}
+                {bulkResult && (
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="font-semibold mb-2">Results:</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="text-green-600">Generated: {bulkResult.success}</div>
+                      <div className="text-blue-600">Regenerated: {bulkResult.regenerated}</div>
+                      <div className="text-gray-600">Skipped: {bulkResult.skipped}</div>
+                      <div className="text-red-600">Failed: {bulkResult.failed}</div>
+                    </div>
+                    {bulkResult.errors?.length > 0 && (
+                      <div className="mt-2 text-xs text-red-600">
+                        <strong>Errors:</strong>
+                        <ul className="list-disc ml-4">
+                          {bulkResult.errors.slice(0, 5).map((err, i) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                          {bulkResult.errors.length > 5 && (
+                            <li>... and {bulkResult.errors.length - 5} more</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowBulkModal(false);
+                    setBulkResult(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleBulkGenerate}
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
+                >
+                  {loading ? 'Generating...' : 'Generate Payslips'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -977,10 +1120,10 @@ const PayslipView = ({ onBack }) => {
           <div className="border-b pb-4 mb-6">
             <h2 className="text-3xl font-bold text-center text-gray-900">PAYSLIP</h2>
             <p className="text-center text-gray-600 mt-2">
-              {new Date(selectedPayslip.month + '-01').toLocaleDateString('en-US', {
+              {selectedPayslip.month ? new Date(String(selectedPayslip.month) + '-01').toLocaleDateString('en-US', {
                 month: 'long',
                 year: 'numeric',
-              })}
+              }) : '-'}
             </p>
           </div>
 
