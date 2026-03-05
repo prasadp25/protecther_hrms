@@ -5,10 +5,11 @@ const { executeQuery } = require('../config/database');
 // ==============================================
 const getAllPayslips = async (req, res) => {
   try {
-    const { month, year, site_id, employee_id, payment_status } = req.query;
+    const { month, year, site_id, employee_id, payment_status, company_id } = req.query;
 
     let query = `
-      SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
+      SELECT DISTINCT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
+             e.ifsc_code, e.account_number,
              st.site_name, st.site_code
       FROM payslips p
       JOIN employees e ON p.employee_id = e.employee_id
@@ -16,6 +17,12 @@ const getAllPayslips = async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+
+    // Filter by company_id (important for multi-company support)
+    if (company_id) {
+      query += ' AND e.company_id = ?';
+      params.push(company_id);
+    }
 
     // Add filters
     // Note: month column in DB is in YYYY-MM format
@@ -206,9 +213,23 @@ const generatePayslip = async (req, res) => {
     const fixedIncentive = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
     const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive;
 
-    // Fixed Deductions (constant regardless of attendance)
-    const pfDeduction = parseFloat(salaryData.pf_deduction || 0);
-    const esiDeduction = parseFloat(salaryData.esi_deduction || 0);
+    // Calculate actual (prorated) components first - needed for PF/ESI calculation
+    const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
+    const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
+    const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
+    const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
+    const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
+
+    // PF Calculation: 12% of Earned Basic (as per EPFO rules)
+    // Wage ceiling: ₹15,000 basic = max PF ₹1,800
+    const pfApplicable = salaryData.pf_deduction > 0; // Check if PF is enabled for this employee
+    const pfDeduction = pfApplicable ? Math.min(Math.round(actualBasic * 0.12), 1800) : 0;
+
+    // ESI Calculation: 0.75% of Earned Gross (applicable if monthly gross ≤ ₹21,000)
+    const esiApplicable = salaryData.esi_deduction > 0 && fixedGross <= 21000;
+    const esiDeduction = esiApplicable ? Math.round(actualGross * 0.0075) : 0;
+
+    // Fixed Deductions (constant - not attendance based)
     const professionalTax = parseFloat(salaryData.professional_tax || 0);
     const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction || 0);
     const advanceDeduction = parseFloat(advance_deduction || 0);
@@ -216,26 +237,26 @@ const generatePayslip = async (req, res) => {
 
     const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
 
-    // NEW FORMULA: Net Payable = ((Gross - Deductions) / Days in Month) × Days Present
-    const netSalary = Math.round(((fixedGross - totalDeductions) / daysInMonth) * actualDaysPresent);
+    // Net Salary = Earned Gross - Deductions
+    const netSalary = Math.round(actualGross - totalDeductions);
 
-    // Calculate actual (prorated) components for display
-    const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
-    const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
-    const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
-    const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
-    const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
+    // Calculate fixed values for reference (full month without absence)
+    const fixedPF = pfApplicable ? Math.min(Math.round(fixedBasic * 0.12), 1800) : 0;
+    const fixedESI = (salaryData.esi_deduction > 0 && fixedGross <= 21000) ? Math.round(fixedGross * 0.0075) : 0;
+    const fixedTotalDeductions = fixedPF + fixedESI + professionalTax + mediclaimDeduction + otherDeductions;
+    const fixedNetSalary = fixedGross - fixedTotalDeductions;
 
-    // Insert payslip
+    // Insert payslip with both fixed and prorated values
     const query = `
       INSERT INTO payslips (
         employee_id, salary_id, month,
         total_working_days, total_days_in_month, days_present, days_absent,
         basic_salary, hra, other_allowances, gross_salary,
+        fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
         pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
         advance_deduction, other_deductions, total_deductions,
         net_salary, payment_status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -250,6 +271,11 @@ const generatePayslip = async (req, res) => {
       actualHra,     // Actual (prorated) HRA
       actualAllowance + actualIncentive, // Combined allowances (actual prorated)
       actualGross,   // Actual (prorated) gross
+      fixedBasic,    // Fixed monthly basic
+      fixedHra,      // Fixed monthly HRA
+      fixedAllowance + fixedIncentive, // Fixed monthly incentive
+      fixedGross,    // Fixed monthly gross
+      fixedNetSalary, // Fixed monthly net
       pfDeduction,
       esiDeduction,
       professionalTax,
@@ -288,7 +314,7 @@ const generatePayslip = async (req, res) => {
 // ==============================================
 const bulkGeneratePayslips = async (req, res) => {
   try {
-    const { month, year, site_id, regenerate } = req.body;
+    const { month, year, site_id, regenerate, company_id } = req.body;
 
     // Validation
     if (!month || !year) {
@@ -312,6 +338,12 @@ const bulkGeneratePayslips = async (req, res) => {
         AND a.status = 'FINALIZED'
     `;
     const params = [monthStr];
+
+    // Filter by company_id
+    if (company_id) {
+      query += ' AND e.company_id = ?';
+      params.push(company_id);
+    }
 
     if (site_id) {
       query += ' AND e.site_id = ?';
@@ -384,9 +416,23 @@ const bulkGeneratePayslips = async (req, res) => {
         const fixedIncentive = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
         const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive;
 
-        // Fixed Deductions
-        const pfDeduction = parseFloat(salaryData.pf_deduction || 0);
-        const esiDeduction = parseFloat(salaryData.esi_deduction || 0);
+        // Calculate actual (prorated) components first - needed for PF/ESI calculation
+        const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
+        const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
+        const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
+        const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
+        const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
+
+        // PF Calculation: 12% of Earned Basic (as per EPFO rules)
+        // Wage ceiling: ₹15,000 basic = max PF ₹1,800
+        const pfApplicable = salaryData.pf_deduction > 0; // Check if PF is enabled for this employee
+        const pfDeduction = pfApplicable ? Math.min(Math.round(actualBasic * 0.12), 1800) : 0;
+
+        // ESI Calculation: 0.75% of Earned Gross (applicable if monthly gross ≤ ₹21,000)
+        const esiApplicable = salaryData.esi_deduction > 0 && fixedGross <= 21000;
+        const esiDeduction = esiApplicable ? Math.round(actualGross * 0.0075) : 0;
+
+        // Fixed Deductions (constant - not attendance based)
         const professionalTax = parseFloat(salaryData.professional_tax || 0);
         const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction || 0);
         const advanceDeduction = parseFloat(salaryData.advance_deduction || 0);
@@ -394,29 +440,30 @@ const bulkGeneratePayslips = async (req, res) => {
 
         const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
 
-        // NEW FORMULA: Net Payable = ((Gross - Deductions) / Days in Month) × Days Present
-        const netSalary = Math.round(((fixedGross - totalDeductions) / daysInMonth) * actualDaysPresent);
+        // Net Salary = Earned Gross - Deductions
+        const netSalary = Math.round(actualGross - totalDeductions);
 
-        // Calculate actual (prorated) components for display
-        const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
-        const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
-        const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
-        const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
-        const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
+        // Calculate fixed values for reference (full month without absence)
+        const fixedPF = pfApplicable ? Math.min(Math.round(fixedBasic * 0.12), 1800) : 0;
+        const fixedESI = (salaryData.esi_deduction > 0 && fixedGross <= 21000) ? Math.round(fixedGross * 0.0075) : 0;
+        const fixedTotalDeductions = fixedPF + fixedESI + professionalTax + mediclaimDeduction + otherDeductions;
+        const fixedNetSalary = fixedGross - fixedTotalDeductions;
 
         await executeQuery(
           `INSERT INTO payslips (
             employee_id, salary_id, month,
             total_working_days, total_days_in_month, days_present, days_absent,
             basic_salary, hra, other_allowances, gross_salary,
+            fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
             pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
             advance_deduction, other_deductions, total_deductions,
             net_salary, payment_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             emp.employee_id, salaryData.salary_id, monthStr,
             totalWorkingDays, daysInMonth, actualDaysPresent, daysAbsent,
             actualBasic, actualHra, actualAllowance + actualIncentive, actualGross,
+            fixedBasic, fixedHra, fixedAllowance + fixedIncentive, fixedGross, fixedNetSalary,
             pfDeduction, esiDeduction, professionalTax, mediclaimDeduction,
             advanceDeduction, otherDeductions, totalDeductions,
             netSalary, 'PENDING'
@@ -504,7 +551,7 @@ const updatePaymentStatus = async (req, res) => {
 // ==============================================
 const getPayslipSummary = async (req, res) => {
   try {
-    const { month, year, site_id } = req.query;
+    const { month, year, site_id, company_id } = req.query;
 
     let query = `
       SELECT
@@ -519,6 +566,12 @@ const getPayslipSummary = async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+
+    // Filter by company_id
+    if (company_id) {
+      query += ' AND e.company_id = ?';
+      params.push(company_id);
+    }
 
     if (month && year) {
       const monthStr = `${year}-${String(month).padStart(2, '0')}`;
@@ -559,18 +612,27 @@ const getPayslipSummary = async (req, res) => {
 const getPayslipsByMonth = async (req, res) => {
   try {
     const { month } = req.params; // Format: YYYY-MM
+    const { company_id } = req.query;
 
-    const query = `
+    let query = `
       SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
              st.site_name, st.site_code
       FROM payslips p
       JOIN employees e ON p.employee_id = e.employee_id
       LEFT JOIN sites st ON e.site_id = st.site_id
       WHERE p.month = ?
-      ORDER BY st.site_name, e.employee_code
     `;
+    const params = [month];
 
-    const payslips = await executeQuery(query, [month]);
+    // Filter by company_id
+    if (company_id) {
+      query += ' AND e.company_id = ?';
+      params.push(company_id);
+    }
+
+    query += ' ORDER BY st.site_name, e.employee_code';
+
+    const payslips = await executeQuery(query, params);
 
     res.status(200).json({
       success: true,

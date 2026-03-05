@@ -319,7 +319,7 @@ export const salaryService = {
       }
       throw new Error('Payslip not found');
     }
-    const response = await api.put(`${PAYSLIP_ENDPOINT}/${payslipId}/payment`, paymentData);
+    const response = await api.put(`${PAYSLIP_ENDPOINT}/${payslipId}/payment-status`, paymentData);
     return response.data;
   },
 

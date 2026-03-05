@@ -7,8 +7,9 @@ const { logAttendanceFinalize } = require('../utils/auditLogger');
 const getAttendanceByMonth = async (req, res) => {
   try {
     const { month } = req.params; // Format: YYYY-MM
+    const { company_id } = req.query;
 
-    const query = `
+    let query = `
       SELECT
         a.*,
         e.employee_code,
@@ -22,10 +23,18 @@ const getAttendanceByMonth = async (req, res) => {
       INNER JOIN employees e ON a.employee_id = e.employee_id
       LEFT JOIN sites s ON e.site_id = s.site_id
       WHERE a.attendance_month = ?
-      ORDER BY s.site_name, e.first_name, e.last_name
     `;
+    const params = [month];
 
-    const results = await executeQuery(query, [month]);
+    // Filter by company_id
+    if (company_id) {
+      query += ' AND e.company_id = ?';
+      params.push(company_id);
+    }
+
+    query += ' ORDER BY s.site_name, e.first_name, e.last_name';
+
+    const results = await executeQuery(query, params);
 
     res.status(200).json({
       success: true,
@@ -102,9 +111,9 @@ const saveAttendance = async (req, res) => {
       });
     }
 
-    // Calculate total days in month
+    // Calculate default total days in month (for records without total_days_in_month)
     const [year, monthNum] = month.split('-');
-    const totalDaysInMonth = new Date(year, monthNum, 0).getDate();
+    const defaultTotalDaysInMonth = new Date(year, monthNum, 0).getDate();
 
     let successCount = 0;
     let errorCount = 0;
@@ -112,7 +121,10 @@ const saveAttendance = async (req, res) => {
 
     for (const record of attendanceRecords) {
       try {
-        const { employee_id, days_present, remarks } = record;
+        const { employee_id, days_present, remarks, total_days_in_month } = record;
+
+        // Use provided total_days_in_month or fall back to default calendar days
+        const totalDaysInMonth = total_days_in_month || defaultTotalDaysInMonth;
 
         // Validate days_present
         if (days_present < 0 || days_present > totalDaysInMonth) {

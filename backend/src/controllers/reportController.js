@@ -10,7 +10,7 @@ const { asyncHandler } = require('../utils/errors');
  * Shows attendance summary for employees in a date range
  */
 const getEmployeeAttendanceReport = asyncHandler(async (req, res) => {
-  const { month, year, site_id, employee_id } = req.query;
+  const { month, year, site_id, employee_id, company_id } = req.query;
 
   let whereConditions = [];
   let params = [];
@@ -31,6 +31,11 @@ const getEmployeeAttendanceReport = asyncHandler(async (req, res) => {
     params.push(employee_id);
   }
 
+  if (company_id) {
+    whereConditions.push('e.company_id = ?');
+    params.push(company_id);
+  }
+
   const whereClause = whereConditions.length > 0
     ? 'WHERE ' + whereConditions.join(' AND ')
     : '';
@@ -45,9 +50,12 @@ const getEmployeeAttendanceReport = asyncHandler(async (req, res) => {
       s.site_name,
       s.site_code,
       a.attendance_month,
-      a.days_present,
+      a.days_present as present_days,
       a.total_days_in_month,
       (a.total_days_in_month - a.days_present) as absent_days,
+      0 as half_days,
+      0 as paid_leaves,
+      0 as total_overtime_hours,
       a.status as attendance_status,
       a.remarks
     FROM employees e
@@ -73,27 +81,34 @@ const getEmployeeAttendanceReport = asyncHandler(async (req, res) => {
 
 /**
  * Get Employee Salary Report
- * Shows salary details for employees
+ * Shows actual payroll details for employees based on payslips
  */
 const getEmployeeSalaryReport = asyncHandler(async (req, res) => {
-  const { site_id, month, year, status } = req.query;
+  const { site_id, month, year, status, company_id } = req.query;
 
   let whereConditions = [];
   let params = [];
+
+  // Filter by payslip month (format: 'YYYY-MM')
+  if (month && year) {
+    const payslipMonth = `${year}-${String(month).padStart(2, '0')}`;
+    whereConditions.push('p.month = ?');
+    params.push(payslipMonth);
+  }
 
   if (site_id) {
     whereConditions.push('e.site_id = ?');
     params.push(site_id);
   }
 
-  if (month && year) {
-    whereConditions.push('MONTH(s.created_at) = ? AND YEAR(s.created_at) = ?');
-    params.push(month, year);
+  if (status) {
+    whereConditions.push('e.status = ?');
+    params.push(status);
   }
 
-  if (status) {
-    whereConditions.push('s.status = ?');
-    params.push(status);
+  if (company_id) {
+    whereConditions.push('e.company_id = ?');
+    params.push(company_id);
   }
 
   const whereClause = whereConditions.length > 0
@@ -110,24 +125,22 @@ const getEmployeeSalaryReport = asyncHandler(async (req, res) => {
       e.status as employee_status,
       st.site_name,
       st.site_code,
-      s.basic_salary,
-      s.hra,
-      s.conveyance_allowance,
-      s.medical_allowance,
-      s.special_allowance,
-      s.other_allowances,
-      s.gross_salary,
-      s.pf_deduction,
-      s.professional_tax,
-      s.tds,
-      s.other_deductions,
-      s.total_deductions,
-      s.net_salary,
-      s.status as salary_status,
-      s.effective_from,
-      s.created_at
-    FROM salaries s
-    JOIN employees e ON s.employee_id = e.employee_id
+      p.basic_salary,
+      p.hra,
+      p.other_allowances,
+      p.overtime_amount,
+      p.gross_salary,
+      p.pf_deduction,
+      p.esi_deduction,
+      p.professional_tax,
+      p.tds,
+      p.other_deductions,
+      p.total_deductions,
+      p.net_salary,
+      p.payment_status,
+      p.month as salary_month
+    FROM payslips p
+    JOIN employees e ON p.employee_id = e.employee_id
     LEFT JOIN sites st ON e.site_id = st.site_id
     ${whereClause}
     ORDER BY e.employee_code
@@ -164,15 +177,24 @@ const getEmployeeSalaryReport = asyncHandler(async (req, res) => {
  * Get Site-wise Employee Distribution Report
  */
 const getSiteEmployeeReport = asyncHandler(async (req, res) => {
-  const { status } = req.query;
+  const { status, company_id } = req.query;
 
-  let whereCondition = '';
+  let whereConditions = [];
   const params = [];
 
   if (status) {
-    whereCondition = 'WHERE e.status = ?';
+    whereConditions.push('e.status = ?');
     params.push(status);
   }
+
+  if (company_id) {
+    whereConditions.push('e.company_id = ?');
+    params.push(company_id);
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
 
   const query = `
     SELECT
@@ -188,7 +210,7 @@ const getSiteEmployeeReport = asyncHandler(async (req, res) => {
       SUM(CASE WHEN e.status = 'TERMINATED' THEN 1 ELSE 0 END) as terminated_employees,
       SUM(CASE WHEN e.status = 'ON_LEAVE' THEN 1 ELSE 0 END) as on_leave_employees
     FROM sites s
-    LEFT JOIN employees e ON s.site_id = e.site_id ${whereCondition}
+    LEFT JOIN employees e ON s.site_id = e.site_id ${whereClause ? 'AND ' + whereConditions.join(' AND ') : ''}
     GROUP BY s.site_id
     ORDER BY total_employees DESC, s.site_name
   `;
@@ -216,16 +238,31 @@ const getSiteEmployeeReport = asyncHandler(async (req, res) => {
 
 /**
  * Get Site-wise Salary Cost Report
+ * Shows actual payroll costs per site based on payslips for the selected month
  */
 const getSiteSalaryCostReport = asyncHandler(async (req, res) => {
-  const { month, year } = req.query;
+  const { month, year, site_id, company_id } = req.query;
 
   let whereConditions = [];
   let params = [];
 
+  // Build the payslip month filter (format: 'YYYY-MM')
   if (month && year) {
-    whereConditions.push('MONTH(s.created_at) = ? AND YEAR(s.created_at) = ?');
-    params.push(month, year);
+    const payslipMonth = `${year}-${String(month).padStart(2, '0')}`;
+    whereConditions.push('p.month = ?');
+    params.push(payslipMonth);
+  }
+
+  // Filter by specific site if provided
+  if (site_id) {
+    whereConditions.push('st.site_id = ?');
+    params.push(site_id);
+  }
+
+  // Filter by company_id if provided
+  if (company_id) {
+    whereConditions.push('e.company_id = ?');
+    params.push(company_id);
   }
 
   const whereClause = whereConditions.length > 0
@@ -239,15 +276,16 @@ const getSiteSalaryCostReport = asyncHandler(async (req, res) => {
       st.site_name,
       st.location,
       st.client_name,
-      COUNT(DISTINCT e.employee_id) as employee_count,
-      SUM(s.basic_salary) as total_basic,
-      SUM(s.gross_salary) as total_gross,
-      SUM(s.total_deductions) as total_deductions,
-      SUM(s.net_salary) as total_net,
-      AVG(s.net_salary) as avg_salary_per_employee
-    FROM sites st
-    LEFT JOIN employees e ON st.site_id = e.site_id
-    LEFT JOIN salaries s ON e.employee_id = s.employee_id ${whereClause}
+      COUNT(DISTINCT p.employee_id) as employee_count,
+      COALESCE(SUM(p.basic_salary), 0) as total_basic,
+      COALESCE(SUM(p.gross_salary), 0) as total_gross,
+      COALESCE(SUM(p.total_deductions), 0) as total_deductions,
+      COALESCE(SUM(p.net_salary), 0) as total_net,
+      COALESCE(AVG(p.net_salary), 0) as avg_salary_per_employee
+    FROM payslips p
+    JOIN employees e ON p.employee_id = e.employee_id
+    JOIN sites st ON e.site_id = st.site_id
+    ${whereClause}
     GROUP BY st.site_id
     ORDER BY total_net DESC
   `;
@@ -281,9 +319,10 @@ const getSiteSalaryCostReport = asyncHandler(async (req, res) => {
 
 /**
  * Get Monthly Payroll Summary Report
+ * Uses p.month column (format: 'YYYY-MM') for accurate monthly filtering
  */
 const getMonthlyPayrollReport = asyncHandler(async (req, res) => {
-  const { month, year } = req.query;
+  const { month, year, company_id } = req.query;
 
   if (!month || !year) {
     return res.status(400).json({
@@ -292,9 +331,22 @@ const getMonthlyPayrollReport = asyncHandler(async (req, res) => {
     });
   }
 
+  // Build payslip month filter (format: 'YYYY-MM')
+  const payslipMonth = `${year}-${String(month).padStart(2, '0')}`;
+
+  let whereConditions = ['p.month = ?'];
+  let params = [payslipMonth];
+
+  if (company_id) {
+    whereConditions.push('e.company_id = ?');
+    params.push(company_id);
+  }
+
+  const whereClause = 'WHERE ' + whereConditions.join(' AND ');
+
   const query = `
     SELECT
-      DATE_FORMAT(p.payment_date, '%Y-%m') as month_year,
+      p.month as month_year,
       COUNT(DISTINCT p.payslip_id) as total_payslips,
       COUNT(DISTINCT p.employee_id) as total_employees,
       SUM(p.gross_salary) as total_gross,
@@ -306,13 +358,21 @@ const getMonthlyPayrollReport = asyncHandler(async (req, res) => {
       COUNT(CASE WHEN p.payment_status = 'PAID' THEN 1 END) as paid_count,
       COUNT(CASE WHEN p.payment_status = 'PENDING' THEN 1 END) as pending_count
     FROM payslips p
-    WHERE MONTH(p.payment_date) = ? AND YEAR(p.payment_date) = ?
-    GROUP BY month_year
+    JOIN employees e ON p.employee_id = e.employee_id
+    ${whereClause}
+    GROUP BY p.month
   `;
 
-  const report = await executeQuery(query, [month, year]);
+  const report = await executeQuery(query, params);
 
   // Get site-wise breakdown
+  let siteParams = [payslipMonth];
+  let siteWhereConditions = ['p.month = ?'];
+  if (company_id) {
+    siteWhereConditions.push('e.company_id = ?');
+    siteParams.push(company_id);
+  }
+
   const siteBreakdownQuery = `
     SELECT
       s.site_name,
@@ -322,12 +382,12 @@ const getMonthlyPayrollReport = asyncHandler(async (req, res) => {
     FROM payslips p
     JOIN employees e ON p.employee_id = e.employee_id
     LEFT JOIN sites s ON e.site_id = s.site_id
-    WHERE MONTH(p.payment_date) = ? AND YEAR(p.payment_date) = ?
+    WHERE ${siteWhereConditions.join(' AND ')}
     GROUP BY s.site_id
     ORDER BY site_total DESC
   `;
 
-  const siteBreakdown = await executeQuery(siteBreakdownQuery, [month, year]);
+  const siteBreakdown = await executeQuery(siteBreakdownQuery, siteParams);
 
   res.json({
     success: true,
@@ -345,7 +405,7 @@ const getMonthlyPayrollReport = asyncHandler(async (req, res) => {
  * Get Attendance Summary Report
  */
 const getAttendanceSummaryReport = asyncHandler(async (req, res) => {
-  const { month, year, site_id } = req.query;
+  const { month, year, site_id, company_id } = req.query;
 
   let whereConditions = ['a.attendance_month IS NOT NULL'];
   let params = [];
@@ -359,6 +419,11 @@ const getAttendanceSummaryReport = asyncHandler(async (req, res) => {
   if (site_id) {
     whereConditions.push('e.site_id = ?');
     params.push(site_id);
+  }
+
+  if (company_id) {
+    whereConditions.push('e.company_id = ?');
+    params.push(company_id);
   }
 
   const whereClause = 'WHERE ' + whereConditions.join(' AND ');
@@ -407,6 +472,16 @@ const getAttendanceSummaryReport = asyncHandler(async (req, res) => {
  * Get Designation-wise Report
  */
 const getDesignationReport = asyncHandler(async (req, res) => {
+  const { company_id } = req.query;
+
+  let whereClause = '';
+  let params = [];
+
+  if (company_id) {
+    whereClause = 'WHERE e.company_id = ?';
+    params.push(company_id);
+  }
+
   const query = `
     SELECT
       e.designation,
@@ -418,11 +493,12 @@ const getDesignationReport = asyncHandler(async (req, res) => {
       SUM(CASE WHEN e.status = 'ACTIVE' THEN 1 ELSE 0 END) as active_count
     FROM employees e
     LEFT JOIN salaries s ON e.employee_id = s.employee_id
+    ${whereClause}
     GROUP BY e.designation
     ORDER BY employee_count DESC
   `;
 
-  const report = await executeQuery(query);
+  const report = await executeQuery(query, params);
 
   const totals = report.reduce((acc, row) => ({
     totalEmployees: acc.totalEmployees + row.employee_count,

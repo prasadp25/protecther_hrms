@@ -31,8 +31,8 @@ const auditLog = (action, tableName) => {
           
           // Insert audit log
           await executeQuery(
-            `INSERT INTO audit_logs 
-             (user_id, action, table_name, record_id, old_value, new_value, ip_address, user_agent, created_at) 
+            `INSERT INTO audit_logs
+             (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
               userId,
@@ -65,8 +65,8 @@ const auditLog = (action, tableName) => {
 const logCustomEvent = async (userId, action, tableName, details) => {
   try {
     await executeQuery(
-      `INSERT INTO audit_logs 
-       (user_id, action, table_name, record_id, new_value, ip_address, created_at) 
+      `INSERT INTO audit_logs
+       (user_id, action, table_name, record_id, new_values, ip_address, created_at)
        VALUES (?, ?, ?, ?, ?, ?, NOW())`,
       [
         userId,

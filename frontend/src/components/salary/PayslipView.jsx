@@ -73,7 +73,15 @@ const PayslipView = ({ onBack }) => {
           tds: p.tds,
           advanceDeduction: p.advance_deduction || 0,
           welfareDeduction: p.welfare_deduction || 0,
-          healthInsurance: p.health_insurance || 0,
+          healthInsurance: p.mediclaim_deduction || p.health_insurance || 0,
+          // Fixed salary (stored directly in payslips table)
+          fixedBasic: parseFloat(p.fixed_basic) || 0,
+          fixedHRA: parseFloat(p.fixed_hra) || 0,
+          fixedIncentive: parseFloat(p.fixed_incentive) || 0,
+          fixedGross: parseFloat(p.fixed_gross) || 0,
+          fixedNet: parseFloat(p.fixed_net) || 0,
+          ifscCode: p.ifsc_code || '',
+          accountNumber: p.account_number || '',
           otherDeductions: p.other_deductions || 0,
           totalDeductions: p.total_deductions,
           daysPresent: p.days_present,
@@ -364,10 +372,20 @@ const PayslipView = ({ onBack }) => {
       return;
     }
 
+    // Deduplicate payslips by payslip_id
+    const seenIds = new Set();
+    const uniquePayslips = filteredPayslips.filter(payslip => {
+      if (seenIds.has(payslip.payslipId)) {
+        return false;
+      }
+      seenIds.add(payslip.payslipId);
+      return true;
+    });
+
     // Group payslips by site
     const payslipsBySite = {};
 
-    filteredPayslips.forEach(payslip => {
+    uniquePayslips.forEach(payslip => {
       const employee = employees.find(emp => emp.employee_id === payslip.employeeId);
       const siteId = employee?.site_id || 'UNASSIGNED';
 
@@ -393,141 +411,139 @@ const PayslipView = ({ onBack }) => {
       const siteData = payslipsBySite[siteId];
       const site = sites.find(s => String(s.siteId) === String(siteId));
       const siteName = site ? site.siteName : 'Unassigned';
-      const siteCode = site ? site.siteCode : 'N/A';
 
       // Get working days from first payslip (should be same for all in the month)
-      const workingDays = siteData[0]?.payslip.totalWorkingDays || 30;
+      const workingDays = siteData[0]?.payslip.totalDaysInMonth || siteData[0]?.payslip.totalWorkingDays || 30;
 
-      // Create array of arrays to match the format
+      // Create array of arrays for clean structure
       const wsData = [];
 
-      // Row 1: Company Header
-      wsData.push(['', '', '', '', '', '', siteName.toUpperCase(), '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+      // Row 1: Site Header
+      wsData.push([siteName.toUpperCase(), '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
 
-      // Row 2: Statement and Working Days
+      // Row 2: Statement info
+      wsData.push([`Salary Statement: ${monthName}`, '', '', '', '', `Days in Month: ${workingDays}`, '', '', '', '', '', '', '', '', '', '', '', '']);
+
+      // Row 3: Section Headers
       wsData.push([
-        '',
-        `Statement of Attendance  :    ${monthName}                                                Working Days : ${workingDays}`,
-        '', '', '', '',
-        `WORKING DAYS - ${workingDays}`,
-        '', '', '',
-        'Fixed Salary', '', '', '',
-        'Earnings Salary', '', '', '',
-        'Deductions', '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+        '', '', '', '', '', '',
+        'Fixed Salary', '', '', '', '',
+        'Earnings (Pro-rata)', '', '', '',
+        'Deductions', '', '', '', '', '',
+        'Final', '', ''
       ]);
 
-      // Row 3: Column Headers
+      // Row 4: Column Headers
       wsData.push([
         'Sr No',
         'EMP CODE',
-        'EMP NAME',
+        'Name',
         'Designation',
         'Location',
-        'Month Days',
-        'No of days Present',
-        'Monthly Pay Scale',
-        'Gross',
-        'Net Pay',
-        'BASIC', 'HRA', 'Incentive/Other Allawance', 'GROSS PAYABLE',
-        'BASIC', 'HRA', 'Incentive/Other Allawance', 'GROSS PAYABLE',
-        'PF SHARE', 'MEDICLAIM', 'PT', 'Advance', 'ESIC', 'PPE Deposit', 'DEDUCTIONS', 'NET PAYABLE',
-        'REMARK', 'IFSC CODE', 'Account Number', '', '', '', ''
+        'Days',
+        // Fixed Salary
+        'BASIC', 'HRA', 'Incentive', 'Gross', 'Net',
+        // Earnings (Pro-rata)
+        'BASIC', 'HRA', 'Incentive', 'Gross',
+        // Deductions
+        'PF', 'Mediclaim', 'PT', 'Advance', 'ESIC', 'Total Ded',
+        // Final
+        'Net Pay', 'IFSC', 'Account'
       ]);
 
-      // Data rows - using actual payslip data with attendance
+      // Data rows
       siteData.forEach(({ employee, payslip }, index) => {
-        // Calculate proportional salary based on attendance
-        const attendanceRatio = payslip.daysPresent / (payslip.totalDaysInMonth || payslip.totalWorkingDays);
-        const earnedBasic = Math.round(payslip.basicSalary * attendanceRatio);
-        const earnedHRA = Math.round(payslip.hra * attendanceRatio);
-        const earnedOtherAllowances = Math.round(payslip.otherAllowances * attendanceRatio) + (payslip.overtimeAmount || 0);
+        const daysInMonth = payslip.totalDaysInMonth || payslip.totalWorkingDays || 30;
+        const daysPresent = payslip.daysPresent || 0;
+
+        // Fixed salary from salary structure (via API)
+        const fixedBasic = payslip.fixedBasic || 0;
+        const fixedHRA = payslip.fixedHRA || 0;
+        const fixedIncentive = payslip.fixedIncentive || 0;
+        const fixedGross = payslip.fixedGross || 0;
+        const fixedNet = payslip.fixedNet || 0;
+
+        // Earned/Pro-rata values (stored in payslip)
+        const earnedBasic = payslip.basicSalary || 0;
+        const earnedHRA = payslip.hra || 0;
+        const earnedIncentive = payslip.otherAllowances || 0;
+        const earnedGross = payslip.grossSalary || 0;
+
+        // Deductions
+        const pfDeduction = payslip.pfDeduction || 0;
+        const mediclaim = payslip.healthInsurance || 0;
+        const pt = payslip.professionalTax || 0;
+        const advance = payslip.advanceDeduction || 0;
+        const esic = payslip.esiDeduction || 0;
+        const totalDeductions = payslip.totalDeductions || (pfDeduction + mediclaim + pt + advance + esic);
 
         const row = [
-          index + 1,                              // Sr No
-          payslip.employeeCode,                   // EMP CODE
-          payslip.employeeName,                   // EMP NAME
-          employee?.designation || '-',           // Designation
-          siteName,                               // Location
-          payslip.totalWorkingDays,               // Month Days
-          payslip.daysPresent,                    // No of days Present
-          '',                                     // Monthly Pay Scale (empty)
-          payslip.grossSalary,                    // Gross (earned)
-          payslip.netSalary,                      // Net Pay
-          // Fixed Salary (monthly rate)
-          payslip.basicSalary,                    // BASIC
-          payslip.hra,                            // HRA
-          payslip.otherAllowances,                // Incentive/Other Allawance
-          payslip.basicSalary + payslip.hra + payslip.otherAllowances, // GROSS PAYABLE
-          // Earnings Salary (actual earned based on attendance)
-          earnedBasic,                            // BASIC
-          earnedHRA,                              // HRA
-          earnedOtherAllowances,                  // Incentive/Other Allawance
-          payslip.grossSalary,                    // GROSS PAYABLE
+          index + 1,                                    // Sr No
+          payslip.employeeCode,                         // EMP CODE
+          payslip.employeeName,                         // Name
+          employee?.designation || payslip.designation || '-',  // Designation
+          siteName,                                     // Location
+          `${daysPresent}/${daysInMonth}`,              // Days (X/Y format)
+          // Fixed Salary
+          fixedBasic,                                   // BASIC
+          fixedHRA,                                     // HRA
+          fixedIncentive,                               // Incentive
+          fixedGross,                                   // Gross
+          fixedNet,                                     // Net (Gross - Deductions)
+          // Earnings (Pro-rata)
+          earnedBasic,                                  // BASIC
+          earnedHRA,                                    // HRA
+          earnedIncentive,                              // Incentive
+          earnedGross,                                  // Gross
           // Deductions
-          payslip.pfDeduction,                    // PF SHARE
-          payslip.healthInsurance || 0,           // MEDICLAIM
-          payslip.professionalTax,                // PT
-          payslip.advanceDeduction || 0,          // Advance
-          payslip.esiDeduction || 0,              // ESIC
-          0,                                      // PPE Deposit
-          payslip.totalDeductions,                // DEDUCTIONS
-          payslip.netSalary,                      // NET PAYABLE
-          payslip.paymentStatus,                  // REMARK
-          employee?.ifsc_code || '',              // IFSC CODE
-          employee?.account_number || '',         // Account Number
-          '', '', '', ''                          // Empty columns
+          pfDeduction,                                  // PF
+          mediclaim,                                    // Mediclaim
+          pt,                                           // PT
+          advance,                                      // Advance
+          esic,                                         // ESIC
+          totalDeductions,                              // Total Ded
+          // Final
+          payslip.netSalary,                            // Net Pay
+          payslip.ifscCode || employee?.ifsc_code || '',       // IFSC
+          payslip.accountNumber || employee?.account_number || ''  // Account
         ];
         wsData.push(row);
       });
 
-      // Summary row
-      const totalGross = siteData.reduce((sum, item) => sum + item.payslip.grossSalary, 0);
-      const totalNet = siteData.reduce((sum, item) => sum + item.payslip.netSalary, 0);
-      const totalBasic = siteData.reduce((sum, item) => {
-        const ratio = item.payslip.daysPresent / (item.payslip.totalDaysInMonth || item.payslip.totalWorkingDays);
-        return sum + Math.round(item.payslip.basicSalary * ratio);
-      }, 0);
-      const totalHRA = siteData.reduce((sum, item) => {
-        const ratio = item.payslip.daysPresent / (item.payslip.totalDaysInMonth || item.payslip.totalWorkingDays);
-        return sum + Math.round(item.payslip.hra * ratio);
-      }, 0);
-      const totalPF = siteData.reduce((sum, item) => sum + item.payslip.pfDeduction, 0);
-      const totalESI = siteData.reduce((sum, item) => sum + (item.payslip.esiDeduction || 0), 0);
-      const totalPT = siteData.reduce((sum, item) => sum + item.payslip.professionalTax, 0);
+      // Summary row - fixed values from salary structure (via API)
+      const totalFixedBasic = siteData.reduce((sum, item) => sum + (item.payslip.fixedBasic || 0), 0);
+      const totalFixedHRA = siteData.reduce((sum, item) => sum + (item.payslip.fixedHRA || 0), 0);
+      const totalFixedIncentive = siteData.reduce((sum, item) => sum + (item.payslip.fixedIncentive || 0), 0);
+      const totalFixedGross = siteData.reduce((sum, item) => sum + (item.payslip.fixedGross || 0), 0);
+      const totalFixedNet = siteData.reduce((sum, item) => sum + (item.payslip.fixedNet || 0), 0);
+
+      const totalPF = siteData.reduce((sum, item) => sum + (item.payslip.pfDeduction || 0), 0);
+      const totalMediclaim = siteData.reduce((sum, item) => sum + (item.payslip.healthInsurance || 0), 0);
+      const totalPT = siteData.reduce((sum, item) => sum + (item.payslip.professionalTax || 0), 0);
       const totalAdvance = siteData.reduce((sum, item) => sum + (item.payslip.advanceDeduction || 0), 0);
-      const totalDeductions = siteData.reduce((sum, item) => sum + item.payslip.totalDeductions, 0);
+      const totalESIC = siteData.reduce((sum, item) => sum + (item.payslip.esiDeduction || 0), 0);
+      const totalDeductions = siteData.reduce((sum, item) => sum + (item.payslip.totalDeductions || 0), 0);
+
+      // Earned values (already pro-rated in payslip)
+      const totalEarnedBasic = siteData.reduce((sum, item) => sum + (item.payslip.basicSalary || 0), 0);
+      const totalEarnedHRA = siteData.reduce((sum, item) => sum + (item.payslip.hra || 0), 0);
+      const totalEarnedIncentive = siteData.reduce((sum, item) => sum + (item.payslip.otherAllowances || 0), 0);
+      const totalEarnedGross = siteData.reduce((sum, item) => sum + (item.payslip.grossSalary || 0), 0);
+      const totalNet = siteData.reduce((sum, item) => sum + (item.payslip.netSalary || 0), 0);
 
       wsData.push([
         '',
         'TOTAL',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        totalGross,
-        totalNet,
-        '',
-        '',
-        '',
-        '',
-        totalBasic,
-        totalHRA,
-        '',
-        '',
-        totalPF,
-        '',
-        totalPT,
-        totalAdvance,
-        totalESI,
-        '',
-        totalDeductions,
-        totalNet,
-        '',
-        '',
-        '',
-        '', '', '', ''
+        `${siteData.length} employees`,
+        '', '', '',
+        // Fixed Salary totals
+        totalFixedBasic, totalFixedHRA, totalFixedIncentive, totalFixedGross, totalFixedNet,
+        // Earnings totals
+        totalEarnedBasic, totalEarnedHRA, totalEarnedIncentive, totalEarnedGross,
+        // Deductions totals
+        totalPF, totalMediclaim, totalPT, totalAdvance, totalESIC, totalDeductions,
+        // Final total
+        totalNet, '', ''
       ]);
 
       // Create worksheet from array of arrays
@@ -535,43 +551,42 @@ const PayslipView = ({ onBack }) => {
 
       // Merge cells for headers
       if (!ws['!merges']) ws['!merges'] = [];
-      ws['!merges'].push({ s: { r: 0, c: 6 }, e: { r: 0, c: 11 } });
+      ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }); // Site name
+      ws['!merges'].push({ s: { r: 2, c: 6 }, e: { r: 2, c: 10 } }); // Fixed Salary header (5 cols: BASIC, HRA, Incentive, Gross, Net)
+      ws['!merges'].push({ s: { r: 2, c: 11 }, e: { r: 2, c: 14 } }); // Earnings header
+      ws['!merges'].push({ s: { r: 2, c: 15 }, e: { r: 2, c: 20 } }); // Deductions header
+      ws['!merges'].push({ s: { r: 2, c: 21 }, e: { r: 2, c: 23 } }); // Final header
 
-      // Set column widths to match original format
+      // Set column widths
       ws['!cols'] = [
         { wch: 6 },   // Sr No
         { wch: 10 },  // EMP CODE
-        { wch: 20 },  // EMP NAME
-        { wch: 18 },  // Designation
+        { wch: 20 },  // Name
+        { wch: 15 },  // Designation
         { wch: 15 },  // Location
-        { wch: 10 },  // Month Days
-        { wch: 15 },  // No of days Present
-        { wch: 15 },  // Monthly Pay Scale
-        { wch: 12 },  // Gross
-        { wch: 12 },  // Net Pay
-        { wch: 12 },  // BASIC (Fixed)
-        { wch: 10 },  // HRA (Fixed)
-        { wch: 18 },  // Incentive (Fixed)
-        { wch: 12 },  // GROSS PAYABLE (Fixed)
-        { wch: 12 },  // BASIC (Earnings)
-        { wch: 10 },  // HRA (Earnings)
-        { wch: 18 },  // Incentive (Earnings)
-        { wch: 12 },  // GROSS PAYABLE (Earnings)
-        { wch: 10 },  // PF SHARE
-        { wch: 10 },  // MEDICLAIM
-        { wch: 8 },   // PT
-        { wch: 10 },  // Advance
+        { wch: 8 },   // Days
+        // Fixed Salary
+        { wch: 10 },  // BASIC
+        { wch: 8 },   // HRA
+        { wch: 10 },  // Incentive
+        { wch: 10 },  // Gross
+        { wch: 10 },  // Net
+        // Earnings
+        { wch: 10 },  // BASIC
+        { wch: 8 },   // HRA
+        { wch: 10 },  // Incentive
+        { wch: 10 },  // Gross
+        // Deductions
+        { wch: 8 },   // PF
+        { wch: 10 },  // Mediclaim
+        { wch: 6 },   // PT
+        { wch: 8 },   // Advance
         { wch: 8 },   // ESIC
-        { wch: 10 },  // PPE Deposit
-        { wch: 12 },  // DEDUCTIONS
-        { wch: 12 },  // NET PAYABLE
-        { wch: 15 },  // REMARK
-        { wch: 12 },  // IFSC CODE
-        { wch: 15 },  // Account Number
-        { wch: 5 },   // Empty
-        { wch: 5 },   // Empty
-        { wch: 5 },   // Empty
-        { wch: 5 }    // Empty
+        { wch: 10 },  // Total Ded
+        // Final
+        { wch: 12 },  // Net Pay
+        { wch: 12 },  // IFSC
+        { wch: 15 }   // Account
       ];
 
       // Add sheet to workbook
@@ -1011,11 +1026,41 @@ const PayslipView = ({ onBack }) => {
             <>
               {attendanceData ? (
                 <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-3">
                     Attendance Information
-                    <span className="ml-2 text-sm text-green-600">(From Attendance Module)</span>
+                    {/* Attendance Status Badge */}
+                    {attendanceData.status === 'FINALIZED' ? (
+                      <span className="px-3 py-1 text-sm font-semibold bg-green-100 text-green-800 rounded-full">
+                        FINALIZED
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 text-sm font-semibold bg-orange-100 text-orange-800 rounded-full">
+                        DRAFT
+                      </span>
+                    )}
                   </h3>
-                  <div className="bg-blue-50 p-4 rounded-lg">
+
+                  {/* Warning if attendance is DRAFT */}
+                  {attendanceData.status !== 'FINALIZED' && (
+                    <div className="bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-orange-700">
+                            <strong>Attendance is in DRAFT status!</strong> Please finalize the attendance before generating a payslip.
+                            <br />
+                            <span className="text-xs">Go to Attendance module → Change status to FINALIZED → Then return here.</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`p-4 rounded-lg ${attendanceData.status === 'FINALIZED' ? 'bg-green-50' : 'bg-gray-100'}`}>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div>
                         <span className="text-gray-600">Total Days in Month:</span>
@@ -1042,6 +1087,12 @@ const PayslipView = ({ onBack }) => {
                 </div>
               ) : (
                 <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-3">
+                    Attendance Information
+                    <span className="px-3 py-1 text-sm font-semibold bg-red-100 text-red-800 rounded-full">
+                      NOT FOUND
+                    </span>
+                  </h3>
                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
                     <div className="flex">
                       <div className="flex-shrink-0">
@@ -1110,9 +1161,9 @@ const PayslipView = ({ onBack }) => {
               <div className="flex justify-end">
                 <button
                   onClick={handleGeneratePayslip}
-                  disabled={loading || !attendanceData}
+                  disabled={loading || !attendanceData || attendanceData.status !== 'FINALIZED'}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
-                  title={!attendanceData ? 'Attendance record required' : ''}
+                  title={!attendanceData ? 'Attendance record required' : (attendanceData.status !== 'FINALIZED' ? 'Attendance must be FINALIZED' : '')}
                 >
                   {loading ? 'Generating...' : 'Generate Payslip'}
                 </button>

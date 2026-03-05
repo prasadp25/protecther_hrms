@@ -245,30 +245,56 @@ const createEmployee = async (req, res) => {
     // Use cleaned/validated data
     employeeData = { ...employeeData, ...validation.data };
 
-    // Check if Aadhaar number already exists in ANY company
-    if (employeeData.aadhaar_no) {
-      const aadhaarCheck = await executeQuery(
-        `SELECT employee_id FROM employees WHERE aadhaar_no = ?`,
-        [employeeData.aadhaar_no]
+    // Check if Mobile number already exists in ANY company (one person = one company only)
+    if (employeeData.mobile) {
+      const mobileCheck = await executeQuery(
+        `SELECT e.employee_id, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.mobile = ?`,
+        [employeeData.mobile]
       );
-      if (aadhaarCheck.length > 0) {
+      if (mobileCheck.length > 0) {
+        const existingEmp = mobileCheck[0];
         return res.status(409).json({
           success: false,
-          message: 'This Aadhaar number is already registered. Please contact HR for assistance.'
+          message: `This mobile number is already registered to ${existingEmp.first_name} ${existingEmp.last_name}${existingEmp.company_name ? ` (${existingEmp.company_name})` : ''}.`
         });
       }
     }
 
-    // Check if PAN number already exists in ANY company
+    // Check if Aadhaar number already exists in ANY company (one person = one company only)
+    if (employeeData.aadhaar_no) {
+      const aadhaarCheck = await executeQuery(
+        `SELECT e.employee_id, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.aadhaar_no = ?`,
+        [employeeData.aadhaar_no]
+      );
+      if (aadhaarCheck.length > 0) {
+        const existingEmp = aadhaarCheck[0];
+        return res.status(409).json({
+          success: false,
+          message: `This Aadhaar number is already registered to ${existingEmp.first_name} ${existingEmp.last_name}${existingEmp.company_name ? ` (${existingEmp.company_name})` : ''}.`
+        });
+      }
+    }
+
+    // Check if PAN number already exists in ANY company (one person = one company only)
     if (employeeData.pan_no) {
       const panCheck = await executeQuery(
-        `SELECT employee_id FROM employees WHERE pan_no = ?`,
+        `SELECT e.employee_id, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.pan_no = ?`,
         [employeeData.pan_no]
       );
       if (panCheck.length > 0) {
+        const existingEmp = panCheck[0];
         return res.status(409).json({
           success: false,
-          message: 'This PAN number is already registered. Please contact HR for assistance.'
+          message: `This PAN number is already registered to ${existingEmp.first_name} ${existingEmp.last_name}${existingEmp.company_name ? ` (${existingEmp.company_name})` : ''}.`
         });
       }
     }
@@ -417,6 +443,60 @@ const updateEmployee = async (req, res) => {
 
     // Store old values for audit
     const oldEmployeeData = existing[0];
+
+    // Check for duplicate Mobile in ANY company (excluding current employee)
+    if (employeeData.mobile && employeeData.mobile !== oldEmployeeData.mobile) {
+      const mobileCheck = await executeQuery(
+        `SELECT e.employee_id, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.mobile = ? AND e.employee_id != ?`,
+        [employeeData.mobile, id]
+      );
+      if (mobileCheck.length > 0) {
+        const existingEmp = mobileCheck[0];
+        return res.status(409).json({
+          success: false,
+          message: `This mobile number is already registered to ${existingEmp.first_name} ${existingEmp.last_name}${existingEmp.company_name ? ` (${existingEmp.company_name})` : ''}.`
+        });
+      }
+    }
+
+    // Check for duplicate Aadhaar in ANY company (excluding current employee)
+    if (employeeData.aadhaar_no && employeeData.aadhaar_no !== oldEmployeeData.aadhaar_no) {
+      const aadhaarCheck = await executeQuery(
+        `SELECT e.employee_id, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.aadhaar_no = ? AND e.employee_id != ?`,
+        [employeeData.aadhaar_no, id]
+      );
+      if (aadhaarCheck.length > 0) {
+        const existingEmp = aadhaarCheck[0];
+        return res.status(409).json({
+          success: false,
+          message: `This Aadhaar number is already registered to ${existingEmp.first_name} ${existingEmp.last_name}${existingEmp.company_name ? ` (${existingEmp.company_name})` : ''}.`
+        });
+      }
+    }
+
+    // Check for duplicate PAN in ANY company (excluding current employee)
+    if (employeeData.pan_no && employeeData.pan_no !== oldEmployeeData.pan_no) {
+      const panCheck = await executeQuery(
+        `SELECT e.employee_id, e.first_name, e.last_name, c.company_name
+         FROM employees e
+         LEFT JOIN companies c ON e.company_id = c.company_id
+         WHERE e.pan_no = ? AND e.employee_id != ?`,
+        [employeeData.pan_no, id]
+      );
+      if (panCheck.length > 0) {
+        const existingEmp = panCheck[0];
+        return res.status(409).json({
+          success: false,
+          message: `This PAN number is already registered to ${existingEmp.first_name} ${existingEmp.last_name}${existingEmp.company_name ? ` (${existingEmp.company_name})` : ''}.`
+        });
+      }
+    }
 
     // Handle file uploads
     if (req.files) {

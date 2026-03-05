@@ -9,48 +9,43 @@ require('dotenv').config();
 const app = express();
 
 // ==============================================
-// Security Middleware
+// Handle OPTIONS preflight FIRST (before any other middleware)
 // ==============================================
-app.use(helmet());
-
-// ==============================================
-// Cookie Parser (must be before routes)
-// ==============================================
-app.use(cookieParser());
-
-// ==============================================
-// CORS Configuration (with credentials for cookies)
-// ==============================================
-// Get allowed origins from environment variable
-// Example: CORS_ORIGINS=http://localhost:5173,http://localhost:3000,https://hrms.yourcompany.com
-const getAllowedOrigins = () => {
-  const envOrigins = process.env.CORS_ORIGINS;
-  if (envOrigins) {
-    return envOrigins.split(',').map(origin => origin.trim());
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    return res.sendStatus(200);
   }
-  // Default for development
-  return ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://localhost:3001'];
-};
+  next();
+});
 
+// ==============================================
+// CORS Configuration
+// ==============================================
 const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = getAllowedOrigins();
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`⚠️ CORS blocked request from: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // Allow cookies to be sent
+  origin: true,
+  credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 app.use(cors(corsOptions));
+
+// ==============================================
+// Security Middleware
+// ==============================================
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  crossOriginOpenerPolicy: false
+}));
+
+// ==============================================
+// Cookie Parser (must be before routes)
+// ==============================================
+app.use(cookieParser());
 
 // ==============================================
 // Body Parser Middleware

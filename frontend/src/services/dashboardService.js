@@ -19,9 +19,9 @@ export const dashboardService = {
 
       // Fetch all required data including attendance, sites, and site-wise salary report
       const [employeesResponse, salariesResponse, payslipsResponse, sitesResponse, attendanceResponse, siteWiseSalaryResponse] = await Promise.all([
-        employeeService.getAllEmployees(),
-        salaryService.getAllSalaries(),
-        salaryService.getAllPayslips(),
+        employeeService.getAllEmployees({ limit: 500 }), // Fetch all employees for dashboard
+        salaryService.getAllSalaries({ limit: 500 }), // Fetch all salaries for dashboard
+        salaryService.getAllPayslips({ limit: 500 }), // Fetch all payslips for dashboard
         siteService.getAllSites(),
         api.get(`/attendance/month/${currentMonth}`).catch(() => ({ data: { success: true, data: [] } })),
         api.get(`/salaries/report/site-wise`).catch(() => ({ data: { success: true, data: [] } }))
@@ -129,10 +129,6 @@ export const dashboardService = {
 
       // Calculate employees per site with salary breakdown
       const employeesPerSite = sites.map(site => {
-        const siteEmployees = employees.filter(emp =>
-          emp.site_id === site.site_id && emp.status === 'ACTIVE'
-        );
-
         // Find salary data for this site
         const siteSalaryData = siteWiseSalary.find(s => s.site_id === site.site_id);
 
@@ -140,7 +136,8 @@ export const dashboardService = {
           siteId: site.site_id,
           siteName: site.site_name,
           siteCode: site.site_code,
-          employeeCount: siteEmployees.length,
+          // Use backend's employee count which is accurate and company-filtered
+          employeeCount: siteSalaryData ? parseInt(siteSalaryData.employee_count) : 0,
           status: site.status,
           location: site.location,
           clientName: site.client_name,
@@ -274,9 +271,12 @@ export const dashboardService = {
         })
       );
 
+      // Filter out companies with 0 employees
+      const filteredStats = companyStats.filter(stat => stat.employee_count > 0);
+
       return {
         success: true,
-        data: companyStats,
+        data: filteredStats,
       };
     } catch (error) {
       console.error('Failed to get company-wise summary:', error);
@@ -284,6 +284,60 @@ export const dashboardService = {
         success: false,
         data: [],
         message: 'Failed to load company summary',
+      };
+    }
+  },
+
+  // Get pending tasks for quick action dashboard
+  getPendingTasks: async () => {
+    try {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+
+      const [employeesResponse, salariesResponse, payslipsResponse, attendanceResponse] = await Promise.all([
+        employeeService.getAllEmployees({ limit: 500, status: 'ACTIVE' }),
+        salaryService.getAllSalaries({ limit: 500 }),
+        salaryService.getAllPayslips({ limit: 500 }),
+        api.get(`/attendance/month/${currentMonth}`).catch(() => ({ data: { success: true, data: [] } }))
+      ]);
+
+      const employees = employeesResponse.data || [];
+      const salaries = salariesResponse.data || [];
+      const payslips = payslipsResponse.data || [];
+      const attendance = attendanceResponse.data?.data || [];
+
+      // Find employees without active salary structure
+      const employeesWithSalary = new Set(
+        salaries
+          .filter(s => s.status === 'ACTIVE')
+          .map(s => s.employee_id)
+      );
+      const activeEmployees = employees.filter(e => e.status === 'ACTIVE');
+      const employeesWithoutSalary = activeEmployees.filter(e => !employeesWithSalary.has(e.employee_id)).length;
+
+      // Find employees with DRAFT attendance (not finalized) for current month
+      const attendanceNotFinalized = attendance.filter(a => a.status === 'DRAFT' || !a.status).length;
+
+      // Find pending payslips for current month
+      const currentMonthPayslips = payslips.filter(p => p.month === currentMonth);
+      const payslipsPending = currentMonthPayslips.filter(p => p.payment_status === 'PENDING').length;
+
+      return {
+        success: true,
+        data: {
+          employeesWithoutSalary,
+          attendanceNotFinalized,
+          payslipsPending
+        }
+      };
+    } catch (error) {
+      console.error('Failed to load pending tasks:', error);
+      return {
+        success: false,
+        data: {
+          employeesWithoutSalary: 0,
+          attendanceNotFinalized: 0,
+          payslipsPending: 0
+        }
       };
     }
   },

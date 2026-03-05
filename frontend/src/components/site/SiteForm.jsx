@@ -11,9 +11,8 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
     siteAddress: '',
     projectType: '',
     startDate: '',
-    expectedEndDate: '',
     status: 'ACTIVE',
-    projectValue: '',
+    payCycleType: 'GROUP_A',
     remarks: '',
   });
 
@@ -32,7 +31,21 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
       setLoading(true);
       const response = await siteService.getSiteById(siteId);
       if (response.success) {
-        setFormData(response.data);
+        const site = response.data;
+        // Map snake_case from backend to camelCase for form
+        setFormData({
+          siteName: site.site_name || '',
+          clientName: site.client_name || '',
+          clientContactPerson: site.contact_person || '',
+          clientMobile: site.contact_mobile || '',
+          clientEmail: site.contact_email || '',
+          siteAddress: site.site_address || '',
+          projectType: site.location || '',
+          startDate: site.start_date ? site.start_date.split('T')[0] : '',
+          status: site.status || 'ACTIVE',
+          payCycleType: site.pay_cycle_type || 'GROUP_A',
+          remarks: site.remarks || '',
+        });
       }
     } catch (error) {
       alert('Failed to load site data');
@@ -77,27 +90,10 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
     if (!formData.startDate) {
       newErrors.startDate = 'Start date is required';
     }
-    if (!formData.expectedEndDate) {
-      newErrors.expectedEndDate = 'Expected end date is required';
-    }
 
     // Email validation (if provided)
     if (formData.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) {
       newErrors.clientEmail = 'Invalid email format';
-    }
-
-    // Date validation
-    if (formData.startDate && formData.expectedEndDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.expectedEndDate);
-      if (end < start) {
-        newErrors.expectedEndDate = 'End date must be after start date';
-      }
-    }
-
-    // Project value validation (if provided)
-    if (formData.projectValue && (isNaN(formData.projectValue) || parseFloat(formData.projectValue) < 0)) {
-      newErrors.projectValue = 'Project value must be a positive number';
     }
 
     setErrors(newErrors);
@@ -115,17 +111,11 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
     try {
       setLoading(true);
 
-      // Prepare data
-      const dataToSubmit = {
-        ...formData,
-        projectValue: formData.projectValue ? parseFloat(formData.projectValue) : 0,
-      };
-
       let response;
       if (isEditMode) {
-        response = await siteService.updateSite(siteId, dataToSubmit);
+        response = await siteService.updateSite(siteId, formData);
       } else {
-        response = await siteService.createSite(dataToSubmit);
+        response = await siteService.createSite(formData);
       }
 
       if (response.success) {
@@ -306,33 +296,6 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Expected End Date *</label>
-            <input
-              type="date"
-              name="expectedEndDate"
-              value={formData.expectedEndDate}
-              onChange={handleChange}
-              className={inputClasses}
-            />
-            {errors.expectedEndDate && <p className={errorClasses}>{errors.expectedEndDate}</p>}
-          </div>
-
-          <div>
-            <label className={labelClasses}>Project Value (₹)</label>
-            <input
-              type="number"
-              name="projectValue"
-              value={formData.projectValue}
-              onChange={handleChange}
-              min="0"
-              step="1000"
-              className={inputClasses}
-              placeholder="Enter project value"
-            />
-            {errors.projectValue && <p className={errorClasses}>{errors.projectValue}</p>}
-          </div>
-
-          <div>
             <label className={labelClasses}>Status *</label>
             <select
               name="status"
@@ -344,6 +307,24 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
               <option value="COMPLETED">Completed</option>
               <option value="INACTIVE">Inactive</option>
             </select>
+          </div>
+
+          <div>
+            <label className={labelClasses}>Wages Calculation Cycle *</label>
+            <select
+              name="payCycleType"
+              value={formData.payCycleType}
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="GROUP_A">Group A (1st to 30th/31st - Calendar Month)</option>
+              <option value="GROUP_B">Group B (26th to 25th - Custom Cycle)</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {formData.payCycleType === 'GROUP_A'
+                ? 'Standard calendar month: Dec salary = Dec 1-31'
+                : 'Custom cycle for daily wage workers: Dec salary = Nov 26 to Dec 25'}
+            </p>
           </div>
 
           <div className="md:col-span-2">

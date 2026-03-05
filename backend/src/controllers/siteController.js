@@ -24,16 +24,15 @@ const getAllSites = asyncHandler(async (req, res) => {
   let whereConditions = [];
   let params = [];
 
-  // Company filter - restrict to user's company
-  const companyId = getCompanyFilter(req);
-  if (companyId) {
-    whereConditions.push('company_id = ?');
-    params.push(companyId);
-  }
+  // Sites are now shared across all companies - no company filter needed
 
+  // Default to showing only ACTIVE sites unless status is explicitly requested
   if (status) {
     whereConditions.push('status = ?');
     params.push(status);
+  } else {
+    whereConditions.push('status = ?');
+    params.push('ACTIVE');
   }
 
   if (search) {
@@ -70,21 +69,14 @@ const getAllSites = asyncHandler(async (req, res) => {
 // ==============================================
 const getActiveSites = async (req, res) => {
   try {
-    const companyId = getCompanyFilter(req);
-    let query = `
+    // Sites are shared across all companies
+    const query = `
       SELECT * FROM sites
       WHERE status = 'ACTIVE'
+      ORDER BY site_name
     `;
-    const params = [];
 
-    if (companyId) {
-      query += ` AND company_id = ?`;
-      params.push(companyId);
-    }
-
-    query += ` ORDER BY site_name`;
-
-    const sites = await executeQuery(query, params);
+    const sites = await executeQuery(query);
 
     res.status(200).json({
       success: true,
@@ -107,15 +99,10 @@ const getActiveSites = async (req, res) => {
 const getSiteById = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = getCompanyFilter(req);
 
-    let query = 'SELECT * FROM sites WHERE site_id = ?';
+    // Sites are shared across all companies
+    const query = 'SELECT * FROM sites WHERE site_id = ?';
     const params = [id];
-
-    if (companyId) {
-      query += ' AND company_id = ?';
-      params.push(companyId);
-    }
 
     const sites = await executeQuery(query, params);
 
@@ -146,24 +133,8 @@ const getSiteById = async (req, res) => {
 const createSite = async (req, res) => {
   try {
     const data = req.body;
-    const companyId = getCompanyFilter(req);
 
-    // For non-SUPER_ADMIN users, company_id is required
-    if (!companyId && req.user.role !== 'SUPER_ADMIN') {
-      return res.status(400).json({
-        success: false,
-        message: 'Company context is required'
-      });
-    }
-
-    // SUPER_ADMIN must provide company_id in request body
-    const targetCompanyId = companyId || data.company_id;
-    if (!targetCompanyId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Company ID is required'
-      });
-    }
+    // Sites are now shared across all companies - no company_id needed
 
     // Extract and validate required fields
     const siteName = data.siteName || data.site_name;
@@ -190,7 +161,7 @@ const createSite = async (req, res) => {
 
     // Prepare values with explicit null handling
     const values = {
-      company_id: targetCompanyId,
+      company_id: null, // Sites are shared across all companies
       site_code: siteCode,
       site_name: siteName,
       client_name: data.clientName || data.client_name || null,
@@ -200,8 +171,8 @@ const createSite = async (req, res) => {
       contact_mobile: data.clientMobile || data.contact_mobile || null,
       contact_email: data.clientEmail || data.contact_email || null,
       start_date: data.startDate || data.start_date || null,
-      end_date: data.expectedEndDate || data.end_date || null,
       status: data.status || 'ACTIVE',
+      pay_cycle_type: data.payCycleType || data.pay_cycle_type || 'GROUP_A',
       remarks: data.remarks || null
     };
 
@@ -209,7 +180,7 @@ const createSite = async (req, res) => {
       INSERT INTO sites (
         company_id, site_code, site_name, client_name, location,
         site_address, contact_person, contact_mobile, contact_email,
-        start_date, end_date, status, remarks
+        start_date, status, pay_cycle_type, remarks
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
@@ -224,8 +195,8 @@ const createSite = async (req, res) => {
       values.contact_mobile,
       values.contact_email,
       values.start_date,
-      values.end_date,
       values.status,
+      values.pay_cycle_type,
       values.remarks
     ]);
 
@@ -261,17 +232,11 @@ const createSite = async (req, res) => {
 const updateSite = async (req, res) => {
   try {
     const { id } = req.params;
-    const siteData = req.body;
-    const companyId = getCompanyFilter(req);
+    const data = req.body;
 
-    // Check if site exists (within user's company)
-    let checkQuery = 'SELECT site_id FROM sites WHERE site_id = ?';
+    // Sites are shared across all companies
+    const checkQuery = 'SELECT site_id FROM sites WHERE site_id = ?';
     const checkParams = [id];
-
-    if (companyId) {
-      checkQuery += ' AND company_id = ?';
-      checkParams.push(companyId);
-    }
 
     const existing = await executeQuery(checkQuery, checkParams);
 
@@ -282,15 +247,32 @@ const updateSite = async (req, res) => {
       });
     }
 
-    // Build update query dynamically (exclude company_id from update for non-SUPER_ADMIN)
+    // Map frontend camelCase to database snake_case
+    const fieldMapping = {
+      siteName: 'site_name',
+      clientName: 'client_name',
+      clientContactPerson: 'contact_person',
+      clientMobile: 'contact_mobile',
+      clientEmail: 'contact_email',
+      siteAddress: 'site_address',
+      projectType: 'location',
+      startDate: 'start_date',
+      status: 'status',
+      payCycleType: 'pay_cycle_type',
+      remarks: 'remarks'
+    };
+
+    // Build update query with proper field mapping
     const fields = [];
     const values = [];
-    const excludeFields = ['site_id', 'company_id'];
 
-    Object.keys(siteData).forEach(key => {
-      if (siteData[key] !== undefined && !excludeFields.includes(key)) {
-        fields.push(`${key} = ?`);
-        values.push(siteData[key]);
+    Object.keys(data).forEach(key => {
+      const dbField = fieldMapping[key] || key; // Use mapping if available, otherwise use key as-is
+
+      // Only include if it's a valid database field
+      if (fieldMapping[key] && data[key] !== undefined) {
+        fields.push(`${dbField} = ?`);
+        values.push(data[key]);
       }
     });
 
@@ -334,16 +316,10 @@ const updateSite = async (req, res) => {
 const deleteSite = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = getCompanyFilter(req);
 
-    // Check if site exists (within user's company)
-    let checkQuery = 'SELECT site_id FROM sites WHERE site_id = ?';
+    // Sites are shared across all companies
+    const checkQuery = 'SELECT site_id FROM sites WHERE site_id = ?';
     const checkParams = [id];
-
-    if (companyId) {
-      checkQuery += ' AND company_id = ?';
-      checkParams.push(companyId);
-    }
 
     const existing = await executeQuery(checkQuery, checkParams);
 
@@ -393,20 +369,17 @@ const deleteSite = async (req, res) => {
 const getSiteStats = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = getCompanyFilter(req);
 
-    // Verify site belongs to user's company
-    if (companyId) {
-      const siteCheck = await executeQuery(
-        'SELECT site_id FROM sites WHERE site_id = ? AND company_id = ?',
-        [id, companyId]
-      );
-      if (siteCheck.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Site not found'
-        });
-      }
+    // Sites are shared across all companies - verify site exists
+    const siteCheck = await executeQuery(
+      'SELECT site_id FROM sites WHERE site_id = ?',
+      [id]
+    );
+    if (siteCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Site not found'
+      });
     }
 
     // Get employee count

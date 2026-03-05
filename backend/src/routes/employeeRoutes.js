@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getAllEmployees,
   getActiveEmployees,
+  getEmployeesWithoutSalary,
   getEmployeeById,
   createEmployee,
   updateEmployee,
@@ -18,6 +19,7 @@ router.use(authenticate);
 // GET routes
 router.get('/', getAllEmployees);
 router.get('/active', getActiveEmployees);
+router.get('/without-salary', getEmployeesWithoutSalary);
 router.get('/:id', getEmployeeById);
 
 // POST routes - Admin/HR only with audit logging

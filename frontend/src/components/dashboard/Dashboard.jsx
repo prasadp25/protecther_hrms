@@ -9,6 +9,12 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [companyStats, setCompanyStats] = useState([]);
   const [loadingCompanyStats, setLoadingCompanyStats] = useState(false);
+  const [pendingTasks, setPendingTasks] = useState({
+    employeesWithoutSalary: 0,
+    attendanceNotFinalized: 0,
+    payslipsPending: 0,
+    loading: true
+  });
 
   const user = authService.getUser();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -16,6 +22,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
+    loadPendingTasks();
     // Load company stats for SUPER_ADMIN when viewing all companies
     if (isSuperAdmin && !selectedCompany) {
       loadCompanyStats();
@@ -46,6 +53,24 @@ const Dashboard = () => {
       console.error('Failed to load company stats:', error);
     } finally {
       setLoadingCompanyStats(false);
+    }
+  };
+
+  const loadPendingTasks = async () => {
+    try {
+      setPendingTasks(prev => ({ ...prev, loading: true }));
+      const response = await dashboardService.getPendingTasks();
+      if (response.success) {
+        setPendingTasks({
+          employeesWithoutSalary: response.data.employeesWithoutSalary || 0,
+          attendanceNotFinalized: response.data.attendanceNotFinalized || 0,
+          payslipsPending: response.data.payslipsPending || 0,
+          loading: false
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load pending tasks:', error);
+      setPendingTasks(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -176,6 +201,85 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Pending Tasks Alert - Quick Action Items */}
+      {!pendingTasks.loading && (pendingTasks.employeesWithoutSalary > 0 || pendingTasks.attendanceNotFinalized > 0 || pendingTasks.payslipsPending > 0) && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-amber-100 rounded-full p-2">
+              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-amber-800">Action Required</h3>
+              <p className="text-sm text-amber-600">Complete these tasks to keep your HR workflow up to date</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Employees Without Salary */}
+            {pendingTasks.employeesWithoutSalary > 0 && (
+              <div className="bg-white rounded-lg p-4 border border-red-200 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-red-100 rounded-full p-2">
+                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">No Salary Structure</p>
+                      <p className="text-2xl font-bold text-red-600">{pendingTasks.employeesWithoutSalary}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Employees need salary setup</p>
+              </div>
+            )}
+
+            {/* Attendance Not Finalized */}
+            {pendingTasks.attendanceNotFinalized > 0 && (
+              <div className="bg-white rounded-lg p-4 border border-orange-200 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-orange-100 rounded-full p-2">
+                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Attendance Draft</p>
+                      <p className="text-2xl font-bold text-orange-600">{pendingTasks.attendanceNotFinalized}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Employees need attendance finalized</p>
+              </div>
+            )}
+
+            {/* Payslips Pending Payment */}
+            {pendingTasks.payslipsPending > 0 && (
+              <div className="bg-white rounded-lg p-4 border border-yellow-200 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-yellow-100 rounded-full p-2">
+                      <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Pending Payment</p>
+                      <p className="text-2xl font-bold text-yellow-600">{pendingTasks.payslipsPending}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Payslips awaiting payment</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Company-wise Breakdown - SUPER_ADMIN only when viewing all companies */}
       {isSuperAdmin && !selectedCompany && (

@@ -12,7 +12,10 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0
+  keepAliveInitialDelay: 0,
+  supportBigNumbers: true,
+  bigNumberStrings: false,
+  decimalNumbers: true
 });
 
 // Get promise-based pool
@@ -34,7 +37,7 @@ const testConnection = async () => {
 // Execute query helper
 const executeQuery = async (query, params = []) => {
   try {
-    const [results] = await promisePool.execute(query, params);
+    const [results] = await promisePool.query(query, params);
     return results;
   } catch (error) {
     console.error('Query execution error:', error);
@@ -51,7 +54,7 @@ const executeTransaction = async (queries) => {
 
     const results = [];
     for (const { query, params } of queries) {
-      const [result] = await connection.execute(query, params);
+      const [result] = await connection.query(query, params);
       results.push(result);
     }
 

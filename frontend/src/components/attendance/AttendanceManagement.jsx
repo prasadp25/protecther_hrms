@@ -23,6 +23,8 @@ const AttendanceManagement = () => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [progressStatus, setProgressStatus] = useState({ current: 0, total: 0, employee: '' });
   const [attendanceFilter, setAttendanceFilter] = useState('ALL'); // ALL, WITH_ATTENDANCE, MISSING_ATTENDANCE
+  const [copyingLastMonth, setCopyingLastMonth] = useState(false);
+  const [selectedSitePayCycle, setSelectedSitePayCycle] = useState('GROUP_A');
 
   useEffect(() => {
     loadEmployees();
@@ -57,6 +59,20 @@ const AttendanceManagement = () => {
     }
   };
 
+  // Handle site selection change
+  const handleSiteChange = (siteValue) => {
+    if (siteValue === 'ALL') {
+      setSelectedSite('ALL');
+      setSelectedSitePayCycle('GROUP_A'); // Default to Group A for "All Sites"
+    } else {
+      const siteId = parseInt(siteValue);
+      setSelectedSite(siteId);
+      // Find the site and get its pay cycle type
+      const site = sites.find(s => s.site_id === siteId);
+      setSelectedSitePayCycle(site?.pay_cycle_type || 'GROUP_A');
+    }
+  };
+
   const loadAttendance = async () => {
     try {
       setLoading(true);
@@ -70,6 +86,11 @@ const AttendanceManagement = () => {
 
         const data = employees.map((emp) => {
           const existing = attendanceMap[emp.employee_id];
+          // Get the employee's site pay cycle type
+          const empSite = sites.find(s => s.site_id === emp.site_id);
+          const empPayCycle = empSite?.pay_cycle_type || 'GROUP_A';
+          const totalDays = existing ? existing.total_days_in_month : getDaysInMonth(empPayCycle);
+
           return {
             employee_id: emp.employee_id,
             employee_code: emp.employee_code,
@@ -77,8 +98,9 @@ const AttendanceManagement = () => {
             designation: emp.designation,
             site_id: emp.site_id,
             site_name: emp.site_name || 'Unassigned',
+            site_pay_cycle: empPayCycle,
             days_present: existing ? existing.days_present : 0,
-            total_days_in_month: existing ? existing.total_days_in_month : getDaysInMonth(),
+            total_days_in_month: totalDays,
             remarks: existing ? existing.remarks : '',
             attendance_id: existing ? existing.attendance_id : null,
             status: existing ? existing.status : 'DRAFT'
@@ -95,9 +117,50 @@ const AttendanceManagement = () => {
     }
   };
 
-  const getDaysInMonth = () => {
+  // Calculate days based on pay cycle type
+  const getDaysInMonth = (payCycleType = null) => {
     const [year, month] = selectedMonth.split('-');
+    const cycleType = payCycleType || selectedSitePayCycle;
+
+    if (cycleType === 'GROUP_B') {
+      // Group B: 26th of previous month to 25th of current month
+      // E.g., December 2025 = Nov 26 to Dec 25
+      const prevMonth = parseInt(month) === 1 ? 12 : parseInt(month) - 1;
+      const prevYear = parseInt(month) === 1 ? parseInt(year) - 1 : parseInt(year);
+
+      // Days from previous month (26th to end)
+      const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+      const daysFromPrevMonth = daysInPrevMonth - 25; // 26th to end = total - 25
+
+      // Days from current month (1st to 25th)
+      const daysFromCurrentMonth = 25;
+
+      return daysFromPrevMonth + daysFromCurrentMonth;
+    }
+
+    // Group A: Standard calendar month
     return new Date(year, month, 0).getDate();
+  };
+
+  // Get date range text for display
+  const getDateRangeText = () => {
+    const [year, month] = selectedMonth.split('-');
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const currentMonthName = monthNames[parseInt(month) - 1];
+
+    if (selectedSitePayCycle === 'GROUP_B') {
+      // Previous month name
+      const prevMonthIdx = parseInt(month) === 1 ? 11 : parseInt(month) - 2;
+      const prevYear = parseInt(month) === 1 ? parseInt(year) - 1 : year;
+      const prevMonthName = monthNames[prevMonthIdx];
+
+      return `${prevMonthName} 26 - ${currentMonthName} 25, ${year}`;
+    }
+
+    // Group A: Standard month
+    const daysInMonth = new Date(year, month, 0).getDate();
+    return `${currentMonthName} 1 - ${daysInMonth}, ${year}`;
   };
 
   const handleDaysChange = (employeeId, value) => {
@@ -158,7 +221,7 @@ const AttendanceManagement = () => {
   // NEW: Check for employees without salary structures
   const checkSalaryStructures = async () => {
     try {
-      const response = await salaryService.getAllSalaries();
+      const response = await salaryService.getAllSalaries({ limit: 500 });
       if (!response.success) return [];
 
       const salaries = response.data;
@@ -180,8 +243,14 @@ const AttendanceManagement = () => {
     }
   };
 
-  // NEW: Show salary structure warning before summary
+  // Show salary structure warning before generating payslips
   const handleSaveClick = async () => {
+    // Check if attendance is finalized
+    if (!isFinalized) {
+      alert('⚠️ Please finalize attendance first before generating payslips.');
+      return;
+    }
+
     // Check for employees without salary structures
     const employeesWithoutSalary = await checkSalaryStructures();
 
@@ -212,7 +281,7 @@ const AttendanceManagement = () => {
         if (goToSalary) {
           window.location.hash = '#/salary';
         }
-        return; // Don't proceed with saving
+        return; // Don't proceed
       }
     }
 
@@ -222,31 +291,59 @@ const AttendanceManagement = () => {
 
   const confirmAndSave = async () => {
     setShowSummaryModal(false);
-    await handleSave();
+    await handleGeneratePayslips();
   };
 
-  const handleSave = async () => {
+  // Save attendance only (without generating payslips)
+  const handleSaveOnly = async () => {
     try {
       setSaving(true);
 
-      const records = attendanceData.map((att) => ({
-        employee_id: att.employee_id,
-        days_present: att.days_present,
-        remarks: att.remarks || ''
-      }));
+      const records = attendanceData.map((att) => {
+        // Get the employee's site pay cycle type to calculate correct total days
+        const empSite = sites.find(s => s.site_id === att.site_id);
+        const empPayCycle = empSite?.pay_cycle_type || 'GROUP_A';
+        const totalDays = getDaysInMonth(empPayCycle);
+
+        return {
+          employee_id: att.employee_id,
+          days_present: att.days_present,
+          total_days_in_month: totalDays,
+          remarks: att.remarks || ''
+        };
+      });
 
       const response = await attendanceService.saveAttendance(selectedMonth, records);
 
       if (response.success) {
-        await generateBulkPayslips();
+        alert('✅ Attendance saved successfully!');
+        loadAttendance();
       }
     } catch (error) {
       console.error('Failed to save attendance:', error);
       alert('❌ Failed to save attendance');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Generate payslips (requires finalized attendance)
+  const handleGeneratePayslips = async () => {
+    try {
+      setSaving(true);
+      await generateBulkPayslips();
+    } catch (error) {
+      console.error('Failed to generate payslips:', error);
+      alert('❌ Failed to generate payslips');
+    } finally {
+      setSaving(false);
       setProgressStatus({ current: 0, total: 0, employee: '' });
     }
+  };
+
+  // Legacy function - kept for compatibility
+  const handleSave = async () => {
+    await handleSaveOnly();
   };
 
   // NEW: Enhanced payslip generation with progress tracking and regenerate option
@@ -379,8 +476,8 @@ const AttendanceManagement = () => {
           wsData.push([
             index + 1,
             payslip.employee_code,
-            payslip.employee_name,
-            employee?.designation || '-',
+            `${payslip.first_name || ''} ${payslip.last_name || ''}`.trim(),
+            employee?.designation || payslip.designation || '-',
             siteName,
             payslip.total_days_in_month || workingDays,
             payslip.days_present,
@@ -453,6 +550,81 @@ const AttendanceManagement = () => {
     } catch (error) {
       console.error('Export error:', error);
       alert('❌ Failed to export to Excel');
+    }
+  };
+
+  // NEW: Copy last month's attendance
+  const handleCopyLastMonth = async () => {
+    // Calculate previous month
+    const [year, month] = selectedMonth.split('-');
+    const prevDate = new Date(parseInt(year), parseInt(month) - 2, 1);
+    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    const prevMonthName = prevDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const confirmed = window.confirm(
+      `📋 COPY ATTENDANCE\n\n` +
+      `This will copy attendance data from ${prevMonthName} to ${getMonthName()}.\n\n` +
+      `• Only employees with attendance in ${prevMonthName} will be copied\n` +
+      `• Days present values will be copied (you can adjust after)\n` +
+      `• Employees already with attendance this month will be skipped\n\n` +
+      `Continue?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setCopyingLastMonth(true);
+
+      // Load previous month's attendance
+      const response = await attendanceService.getAttendanceByMonth(prevMonth);
+
+      if (!response.success || response.data.length === 0) {
+        alert(`❌ No attendance data found for ${prevMonthName}`);
+        return;
+      }
+
+      const prevAttendance = response.data;
+      const currentDaysInMonth = getDaysInMonth();
+      let copiedCount = 0;
+      let skippedCount = 0;
+
+      // Update current month's attendance data
+      setAttendanceData(prev => {
+        return prev.map(att => {
+          // Skip if already has attendance this month
+          if (att.days_present > 0 || att.attendance_id) {
+            skippedCount++;
+            return att;
+          }
+
+          // Find previous month data for this employee
+          const prevData = prevAttendance.find(p => p.employee_id === att.employee_id);
+          if (prevData && prevData.days_present > 0) {
+            copiedCount++;
+            // Copy days present, but cap at current month's days
+            const daysToCopy = Math.min(prevData.days_present, currentDaysInMonth);
+            return {
+              ...att,
+              days_present: daysToCopy,
+              total_days_in_month: currentDaysInMonth,
+              remarks: `Copied from ${prevMonthName}`
+            };
+          }
+          return att;
+        });
+      });
+
+      alert(
+        `✅ Copy Complete!\n\n` +
+        `• Copied: ${copiedCount} employees\n` +
+        `• Skipped: ${skippedCount} employees (already have attendance)\n\n` +
+        `Review the data and click "Save Attendance" to confirm.`
+      );
+    } catch (error) {
+      console.error('Failed to copy attendance:', error);
+      alert('❌ Failed to copy attendance from previous month');
+    } finally {
+      setCopyingLastMonth(false);
     }
   };
 
@@ -545,7 +717,7 @@ const AttendanceManagement = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 text-white">
         <h2 className="text-3xl font-bold mb-2">Attendance Management</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
@@ -557,6 +729,22 @@ const AttendanceManagement = () => {
               ✓ FINALIZED
             </span>
           )}
+        </div>
+        {/* Pay Cycle Info */}
+        <div className="mt-2 flex items-center gap-4 text-sm">
+          <span className={`px-3 py-1 rounded-full font-medium ${
+            selectedSitePayCycle === 'GROUP_B'
+              ? 'bg-orange-500 text-white'
+              : 'bg-blue-500 text-white'
+          }`}>
+            {selectedSitePayCycle === 'GROUP_B' ? 'Group B (26th-25th)' : 'Group A (1st-30th/31st)'}
+          </span>
+          <span className="text-blue-100">
+            Date Range: <span className="font-semibold text-white">{getDateRangeText()}</span>
+          </span>
+          <span className="text-blue-100">
+            Total Days: <span className="font-semibold text-white">{getDaysInMonth()}</span>
+          </span>
         </div>
       </div>
 
@@ -601,13 +789,13 @@ const AttendanceManagement = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Site</label>
             <select
               value={selectedSite}
-              onChange={(e) => setSelectedSite(e.target.value === 'ALL' ? 'ALL' : parseInt(e.target.value))}
+              onChange={(e) => handleSiteChange(e.target.value)}
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
             >
               <option value="ALL">All Sites</option>
               {sites.map((site) => (
                 <option key={site.site_id} value={site.site_id}>
-                  {site.site_code} - {site.site_name}
+                  {site.site_code} - {site.site_name} {site.pay_cycle_type === 'GROUP_B' ? '(26-25)' : ''}
                 </option>
               ))}
             </select>
@@ -626,7 +814,7 @@ const AttendanceManagement = () => {
         </div>
 
         {/* NEW: Quick Filter Buttons */}
-        <div className="mt-4 flex gap-2 flex-wrap">
+        <div className="mt-4 flex gap-2 flex-wrap items-center">
           <button
             onClick={() => setAttendanceFilter('ALL')}
             className={`px-4 py-2 rounded-md font-medium ${
@@ -657,6 +845,29 @@ const AttendanceManagement = () => {
           >
             Missing Attendance ({summary.missingAttendance})
           </button>
+
+          {/* Divider */}
+          <div className="border-l border-gray-300 h-8 mx-2"></div>
+
+          {/* Copy Last Month Button */}
+          <button
+            onClick={handleCopyLastMonth}
+            disabled={copyingLastMonth || isFinalized || loading}
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300 font-medium flex items-center gap-2"
+            title="Copy attendance from previous month"
+          >
+            {copyingLastMonth ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Copying...
+              </>
+            ) : (
+              <>📋 Copy Last Month</>
+            )}
+          </button>
         </div>
 
         {/* NEW: Regenerate Checkbox and Action Buttons */}
@@ -677,20 +888,30 @@ const AttendanceManagement = () => {
 
           <div className="flex gap-2">
             {!isFinalized && (
-              <button
-                onClick={handleFinalize}
-                disabled={saving || loading}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-green-300 font-medium"
-              >
-                🔒 Finalize Attendance
-              </button>
+              <>
+                <button
+                  onClick={handleSaveOnly}
+                  disabled={saving || loading}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:bg-gray-300 font-medium"
+                >
+                  {saving ? 'Saving...' : '💾 Save Attendance'}
+                </button>
+                <button
+                  onClick={handleFinalize}
+                  disabled={saving || loading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-green-300 font-medium"
+                >
+                  🔒 Finalize Attendance
+                </button>
+              </>
             )}
             <button
               onClick={handleSaveClick}
-              disabled={saving || loading || isFinalized}
+              disabled={saving || loading || !isFinalized}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 font-medium"
+              title={!isFinalized ? 'Finalize attendance first before generating payslips' : ''}
             >
-              {saving ? 'Processing...' : '💾 Save Attendance & Generate Payslips'}
+              {saving ? 'Processing...' : '📄 Generate Payslips'}
             </button>
           </div>
         </div>
@@ -834,6 +1055,11 @@ const AttendanceManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{att.site_name}</div>
+                      {att.site_pay_cycle === 'GROUP_B' && (
+                        <span className="text-xs px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded">
+                          26-25
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <input

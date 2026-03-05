@@ -7,6 +7,7 @@ const {
 } = require('../utils/pagination');
 const { asyncHandler } = require('../utils/errors');
 const { logSalaryCreate, logSalaryUpdate } = require('../utils/auditLogger');
+const { getCompanyFilter } = require('../middleware/auth');
 
 // ==============================================
 // GET ALL SALARIES (with pagination)
@@ -24,6 +25,13 @@ const getAllSalaries = asyncHandler(async (req, res) => {
   // Build WHERE clause
   let whereConditions = [];
   let params = [];
+
+  // Company filter - restrict to user's company
+  const companyId = getCompanyFilter(req);
+  if (companyId) {
+    whereConditions.push('e.company_id = ?');
+    params.push(companyId);
+  }
 
   if (status) {
     whereConditions.push('s.status = ?');
@@ -305,8 +313,16 @@ const updateSalary = async (req, res) => {
     const fields = [];
     const values = [];
 
+    // Whitelist of allowed fields in salaries table
+    const allowedFields = [
+      'basic_salary', 'hra', 'incentive_allowance', 'gross_salary',
+      'pf_deduction', 'esi_deduction', 'professional_tax', 'mediclaim_deduction',
+      'advance_deduction', 'other_deductions', 'total_deductions', 'net_salary',
+      'effective_from', 'status', 'change_reason'
+    ];
+
     Object.keys(salaryData).forEach(key => {
-      if (salaryData[key] !== undefined && key !== 'salary_id' && key !== 'employee_id') {
+      if (salaryData[key] !== undefined && key !== 'salary_id' && key !== 'employee_id' && allowedFields.includes(key)) {
         fields.push(`${key} = ?`);
         values.push(salaryData[key]);
       }
@@ -319,9 +335,6 @@ const updateSalary = async (req, res) => {
       });
     }
 
-    // Add changed_by for audit
-    fields.push('changed_by = ?');
-    values.push(req.user?.user_id || null);
     values.push(id);
 
     const query = `UPDATE salaries SET ${fields.join(', ')} WHERE salary_id = ?`;
@@ -401,19 +414,27 @@ const deleteSalary = async (req, res) => {
 const getSalarySummary = async (req, res) => {
   try {
     const { site_id, month } = req.query;
+    const companyId = getCompanyFilter(req);
 
     let query = `
       SELECT
         COUNT(DISTINCT s.employee_id) as employee_count,
-        SUM(s.gross_salary) as total_gross,
-        SUM(s.total_deductions) as total_deductions,
-        SUM(s.net_salary) as total_net,
-        AVG(s.gross_salary) as avg_gross_salary
+        COALESCE(SUM(s.gross_salary), 0) as total_gross,
+        COALESCE(SUM(s.total_deductions), 0) as total_deductions,
+        COALESCE(SUM(s.net_salary), 0) as total_net,
+        COALESCE(AVG(s.net_salary), 0) as avg_salary,
+        COALESCE(MIN(s.net_salary), 0) as min_salary,
+        COALESCE(MAX(s.net_salary), 0) as max_salary
       FROM salaries s
       JOIN employees e ON s.employee_id = e.employee_id
       WHERE s.status = 'ACTIVE' AND e.status = 'ACTIVE'
     `;
     const params = [];
+
+    if (companyId) {
+      query += ' AND e.company_id = ?';
+      params.push(companyId);
+    }
 
     if (site_id) {
       query += ' AND e.site_id = ?';
@@ -421,10 +442,18 @@ const getSalarySummary = async (req, res) => {
     }
 
     const summary = await executeQuery(query, params);
+    const data = summary[0];
 
+    // Map to frontend expected field names
     res.status(200).json({
       success: true,
-      data: summary[0]
+      data: {
+        totalEmployees: data.employee_count || 0,
+        totalSalaryBurden: parseFloat(data.total_net) || 0,
+        avgSalary: parseFloat(data.avg_salary) || 0,
+        minSalary: parseFloat(data.min_salary) || 0,
+        maxSalary: parseFloat(data.max_salary) || 0
+      }
     });
   } catch (error) {
     console.error('Get salary summary error:', error);
@@ -441,7 +470,9 @@ const getSalarySummary = async (req, res) => {
 // ==============================================
 const getSiteWiseSalaryReport = async (req, res) => {
   try {
-    const query = `
+    const companyId = getCompanyFilter(req);
+
+    let query = `
       SELECT
         st.site_id, st.site_code, st.site_name,
         COUNT(DISTINCT s.employee_id) as employee_count,
@@ -452,11 +483,20 @@ const getSiteWiseSalaryReport = async (req, res) => {
       JOIN employees e ON s.employee_id = e.employee_id
       LEFT JOIN sites st ON e.site_id = st.site_id
       WHERE s.status = 'ACTIVE' AND e.status = 'ACTIVE'
+    `;
+    const params = [];
+
+    if (companyId) {
+      query += ' AND e.company_id = ?';
+      params.push(companyId);
+    }
+
+    query += `
       GROUP BY st.site_id, st.site_code, st.site_name
       ORDER BY st.site_name
     `;
 
-    const report = await executeQuery(query);
+    const report = await executeQuery(query, params);
 
     res.status(200).json({
       success: true,

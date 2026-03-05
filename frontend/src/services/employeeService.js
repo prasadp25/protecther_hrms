@@ -41,6 +41,21 @@ export const employeeService = {
     return response.data;
   },
 
+  // Get employees without active salary records
+  getEmployeesWithoutSalary: async () => {
+    if (USE_MOCK_DATA) {
+      await delay(300);
+      const activeEmployees = mockEmployeeData.filter(emp => emp.status === 'ACTIVE');
+      return {
+        success: true,
+        data: activeEmployees,
+        message: 'Employees without salary retrieved successfully',
+      };
+    }
+    const response = await api.get(`${EMPLOYEE_ENDPOINT}/without-salary`);
+    return response.data;
+  },
+
   // Get employee by ID
   getEmployeeById: async (id) => {
     if (USE_MOCK_DATA) {

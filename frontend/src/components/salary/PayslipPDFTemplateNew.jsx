@@ -288,8 +288,9 @@ const styles = StyleSheet.create({
 });
 
 // Helper function to format currency
+// Using "Rs." instead of "₹" because Helvetica font doesn't support Rupee symbol
 const formatCurrency = (amount) => {
-  if (!amount && amount !== 0) return '₹0';
+  if (!amount && amount !== 0) return 'Rs.0';
   const num = Math.round(parseFloat(amount));
   const numStr = num.toString();
   let result = '';
@@ -303,7 +304,7 @@ const formatCurrency = (amount) => {
     count++;
   }
 
-  return `₹${result}`;
+  return `Rs.${result}`;
 };
 
 // Helper function to convert number to words (Indian format)

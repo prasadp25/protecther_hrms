@@ -4,6 +4,18 @@ import { siteService } from '../../services/siteService';
 import authService from '../../services/authService';
 import api from '../../config/api';
 
+// Department to Designation mapping
+const DEPARTMENT_DESIGNATIONS = {
+  HR: ['HR Executive', 'HR Assistant'],
+  Accounts: ['Accounts Executive', 'Accounts Assistant'],
+  IT: ['IT Executive', 'IT Intern'],
+  Management: ['Admin', 'Managing Director', 'Director'],
+  Support: ['Office Assistant'],
+  Operations: ['Safety Officer', 'Safety Steward', 'Safety Supervisor', 'Scaffolding Inspector'],
+};
+
+const DEPARTMENTS = Object.keys(DEPARTMENT_DESIGNATIONS);
+
 const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -211,8 +223,10 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
 
   const validateForm = () => {
     const newErrors = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Only Name and Mobile are mandatory
+    // Mandatory fields: Name, Mobile, Department, Designation, Assigned Site
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
 
@@ -222,7 +236,26 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       newErrors.mobileNo = 'Mobile number must be 10 digits';
     }
 
+    if (!formData.department) newErrors.department = 'Department is required';
+    if (!formData.designation) newErrors.designation = 'Designation is required';
+    if (!formData.siteId) newErrors.siteId = 'Assigned site is required';
+
     // Optional field validations (only validate format if provided)
+    if (formData.dob) {
+      const dobDate = new Date(formData.dob);
+      if (dobDate >= today) {
+        newErrors.dob = 'Date of birth must be in the past';
+      } else {
+        const age = Math.floor((today - dobDate) / (365.25 * 24 * 60 * 60 * 1000));
+        if (age < 18) {
+          newErrors.dob = 'Employee must be at least 18 years old';
+        }
+        if (age > 80) {
+          newErrors.dob = 'Please check the date of birth';
+        }
+      }
+    }
+
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
@@ -235,8 +268,12 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       newErrors.panNo = 'Invalid PAN format (e.g., ABCDE1234F)';
     }
 
+    if (formData.accountNo && !/^[0-9]{9,18}$/.test(formData.accountNo)) {
+      newErrors.accountNo = 'Account number must be 9-18 digits';
+    }
+
     if (formData.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
-      newErrors.ifscCode = 'Invalid IFSC code format';
+      newErrors.ifscCode = 'Invalid IFSC code format (e.g., SBIN0001234)';
     }
 
     if (formData.emergencyContactMobile && !/^[0-9]{10}$/.test(formData.emergencyContactMobile)) {
@@ -414,7 +451,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Date of Birth *</label>
+            <label className={labelClasses}>Date of Birth</label>
             <input
               type="date"
               name="dob"
@@ -426,7 +463,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Gender *</label>
+            <label className={labelClasses}>Gender</label>
             <select
               name="gender"
               value={formData.gender}
@@ -453,7 +490,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div className="md:col-span-2">
-            <label className={labelClasses}>Address *</label>
+            <label className={labelClasses}>Address</label>
             <textarea
               name="address"
               value={formData.address}
@@ -476,7 +513,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelClasses}>Aadhaar Number *</label>
+            <label className={labelClasses}>Aadhaar Number</label>
             <input
               type="text"
               name="aadhaarNo"
@@ -489,7 +526,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Upload Aadhaar Card *</label>
+            <label className={labelClasses}>Upload Aadhaar Card</label>
             <input
               type="file"
               name="aadhaarCard"
@@ -509,7 +546,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>PAN Number *</label>
+            <label className={labelClasses}>PAN Number</label>
             <input
               type="text"
               name="panNo"
@@ -523,7 +560,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Upload PAN Card *</label>
+            <label className={labelClasses}>Upload PAN Card</label>
             <input
               type="file"
               name="panCard"
@@ -576,7 +613,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelClasses}>Contact Person Name *</label>
+            <label className={labelClasses}>Contact Person Name</label>
             <input
               type="text"
               name="emergencyContactName"
@@ -588,7 +625,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Contact Mobile Number *</label>
+            <label className={labelClasses}>Contact Mobile Number</label>
             <input
               type="text"
               name="emergencyContactMobile"
@@ -601,7 +638,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Relationship *</label>
+            <label className={labelClasses}>Relationship</label>
             <select
               name="emergencyContactRelationship"
               value={formData.emergencyContactRelationship}
@@ -631,7 +668,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelClasses}>Account Number *</label>
+            <label className={labelClasses}>Account Number</label>
             <input
               type="text"
               name="accountNo"
@@ -643,7 +680,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>IFSC Code *</label>
+            <label className={labelClasses}>IFSC Code</label>
             <input
               type="text"
               name="ifscCode"
@@ -657,7 +694,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div className="md:col-span-2">
-            <label className={labelClasses}>Bank Name *</label>
+            <label className={labelClasses}>Bank Name</label>
             <input
               type="text"
               name="bankName"
@@ -680,7 +717,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelClasses}>Date of Joining *</label>
+            <label className={labelClasses}>Date of Joining</label>
             <input
               type="date"
               name="dateOfJoining"
@@ -715,24 +752,14 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               value={formData.designation}
               onChange={handleChange}
               className={inputClasses}
+              disabled={!formData.department}
             >
-              <option value="">Select Designation</option>
-              <option value="Site Engineer">Site Engineer</option>
-              <option value="Site Supervisor">Site Supervisor</option>
-              <option value="Foreman">Foreman</option>
-              <option value="Mason">Mason</option>
-              <option value="Carpenter">Carpenter</option>
-              <option value="Electrician">Electrician</option>
-              <option value="Plumber">Plumber</option>
-              <option value="Helper">Helper</option>
-              <option value="Labour">Labour</option>
-              <option value="Operator">Operator</option>
-              <option value="Safety Officer">Safety Officer</option>
-              <option value="Store Keeper">Store Keeper</option>
-              <option value="Accountant">Accountant</option>
-              <option value="HR Manager">HR Manager</option>
-              <option value="Project Manager">Project Manager</option>
-              <option value="Other">Other</option>
+              <option value="">
+                {formData.department ? 'Select Designation' : 'Select Department First'}
+              </option>
+              {formData.department && DEPARTMENT_DESIGNATIONS[formData.department]?.map((desig) => (
+                <option key={desig} value={desig}>{desig}</option>
+              ))}
             </select>
             {errors.designation && <p className={errorClasses}>{errors.designation}</p>}
           </div>
@@ -742,29 +769,27 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
             <select
               name="department"
               value={formData.department}
-              onChange={handleChange}
+              onChange={(e) => {
+                const newDept = e.target.value;
+                // Clear designation if it's not valid for the new department
+                const validDesignations = DEPARTMENT_DESIGNATIONS[newDept] || [];
+                const newDesignation = validDesignations.includes(formData.designation)
+                  ? formData.designation
+                  : '';
+                setFormData({ ...formData, department: newDept, designation: newDesignation });
+              }}
               className={inputClasses}
             >
               <option value="">Select Department</option>
-              <option value="Civil">Civil</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Plumbing">Plumbing</option>
-              <option value="Carpentry">Carpentry</option>
-              <option value="Finishing">Finishing</option>
-              <option value="Safety">Safety</option>
-              <option value="Administration">Administration</option>
-              <option value="Accounts">Accounts</option>
-              <option value="HR">HR</option>
-              <option value="Stores">Stores</option>
-              <option value="Equipment">Equipment</option>
-              <option value="Quality Control">Quality Control</option>
-              <option value="Other">Other</option>
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
             </select>
             {errors.department && <p className={errorClasses}>{errors.department}</p>}
           </div>
 
           <div>
-            <label className={labelClasses}>Offer Letter Issue Date *</label>
+            <label className={labelClasses}>Offer Letter Issue Date</label>
             <input
               type="date"
               name="offerLetterIssueDate"
@@ -776,7 +801,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </div>
 
           <div>
-            <label className={labelClasses}>Upload Offer Letter *</label>
+            <label className={labelClasses}>Upload Offer Letter</label>
             <input
               type="file"
               name="offerLetter"
@@ -838,20 +863,21 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           )}
 
           <div>
-            <label className={labelClasses}>Assigned Site/Client</label>
+            <label className={labelClasses}>Assigned Site/Client *</label>
             <select
               name="siteId"
               value={formData.siteId}
               onChange={handleChange}
               className={inputClasses}
             >
-              <option value="">Select Site (Optional)</option>
+              <option value="">Select Site</option>
               {activeSites.map((site) => (
                 <option key={site.site_id} value={site.site_id}>
                   {site.site_code} - {site.site_name}
                 </option>
               ))}
             </select>
+            {errors.siteId && <p className={errorClasses}>{errors.siteId}</p>}
             <p className="mt-1 text-xs text-slate-500">
               Assign employee to a construction site/project
             </p>

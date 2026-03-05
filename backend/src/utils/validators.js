@@ -206,7 +206,7 @@ const validateEmployeeData = (data) => {
   const errors = [];
   const cleanedData = { ...data };
 
-  // Required fields check
+  // Mandatory fields: Name, Mobile, Department, Designation, Assigned Site
   if (!data.first_name || data.first_name.trim() === '') {
     errors.push('First name is required');
   }
@@ -215,27 +215,7 @@ const validateEmployeeData = (data) => {
     errors.push('Last name is required');
   }
 
-  // Validate Aadhaar
-  if (data.aadhaar_no) {
-    const aadhaarResult = validateAadhaar(data.aadhaar_no);
-    if (!aadhaarResult.valid) {
-      errors.push(aadhaarResult.message);
-    } else {
-      cleanedData.aadhaar_no = aadhaarResult.value;
-    }
-  }
-
-  // Validate PAN
-  if (data.pan_no) {
-    const panResult = validatePAN(data.pan_no);
-    if (!panResult.valid) {
-      errors.push(panResult.message);
-    } else {
-      cleanedData.pan_no = panResult.value;
-    }
-  }
-
-  // Validate Mobile
+  // Validate Mobile (required)
   if (data.mobile) {
     const mobileResult = validateMobile(data.mobile);
     if (!mobileResult.valid) {
@@ -247,8 +227,45 @@ const validateEmployeeData = (data) => {
     errors.push('Mobile number is required');
   }
 
+  // Department is mandatory
+  if (!data.department || data.department.trim() === '') {
+    errors.push('Department is required');
+  }
+
+  // Designation is mandatory
+  if (!data.designation || data.designation.trim() === '') {
+    errors.push('Designation is required');
+  }
+
+  // Assigned Site is mandatory
+  if (!data.site_id) {
+    errors.push('Assigned site is required');
+  }
+
+  // All other validations are optional - only validate format if provided
+
+  // Validate Aadhaar (optional)
+  if (data.aadhaar_no && data.aadhaar_no.trim() !== '') {
+    const aadhaarResult = validateAadhaar(data.aadhaar_no);
+    if (!aadhaarResult.valid) {
+      errors.push(aadhaarResult.message);
+    } else {
+      cleanedData.aadhaar_no = aadhaarResult.value;
+    }
+  }
+
+  // Validate PAN (optional)
+  if (data.pan_no && data.pan_no.trim() !== '') {
+    const panResult = validatePAN(data.pan_no);
+    if (!panResult.valid) {
+      errors.push(panResult.message);
+    } else {
+      cleanedData.pan_no = panResult.value;
+    }
+  }
+
   // Validate alternate mobile (optional)
-  if (data.alternate_mobile) {
+  if (data.alternate_mobile && data.alternate_mobile.trim() !== '') {
     const altMobileResult = validateMobile(data.alternate_mobile);
     if (!altMobileResult.valid) {
       errors.push('Alternate mobile: ' + altMobileResult.message);
@@ -258,7 +275,7 @@ const validateEmployeeData = (data) => {
   }
 
   // Validate Email (optional)
-  if (data.email) {
+  if (data.email && data.email.trim() !== '') {
     const emailResult = validateEmail(data.email);
     if (!emailResult.valid) {
       errors.push(emailResult.message);
@@ -267,8 +284,8 @@ const validateEmployeeData = (data) => {
     }
   }
 
-  // Validate IFSC
-  if (data.ifsc_code) {
+  // Validate IFSC (optional)
+  if (data.ifsc_code && data.ifsc_code.trim() !== '') {
     const ifscResult = validateIFSC(data.ifsc_code);
     if (!ifscResult.valid) {
       errors.push(ifscResult.message);
@@ -277,8 +294,8 @@ const validateEmployeeData = (data) => {
     }
   }
 
-  // Validate Account Number
-  if (data.account_number) {
+  // Validate Account Number (optional)
+  if (data.account_number && data.account_number.trim() !== '') {
     const accountResult = validateAccountNumber(data.account_number);
     if (!accountResult.valid) {
       errors.push(accountResult.message);
@@ -288,7 +305,7 @@ const validateEmployeeData = (data) => {
   }
 
   // Validate Pincode (optional)
-  if (data.pincode) {
+  if (data.pincode && data.pincode.trim() !== '') {
     const pincodeResult = validatePincode(data.pincode);
     if (!pincodeResult.valid) {
       errors.push(pincodeResult.message);
@@ -297,21 +314,19 @@ const validateEmployeeData = (data) => {
     }
   }
 
-  // Validate dates
-  if (data.dob) {
+  // Validate dates (optional)
+  if (data.dob && data.dob.trim() !== '') {
     const dobResult = validateDate(data.dob);
     if (!dobResult.valid) {
       errors.push('Date of Birth: ' + dobResult.message);
     }
   }
 
-  if (data.date_of_joining) {
-    const dojResult = validateDate(data.date_of_joining, true);
+  if (data.date_of_joining && data.date_of_joining.trim() !== '') {
+    const dojResult = validateDate(data.date_of_joining);
     if (!dojResult.valid) {
       errors.push('Date of Joining: ' + dojResult.message);
     }
-  } else {
-    errors.push('Date of Joining is required');
   }
 
   return {
