@@ -6,11 +6,6 @@ const { executeQuery } = require('../config/database');
 // ==============================================
 const authenticate = async (req, res, next) => {
   try {
-    // Debug logging
-    console.log('🔐 Auth middleware - Request:', req.method, req.path);
-    console.log('🍪 Cookies received:', req.cookies);
-    console.log('📋 Headers:', req.headers);
-
     // Get token from httpOnly cookie (primary) or Authorization header (fallback)
     let token = req.cookies?.auth_token;
 
@@ -22,10 +17,7 @@ const authenticate = async (req, res, next) => {
       }
     }
 
-    console.log('🎫 Token found:', token ? 'YES' : 'NO');
-
     if (!token) {
-      console.log('❌ No token provided');
       return res.status(401).json({
         success: false,
         message: 'Access denied. No token provided.'
