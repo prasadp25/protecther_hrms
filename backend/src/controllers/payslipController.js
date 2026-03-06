@@ -218,7 +218,14 @@ const generatePayslip = async (req, res) => {
     const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
     const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
     const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
-    const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
+
+    // Bonus Calculation: 8.33% of min(Basic, ₹7000) - Payment of Bonus Act 1965
+    // Eligible if Basic ≤ ₹21,000/month
+    const bonusEligible = fixedBasic <= 21000;
+    const bonusBase = Math.min(actualBasic, 7000); // Calculation ceiling ₹7,000
+    const bonus = bonusEligible ? Math.round(bonusBase * 0.0833) : 0;
+
+    const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive + bonus;
 
     // PF Calculation: 12% of Earned Basic (as per EPFO rules)
     // Wage ceiling: ₹15,000 basic = max PF ₹1,800
@@ -251,12 +258,12 @@ const generatePayslip = async (req, res) => {
       INSERT INTO payslips (
         employee_id, salary_id, month,
         total_working_days, total_days_in_month, days_present, days_absent,
-        basic_salary, hra, other_allowances, gross_salary,
+        basic_salary, hra, other_allowances, bonus, gross_salary,
         fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
         pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
         advance_deduction, other_deductions, total_deductions,
         net_salary, payment_status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -270,7 +277,8 @@ const generatePayslip = async (req, res) => {
       actualBasic,  // Actual (prorated) basic
       actualHra,     // Actual (prorated) HRA
       actualAllowance + actualIncentive, // Combined allowances (actual prorated)
-      actualGross,   // Actual (prorated) gross
+      bonus,         // Bonus (8.33% of min(basic, 7000))
+      actualGross,   // Actual (prorated) gross (includes bonus)
       fixedBasic,    // Fixed monthly basic
       fixedHra,      // Fixed monthly HRA
       fixedAllowance + fixedIncentive, // Fixed monthly incentive
@@ -421,7 +429,13 @@ const bulkGeneratePayslips = async (req, res) => {
         const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
         const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
         const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
-        const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive;
+
+        // Bonus Calculation: 8.33% of min(Basic, ₹7000) - Payment of Bonus Act 1965
+        const bonusEligible = fixedBasic <= 21000;
+        const bonusBase = Math.min(actualBasic, 7000);
+        const bonus = bonusEligible ? Math.round(bonusBase * 0.0833) : 0;
+
+        const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive + bonus;
 
         // PF Calculation: 12% of Earned Basic (as per EPFO rules)
         // Wage ceiling: ₹15,000 basic = max PF ₹1,800
@@ -453,16 +467,16 @@ const bulkGeneratePayslips = async (req, res) => {
           `INSERT INTO payslips (
             employee_id, salary_id, month,
             total_working_days, total_days_in_month, days_present, days_absent,
-            basic_salary, hra, other_allowances, gross_salary,
+            basic_salary, hra, other_allowances, bonus, gross_salary,
             fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
             pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
             advance_deduction, other_deductions, total_deductions,
             net_salary, payment_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             emp.employee_id, salaryData.salary_id, monthStr,
             totalWorkingDays, daysInMonth, actualDaysPresent, daysAbsent,
-            actualBasic, actualHra, actualAllowance + actualIncentive, actualGross,
+            actualBasic, actualHra, actualAllowance + actualIncentive, bonus, actualGross,
             fixedBasic, fixedHra, fixedAllowance + fixedIncentive, fixedGross, fixedNetSalary,
             pfDeduction, esiDeduction, professionalTax, mediclaimDeduction,
             advanceDeduction, otherDeductions, totalDeductions,
