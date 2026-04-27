@@ -16,6 +16,8 @@ const storage = multer.diskStorage({
       uploadPath += 'aadhaar-cards/';
     } else if (file.fieldname === 'panCard') {
       uploadPath += 'pan-cards/';
+    } else if (file.fieldname === 'employeePhoto') {
+      uploadPath += 'employee-photos/';
     } else {
       uploadPath += 'others/';
     }
@@ -85,8 +87,38 @@ const upload = multer({
 const uploadEmployeeDocuments = upload.fields([
   { name: 'offerLetter', maxCount: 1 },
   { name: 'aadhaarCard', maxCount: 1 },
-  { name: 'panCard', maxCount: 1 }
+  { name: 'panCard', maxCount: 1 },
+  { name: 'employeePhoto', maxCount: 1 }
 ]);
+
+// ==============================================
+// IMAGE-ONLY FILTER FOR PHOTOS
+// ==============================================
+const imageOnlyFilter = (req, file, cb) => {
+  const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+  const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  const isMimeValid = allowedMimeTypes.includes(file.mimetype);
+  const isExtValid = allowedExtensions.includes(ext);
+
+  if (isMimeValid && isExtValid) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPG and PNG images are allowed.'), false);
+  }
+};
+
+// ==============================================
+// PHOTO UPLOAD MIDDLEWARE
+// ==============================================
+const photoUpload = multer({
+  storage: storage,
+  fileFilter: imageOnlyFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024 // 2MB for photos
+  }
+});
 
 // ==============================================
 // SINGLE FILE UPLOAD
@@ -139,5 +171,6 @@ module.exports = {
   uploadEmployeeDocuments,
   uploadSingle,
   uploadMultiple,
-  handleUploadError
+  handleUploadError,
+  photoUpload
 };

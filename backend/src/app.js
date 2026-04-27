@@ -87,6 +87,10 @@ const payslipRoutes = require('./routes/payslipRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const auditRoutes = require('./routes/auditRoutes');
+const candidateRoutes = require('./routes/candidateRoutes');
+const employeePortalRoutes = require('./routes/employeePortalRoutes');
+const noticeRoutes = require('./routes/noticeRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 // Mount routes
 app.use(`${apiPrefix}/auth`, authRoutes);
@@ -98,6 +102,10 @@ app.use(`${apiPrefix}/payslips`, payslipRoutes);
 app.use(`${apiPrefix}/attendance`, attendanceRoutes);
 app.use(`${apiPrefix}/reports`, reportRoutes);
 app.use(`${apiPrefix}/audit-logs`, auditRoutes);
+app.use(`${apiPrefix}/candidates`, candidateRoutes);
+app.use(`${apiPrefix}/employee-portal`, employeePortalRoutes);
+app.use(`${apiPrefix}/notices`, noticeRoutes);
+app.use(`${apiPrefix}/settings`, settingsRoutes);
 
 // ==============================================
 // Static Files (must be after API routes)

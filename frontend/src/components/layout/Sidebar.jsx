@@ -3,11 +3,14 @@ import { useState, useEffect } from 'react';
 const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout, collapsed, onCollapsedChange, mobileOpen, onMobileClose }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
+    { id: 'candidates', label: 'Candidates', icon: CandidateIcon },
     { id: 'employees', label: 'Employees', icon: UsersIcon },
     { id: 'sites', label: 'Sites', icon: BuildingIcon },
     { id: 'attendance', label: 'Attendance', icon: CalendarIcon },
     { id: 'salary', label: 'Payroll', icon: WalletIcon },
     { id: 'reports', label: 'Reports', icon: ChartIcon },
+    { id: 'notices', label: 'Notices', icon: NoticeIcon, roles: ['SUPER_ADMIN', 'ADMIN', 'HR'] },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon, roles: ['SUPER_ADMIN', 'ADMIN'] },
   ];
 
   const adminItems = [
@@ -78,7 +81,13 @@ const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout, collaps
         {/* Navigation */}
         <nav className="p-2 flex-1 overflow-y-auto">
           <div className="space-y-1">
-            {menuItems.map((item) => (
+            {menuItems.filter(item => {
+              // If item has roles restriction, check if user's role is allowed
+              if (item.roles) {
+                return isSuperAdmin || item.roles.includes(user?.role);
+              }
+              return true;
+            }).map((item) => (
               <button
                 key={item.id}
                 onClick={() => handleModuleClick(item.id)}
@@ -172,6 +181,12 @@ const ChartIcon = ({ className }) => (
   </svg>
 );
 
+const CandidateIcon = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+  </svg>
+);
+
 const CompanyIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -181,6 +196,19 @@ const CompanyIcon = ({ className }) => (
 const ShieldIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+);
+
+const NoticeIcon = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+  </svg>
+);
+
+const SettingsIcon = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
 

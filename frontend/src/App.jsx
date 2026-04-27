@@ -19,13 +19,33 @@ import CompanyList from './components/company/CompanyList';
 import CompanyForm from './components/company/CompanyForm';
 import CompanySwitcher from './components/common/CompanySwitcher';
 import AuditLogs from './components/audit/AuditLogs';
+import { CandidateList, CandidateForm, OfferLetterGenerator, ConvertToEmployee } from './components/candidate';
 import Sidebar, { MenuIcon } from './components/layout/Sidebar';
 import { getSelectedCompany, setSelectedCompany } from './config/api';
+import NoticeList from './components/notices/NoticeList';
+import InsuranceSettings from './components/settings/InsuranceSettings';
+import {
+  EmployeeLogin,
+  EmployeePortalLayout,
+  EmployeeDashboard,
+  MyProfile,
+  MyPayslips,
+  MyDocuments,
+  InsuranceInfo,
+  Notices as EmployeeNotices
+} from './components/employeePortal';
+import { employeePortalService } from './services/employeePortalService';
 
-// Protected Route Component
+// Protected Route Component for Admin
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = authService.isAuthenticated();
   return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Protected Route Component for Employee Portal
+const ProtectedEmployeeRoute = ({ children }) => {
+  const isAuthenticated = employeePortalService.isLoggedIn();
+  return isAuthenticated ? children : <Navigate to="/employee-portal/login" replace />;
 };
 
 // Main App Component
@@ -36,6 +56,7 @@ const MainApp = () => {
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSalaryId, setSelectedSalaryId] = useState(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [preSelectedEmployeeForSalary, setPreSelectedEmployeeForSalary] = useState(null);
 
   // Sidebar states
@@ -169,6 +190,37 @@ const MainApp = () => {
     setView('list');
   };
 
+  // Candidate handlers
+  const handleCandidateAddNew = () => {
+    setSelectedCandidate(null);
+    setView('form');
+  };
+
+  const handleCandidateEdit = (candidate) => {
+    setSelectedCandidate(candidate);
+    setView('form');
+  };
+
+  const handleCandidateFormSuccess = () => {
+    setView('list');
+    setSelectedCandidate(null);
+  };
+
+  const handleCandidateCancel = () => {
+    setView('list');
+    setSelectedCandidate(null);
+  };
+
+  const handleGenerateOfferLetter = (candidate) => {
+    setSelectedCandidate(candidate);
+    setView('offer-letter');
+  };
+
+  const handleConvertToEmployee = (candidate) => {
+    setSelectedCandidate(candidate);
+    setView('convert');
+  };
+
   // Module switch handler
   const handleModuleChange = (newModule) => {
     setModule(newModule);
@@ -177,6 +229,7 @@ const MainApp = () => {
     setSelectedSiteId(null);
     setSelectedSalaryId(null);
     setSelectedCompanyId(null);
+    setSelectedCandidate(null);
   };
 
   return (
@@ -211,6 +264,7 @@ const MainApp = () => {
                 <div>
                   <h1 className="text-xl font-semibold text-slate-800">
                     {module === 'dashboard' && 'Dashboard'}
+                    {module === 'candidates' && (view === 'form' ? (selectedCandidate ? 'Edit Candidate' : 'Add Candidate') : view === 'offer-letter' ? 'Generate Offer Letter' : view === 'convert' ? 'Convert to Employee' : 'Candidates')}
                     {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : 'Employees')}
                     {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
                     {module === 'attendance' && 'Attendance Management'}
@@ -218,6 +272,8 @@ const MainApp = () => {
                     {module === 'reports' && 'Reports'}
                     {module === 'companies' && (view === 'form' ? (selectedCompanyId ? 'Edit Company' : 'Add Company') : 'Companies')}
                     {module === 'audit' && 'Audit Logs'}
+                    {module === 'notices' && 'Notices Management'}
+                    {module === 'settings' && 'Settings'}
                   </h1>
                   {/* Company indicator */}
                   {isSuperAdmin ? (
@@ -254,6 +310,37 @@ const MainApp = () => {
         <main className="p-4 lg:p-6">
           {module === 'dashboard' && (
             <Dashboard key={selectedCompany?.company_id || 'all'} />
+          )}
+
+          {module === 'candidates' && (
+            <>
+              {view === 'list' ? (
+                <CandidateList
+                  onEdit={handleCandidateEdit}
+                  onAddNew={handleCandidateAddNew}
+                  onGenerateOfferLetter={handleGenerateOfferLetter}
+                  onConvertToEmployee={handleConvertToEmployee}
+                />
+              ) : view === 'form' ? (
+                <CandidateForm
+                  candidate={selectedCandidate}
+                  onSuccess={handleCandidateFormSuccess}
+                  onCancel={handleCandidateCancel}
+                />
+              ) : view === 'offer-letter' ? (
+                <OfferLetterGenerator
+                  candidate={selectedCandidate}
+                  onSuccess={handleCandidateFormSuccess}
+                  onCancel={handleCandidateCancel}
+                />
+              ) : view === 'convert' ? (
+                <ConvertToEmployee
+                  candidate={selectedCandidate}
+                  onSuccess={handleCandidateFormSuccess}
+                  onCancel={handleCandidateCancel}
+                />
+              ) : null}
+            </>
           )}
 
           {module === 'employees' && (
@@ -330,6 +417,10 @@ const MainApp = () => {
           )}
 
           {module === 'audit' && isSuperAdmin && <AuditLogs />}
+
+          {module === 'notices' && <NoticeList />}
+
+          {module === 'settings' && <InsuranceSettings />}
         </main>
       </div>
     </div>
@@ -342,7 +433,29 @@ function App() {
     <ErrorBoundary>
       <Router>
         <Routes>
+          {/* Admin Login */}
           <Route path="/login" element={<Login />} />
+
+          {/* Employee Portal Routes */}
+          <Route path="/employee-portal/login" element={<EmployeeLogin />} />
+          <Route
+            path="/employee-portal"
+            element={
+              <ProtectedEmployeeRoute>
+                <EmployeePortalLayout />
+              </ProtectedEmployeeRoute>
+            }
+          >
+            <Route index element={<Navigate to="/employee-portal/dashboard" replace />} />
+            <Route path="dashboard" element={<EmployeeDashboard />} />
+            <Route path="profile" element={<MyProfile />} />
+            <Route path="payslips" element={<MyPayslips />} />
+            <Route path="documents" element={<MyDocuments />} />
+            <Route path="insurance" element={<InsuranceInfo />} />
+            <Route path="notices" element={<EmployeeNotices />} />
+          </Route>
+
+          {/* Admin Routes */}
           <Route
             path="/*"
             element={

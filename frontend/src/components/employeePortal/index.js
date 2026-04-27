@@ -1,0 +1,9 @@
+export { default as EmployeeLogin } from './EmployeeLogin';
+export { default as EmployeePortalLayout } from './EmployeePortalLayout';
+export { default as EmployeeDashboard } from './EmployeeDashboard';
+export { default as MyProfile } from './MyProfile';
+export { default as MyPayslips } from './MyPayslips';
+export { default as MyDocuments } from './MyDocuments';
+export { default as IDCardPDF } from './IDCardPDF';
+export { default as InsuranceInfo } from './InsuranceInfo';
+export { default as Notices } from './Notices';

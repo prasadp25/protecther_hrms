@@ -325,19 +325,22 @@ const createEmployee = async (req, res) => {
       if (req.files.panCard) {
         employeeData.pan_card_url = `/uploads/pan-cards/${req.files.panCard[0].filename}`;
       }
+      if (req.files.employeePhoto) {
+        employeeData.photo_url = `/uploads/employee-photos/${req.files.employeePhoto[0].filename}`;
+      }
     }
 
     const query = `
       INSERT INTO employees (
         company_id, employee_code, first_name, last_name, mobile, alternate_mobile, email,
-        dob, gender, marital_status, qualification, address, city, state, pincode,
+        photo_url, dob, gender, marital_status, qualification, address, city, state, pincode,
         aadhaar_no, aadhaar_card_url, pan_no, pan_card_url, uan_no, pf_no, esi_no,
         account_number, ifsc_code, bank_name, branch_name,
         designation, department, date_of_joining, date_of_leaving,
         offer_letter_issue_date, offer_letter_url, status, site_id,
         emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship,
         wp_policy, hospital_insurance_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -348,6 +351,7 @@ const createEmployee = async (req, res) => {
       employeeData.mobile,
       employeeData.alternate_mobile || null,
       employeeData.email || null,
+      employeeData.photo_url || null,
       employeeData.dob || null,
       employeeData.gender || null,
       employeeData.marital_status || null,
@@ -509,6 +513,9 @@ const updateEmployee = async (req, res) => {
       if (req.files.panCard) {
         employeeData.pan_card_url = `/uploads/pan-cards/${req.files.panCard[0].filename}`;
       }
+      if (req.files.employeePhoto) {
+        employeeData.photo_url = `/uploads/employee-photos/${req.files.employeePhoto[0].filename}`;
+      }
     }
 
     // Map frontend field names to database column names
@@ -516,6 +523,7 @@ const updateEmployee = async (req, res) => {
       'offerLetter': 'offer_letter_url',
       'aadhaarCard': 'aadhaar_card_url',
       'panCard': 'pan_card_url',
+      'employeePhoto': 'photo_url',
       'alternateMobile': 'alternate_mobile',
       'maritalStatus': 'marital_status',
       'aadhaarNo': 'aadhaar_no',
@@ -555,8 +563,8 @@ const updateEmployee = async (req, res) => {
           value = null;
         } else if (typeof value === 'object') {
           // For file upload fields, skip if empty object (no new file uploaded)
-          if (key === 'offerLetter' || key === 'aadhaarCard' || key === 'panCard' ||
-              key === 'offer_letter_url' || key === 'aadhaar_card_url' || key === 'pan_card_url') {
+          if (key === 'offerLetter' || key === 'aadhaarCard' || key === 'panCard' || key === 'employeePhoto' ||
+              key === 'offer_letter_url' || key === 'aadhaar_card_url' || key === 'pan_card_url' || key === 'photo_url') {
             console.warn(`⚠️  Warning: Skipping file field ${key} with empty object value`);
             return; // Skip this field entirely
           }
@@ -664,6 +672,50 @@ const deleteEmployee = async (req, res) => {
   }
 };
 
+// ==============================================
+// GET DISTINCT DEPARTMENTS
+// ==============================================
+const getDepartments = asyncHandler(async (req, res) => {
+  const companyId = getCompanyFilter(req);
+
+  let query = 'SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != ""';
+  const params = [];
+
+  if (companyId) {
+    query += ' AND company_id = ?';
+    params.push(companyId);
+  }
+
+  query += ' ORDER BY department ASC';
+
+  const results = await executeQuery(query, params);
+  const departments = results.map(r => r.department);
+
+  res.status(200).json({ success: true, data: departments });
+});
+
+// ==============================================
+// GET DISTINCT DESIGNATIONS
+// ==============================================
+const getDesignations = asyncHandler(async (req, res) => {
+  const companyId = getCompanyFilter(req);
+
+  let query = 'SELECT DISTINCT designation FROM employees WHERE designation IS NOT NULL AND designation != ""';
+  const params = [];
+
+  if (companyId) {
+    query += ' AND company_id = ?';
+    params.push(companyId);
+  }
+
+  query += ' ORDER BY designation ASC';
+
+  const results = await executeQuery(query, params);
+  const designations = results.map(r => r.designation);
+
+  res.status(200).json({ success: true, data: designations });
+});
+
 module.exports = {
   getAllEmployees,
   getActiveEmployees,
@@ -671,5 +723,7 @@ module.exports = {
   getEmployeeById,
   createEmployee,
   updateEmployee,
-  deleteEmployee
+  deleteEmployee,
+  getDepartments,
+  getDesignations
 };

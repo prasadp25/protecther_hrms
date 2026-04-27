@@ -22,6 +22,8 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
   const [offerLetterFile, setOfferLetterFile] = useState(null);
   const [aadhaarFile, setAadhaarFile] = useState(null);
   const [panFile, setPanFile] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [activeSites, setActiveSites] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -134,7 +136,13 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           siteId: employee.site_id || '',
           wpPolicy: employee.wp_policy || 'No',
           hospitalInsuranceId: employee.hospital_insurance_id || '',
+          photoUrl: employee.photo_url || '',
         });
+        // Set photo preview if exists
+        if (employee.photo_url) {
+          const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+          setPhotoPreview(`${baseUrl}${employee.photo_url}`);
+        }
       }
     } catch (error) {
       alert('Failed to load employee data');
@@ -217,6 +225,27 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           ...prev,
           panCardUrl: file.name,
         }));
+      } else if (name === 'employeePhoto') {
+        // Validate image type for photo
+        const imageTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!imageTypes.includes(file.type)) {
+          alert('Only JPG and PNG images are allowed for photo');
+          e.target.value = '';
+          return;
+        }
+        // Max 2MB for photos
+        if (file.size > 2 * 1024 * 1024) {
+          alert('Photo size must be less than 2MB');
+          e.target.value = '';
+          return;
+        }
+        setPhotoFile(file);
+        // Create preview URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotoPreview(reader.result);
+        };
+        reader.readAsDataURL(file);
       }
     }
   };
@@ -341,6 +370,9 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       if (panFile) {
         formDataToSend.append('panCard', panFile);
       }
+      if (photoFile) {
+        formDataToSend.append('employeePhoto', photoFile);
+      }
 
       let response;
 
@@ -400,6 +432,37 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           </svg>
           Personal Information
         </h3>
+
+        {/* Employee Photo */}
+        <div className="mb-6 flex items-center space-x-6">
+          <div className="flex-shrink-0">
+            {photoPreview ? (
+              <img
+                src={photoPreview}
+                alt="Employee photo"
+                className="w-24 h-24 rounded-full object-cover border-4 border-blue-100"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center">
+                <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className={labelClasses}>Employee Photo</label>
+            <input
+              type="file"
+              name="employeePhoto"
+              accept="image/jpeg,image/png"
+              onChange={handleFileChange}
+              className="mt-1 block text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            <p className="mt-1 text-xs text-slate-400">JPG or PNG, max 2MB. Used for ID card.</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelClasses}>First Name *</label>
