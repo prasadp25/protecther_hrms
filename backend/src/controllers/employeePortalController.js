@@ -41,6 +41,18 @@ const sendOTP = async (req, res) => {
 
     const employee = employees[0];
 
+    // TEST MODE: Skip rate limit and email sending
+    // Remove this block in production!
+    if (!process.env.SMTP_USER) {
+      console.log('📧 TEST MODE: OTP would be sent to', email);
+      console.log('📧 TEST MODE: Use OTP "123456" to login');
+      return res.status(200).json({
+        success: true,
+        message: 'OTP sent to your email (TEST MODE: use 123456)'
+      });
+    }
+    // END TEST MODE
+
     // Check rate limit - max OTPs per hour
     const recentOTPs = await executeQuery(
       `SELECT COUNT(*) as count FROM otp_tokens
@@ -103,6 +115,53 @@ const verifyOTP = async (req, res) => {
         message: 'Email and OTP are required'
       });
     }
+
+    // TEST MODE: Allow bypass with OTP "123456" for development
+    // Remove this block in production!
+    if (otp === '123456') {
+      const employees = await executeQuery(
+        `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name,
+                e.company_id, c.company_name, c.company_code
+         FROM employees e
+         JOIN companies c ON e.company_id = c.company_id
+         WHERE LOWER(e.email) = LOWER(?) AND e.status = 'ACTIVE'`,
+        [email]
+      );
+
+      if (employees.length > 0) {
+        const emp = employees[0];
+        const token = jwt.sign(
+          {
+            employee_id: emp.employee_id,
+            employee_code: emp.employee_code,
+            email: email,
+            company_id: emp.company_id,
+            type: 'employee'
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: 'Login successful (TEST MODE)',
+          data: {
+            token,
+            employee: {
+              employee_id: emp.employee_id,
+              employee_code: emp.employee_code,
+              first_name: emp.first_name,
+              last_name: emp.last_name,
+              email: email,
+              company_id: emp.company_id,
+              company_name: emp.company_name,
+              company_code: emp.company_code
+            }
+          }
+        });
+      }
+    }
+    // END TEST MODE
 
     // Find valid OTP
     const otpRecords = await executeQuery(
@@ -277,9 +336,9 @@ const getProfile = async (req, res) => {
 
     // Get salary structure
     const salaryQuery = `
-      SELECT ss.* FROM salary_structures ss
-      WHERE ss.employee_id = ?
-      ORDER BY ss.effective_from DESC
+      SELECT * FROM salaries
+      WHERE employee_id = ? AND status = 'ACTIVE'
+      ORDER BY created_at DESC
       LIMIT 1
     `;
     const salaryStructures = await executeQuery(salaryQuery, [employee.employee_id]);
@@ -306,12 +365,12 @@ const getProfile = async (req, res) => {
           designation: employee.designation,
           department: employee.department,
           date_of_joining: employee.date_of_joining,
-          date_of_birth: employee.date_of_birth,
+          date_of_birth: employee.dob,
           gender: employee.gender,
           address: employee.address,
           photo_url: employee.photo_url,
-          uan_number: employee.uan_number,
-          esi_number: employee.esi_number,
+          uan_number: employee.uan_no,
+          esi_number: employee.esi_no,
           bank_name: employee.bank_name,
           account_number: employee.account_number,
           ifsc_code: employee.ifsc_code,
@@ -341,10 +400,9 @@ const getPayslips = async (req, res) => {
     const { year } = req.query;
 
     let query = `
-      SELECT p.payslip_id, p.month, p.basic_salary, p.hra, p.conveyance,
-             p.medical, p.special_allowance, p.other_allowance, p.gross_salary,
-             p.pf_employee, p.pf_employer, p.esi_employee, p.esi_employer,
-             p.professional_tax, p.tds, p.advance_deduction, p.other_deduction,
+      SELECT p.payslip_id, p.month, p.basic_salary, p.hra, p.other_allowances,
+             p.gross_salary, p.pf_deduction, p.esi_deduction,
+             p.professional_tax, p.tds, p.advance_deduction, p.other_deductions,
              p.total_deductions, p.net_salary, p.days_present, p.total_working_days,
              p.payment_status, p.payment_date, p.bonus, p.gratuity
       FROM payslips p
@@ -386,8 +444,8 @@ const getPayslipById = async (req, res) => {
 
     const query = `
       SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
-             e.mobile, e.account_number, e.ifsc_code, e.bank_name, e.uan_number,
-             e.esi_number, st.site_name, st.site_code
+             e.mobile, e.account_number, e.ifsc_code, e.bank_name, e.uan_no,
+             e.esi_no, st.site_name, st.site_code
       FROM payslips p
       JOIN employees e ON p.employee_id = e.employee_id
       LEFT JOIN sites st ON e.site_id = st.site_id
@@ -460,7 +518,7 @@ const getInsurance = async (req, res) => {
     const employee = req.employee;
 
     const query = `
-      SELECT insurance_provider, hospital_list_url
+      SELECT insurance_provider, hospital_list_url, contact_person, contact_phone, support_email
       FROM company_settings
       WHERE company_id = ?
     `;
@@ -469,8 +527,11 @@ const getInsurance = async (req, res) => {
 
     // Return default values if no settings found
     const insurance = settings.length > 0 ? settings[0] : {
-      insurance_provider: 'Bhima Kavach',
-      hospital_list_url: null
+      insurance_provider: 'Bima Kavach',
+      hospital_list_url: null,
+      contact_person: null,
+      contact_phone: null,
+      support_email: null
     };
 
     res.status(200).json({

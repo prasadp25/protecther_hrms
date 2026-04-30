@@ -5,7 +5,10 @@ import { settingsService } from '../../services/settingsService';
 const InsuranceSettings = () => {
   const [settings, setSettings] = useState({
     insurance_provider: '',
-    hospital_list_url: ''
+    hospital_list_url: '',
+    contact_person: '',
+    contact_phone: '',
+    support_email: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,7 +23,10 @@ const InsuranceSettings = () => {
       if (response.success && response.data) {
         setSettings({
           insurance_provider: response.data.insurance_provider || '',
-          hospital_list_url: response.data.hospital_list_url || ''
+          hospital_list_url: response.data.hospital_list_url || '',
+          contact_person: response.data.contact_person || '',
+          contact_phone: response.data.contact_phone || '',
+          support_email: response.data.support_email || ''
         });
       }
     } catch (error) {
@@ -114,6 +120,52 @@ const InsuranceSettings = () => {
             </p>
           </div>
 
+          {/* Contact Information */}
+          <div className="border-t pt-6">
+            <h3 className="text-md font-semibold text-gray-800 mb-4">Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contact Person
+                </label>
+                <input
+                  type="text"
+                  name="contact_person"
+                  value={settings.contact_person}
+                  onChange={handleChange}
+                  placeholder="e.g., Rahul"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contact Phone
+                </label>
+                <input
+                  type="tel"
+                  name="contact_phone"
+                  value={settings.contact_phone}
+                  onChange={handleChange}
+                  placeholder="+91 XXXXX XXXXX"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Support Email
+                </label>
+                <input
+                  type="email"
+                  name="support_email"
+                  value={settings.support_email}
+                  onChange={handleChange}
+                  placeholder="support@example.com"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Preview */}
           <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
             <h4 className="text-sm font-medium text-gray-700 mb-3">Employee Portal Preview:</h4>
@@ -131,19 +183,28 @@ const InsuranceSettings = () => {
                   </svg>
                 </div>
               </div>
-              {settings.hospital_list_url && (
-                <div className="mt-4 pt-4 border-t border-white/20">
-                  <a
-                    href={settings.hospital_list_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-sm bg-white/20 px-3 py-1 rounded hover:bg-white/30 transition-colors"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    View Hospital List
-                  </a>
+              {(settings.hospital_list_url || settings.contact_person || settings.contact_phone || settings.support_email) && (
+                <div className="mt-4 pt-4 border-t border-white/20 space-y-2">
+                  {settings.hospital_list_url && (
+                    <a
+                      href={settings.hospital_list_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-sm bg-white/20 px-3 py-1 rounded hover:bg-white/30 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      View Hospital List
+                    </a>
+                  )}
+                  {(settings.contact_person || settings.contact_phone || settings.support_email) && (
+                    <div className="text-sm text-indigo-100 mt-2">
+                      {settings.contact_person && <p>Contact: {settings.contact_person}</p>}
+                      {settings.contact_phone && <p>Phone: {settings.contact_phone}</p>}
+                      {settings.support_email && <p>Email: {settings.support_email}</p>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { pdf } from '@react-pdf/renderer';
 import { employeePortalService } from '../../services/employeePortalService';
 import PayslipPDFTemplateNew from '../salary/PayslipPDFTemplateNew';
 
@@ -70,9 +71,27 @@ const MyPayslips = () => {
     }
   };
 
+  const handleDownloadPDF = async (payslip) => {
+    try {
+      const blob = await pdf(<PayslipPDFTemplateNew payslip={payslip} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Payslip_${payslip.month}_${payslip.employee_code || 'employee'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Payslip downloaded successfully');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+
   if (viewMode === 'detail' && selectedPayslip) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <button
           onClick={() => {
             setViewMode('list');
@@ -85,7 +104,111 @@ const MyPayslips = () => {
           </svg>
           Back to Payslips
         </button>
-        <PayslipPDFTemplateNew payslip={selectedPayslip} />
+
+        {/* Payslip Details Card */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Payslip for {formatMonth(selectedPayslip.month)}
+              </h2>
+              <p className="text-gray-500 mt-1">
+                {selectedPayslip.first_name} {selectedPayslip.last_name} ({selectedPayslip.employee_code})
+              </p>
+            </div>
+            <button
+              onClick={() => handleDownloadPDF(selectedPayslip)}
+              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download PDF
+            </button>
+          </div>
+
+          {/* Earnings & Deductions Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Earnings */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-green-700 mb-4 pb-2 border-b">Earnings</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Basic Salary</span>
+                  <span className="font-medium">{formatCurrency(selectedPayslip.basic_salary)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">HRA</span>
+                  <span className="font-medium">{formatCurrency(selectedPayslip.hra)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Other Allowances</span>
+                  <span className="font-medium">{formatCurrency(selectedPayslip.other_allowances)}</span>
+                </div>
+                {selectedPayslip.bonus > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bonus</span>
+                    <span className="font-medium">{formatCurrency(selectedPayslip.bonus)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t font-semibold text-green-700">
+                  <span>Gross Salary</span>
+                  <span>{formatCurrency(selectedPayslip.gross_salary)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Deductions */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-red-700 mb-4 pb-2 border-b">Deductions</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">PF Deduction</span>
+                  <span className="font-medium">{formatCurrency(selectedPayslip.pf_deduction)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">ESI Deduction</span>
+                  <span className="font-medium">{formatCurrency(selectedPayslip.esi_deduction)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Professional Tax</span>
+                  <span className="font-medium">{formatCurrency(selectedPayslip.professional_tax)}</span>
+                </div>
+                {selectedPayslip.tds > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">TDS</span>
+                    <span className="font-medium">{formatCurrency(selectedPayslip.tds)}</span>
+                  </div>
+                )}
+                {selectedPayslip.advance_deduction > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Advance Deduction</span>
+                    <span className="font-medium">{formatCurrency(selectedPayslip.advance_deduction)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t font-semibold text-red-700">
+                  <span>Total Deductions</span>
+                  <span>{formatCurrency(selectedPayslip.total_deductions)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Net Salary */}
+          <div className="mt-6 bg-indigo-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-lg font-semibold text-gray-700">Net Salary</span>
+                <p className="text-sm text-gray-500">
+                  {selectedPayslip.days_present} / {selectedPayslip.total_working_days} days worked
+                </p>
+              </div>
+              <span className="text-3xl font-bold text-indigo-600">
+                {formatCurrency(selectedPayslip.net_salary)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -16,6 +16,7 @@ const getInsuranceSettings = async (req, res) => {
 
     const query = `
       SELECT id, company_id, insurance_provider, hospital_list_url,
+             contact_person, contact_phone, support_email,
              created_at, updated_at
       FROM company_settings
       WHERE company_id = ?
@@ -26,8 +27,11 @@ const getInsuranceSettings = async (req, res) => {
     // Return settings or defaults
     const data = settings.length > 0 ? settings[0] : {
       company_id: parseInt(company_id),
-      insurance_provider: 'Bhima Kavach',
-      hospital_list_url: null
+      insurance_provider: 'Bima Kavach',
+      hospital_list_url: null,
+      contact_person: null,
+      contact_phone: null,
+      support_email: null
     };
 
     res.status(200).json({
@@ -49,7 +53,7 @@ const getInsuranceSettings = async (req, res) => {
 // ==============================================
 const updateInsuranceSettings = async (req, res) => {
   try {
-    const { insurance_provider, hospital_list_url } = req.body;
+    const { insurance_provider, hospital_list_url, contact_person, contact_phone, support_email } = req.body;
     const company_id = req.body.company_id || req.user.company_id;
 
     if (!company_id) {
@@ -78,6 +82,18 @@ const updateInsuranceSettings = async (req, res) => {
         updates.push('hospital_list_url = ?');
         params.push(hospital_list_url);
       }
+      if (contact_person !== undefined) {
+        updates.push('contact_person = ?');
+        params.push(contact_person);
+      }
+      if (contact_phone !== undefined) {
+        updates.push('contact_phone = ?');
+        params.push(contact_phone);
+      }
+      if (support_email !== undefined) {
+        updates.push('support_email = ?');
+        params.push(support_email);
+      }
 
       if (updates.length > 0) {
         params.push(company_id);
@@ -89,9 +105,9 @@ const updateInsuranceSettings = async (req, res) => {
     } else {
       // Insert new settings
       await executeQuery(
-        `INSERT INTO company_settings (company_id, insurance_provider, hospital_list_url)
-         VALUES (?, ?, ?)`,
-        [company_id, insurance_provider || 'Bhima Kavach', hospital_list_url || null]
+        `INSERT INTO company_settings (company_id, insurance_provider, hospital_list_url, contact_person, contact_phone, support_email)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [company_id, insurance_provider || 'Bima Kavach', hospital_list_url || null, contact_person || null, contact_phone || null, support_email || null]
       );
     }
 

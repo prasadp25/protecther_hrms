@@ -11,18 +11,25 @@ const IDCardPDF = ({ employee, site }) => {
 
     try {
       const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff'
+        scale: 3,
+        backgroundColor: null,
+        useCORS: true
       });
 
       const imgData = canvas.toDataURL('image/png');
+
+      // Standard CR80 ID card size: 85.6mm x 53.98mm
+      // Using landscape orientation (width > height)
+      const cardWidth = 85.6;
+      const cardHeight = 54;
+
       const pdf = new jsPDF({
-        orientation: 'portrait',
+        orientation: 'landscape',
         unit: 'mm',
-        format: [86, 54] // Standard ID card size in mm
+        format: [cardHeight, cardWidth] // [height, width] for landscape
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, 86, 54);
+      pdf.addImage(imgData, 'PNG', 0, 0, cardWidth, cardHeight);
       pdf.save(`ID_Card_${employee.employee_code}.pdf`);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
@@ -40,40 +47,39 @@ const IDCardPDF = ({ employee, site }) => {
         <div className="flex justify-center mb-6">
           <div
             ref={cardRef}
-            className="w-[340px] h-[216px] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 rounded-xl p-4 text-white relative overflow-hidden"
+            className="w-[340px] h-[216px] rounded-xl overflow-hidden relative bg-white border border-gray-200"
             style={{ fontFamily: 'Arial, sans-serif' }}
           >
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-1/2 translate-x-1/2"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full translate-y-1/2 -translate-x-1/2"></div>
-            </div>
-
-            {/* Header */}
-            <div className="relative flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-sm font-bold tracking-wider">PROTECTHER</h3>
-                <p className="text-[10px] text-indigo-200">EMPLOYEE ID CARD</p>
+            {/* Top Section - White Header with Logo */}
+            <div className="h-[60px] bg-white px-4 py-2 flex items-center justify-between border-b-2 border-purple-600">
+              <div className="flex items-center gap-2">
+                <img
+                  src="/protecther-logo.png"
+                  alt="ProtectHer"
+                  className="h-12 w-auto object-contain"
+                  crossOrigin="anonymous"
+                />
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-indigo-200">Employee Code</p>
-                <p className="text-sm font-bold">{employee.employee_code}</p>
+                <p className="text-[9px] text-gray-500 uppercase tracking-wide">Employee ID</p>
+                <p className="text-sm font-bold text-purple-700">{employee.employee_code}</p>
               </div>
             </div>
 
-            {/* Content */}
-            <div className="relative flex gap-4">
+            {/* Main Content - White Background */}
+            <div className="h-[148px] bg-white px-4 py-3 flex gap-3">
               {/* Photo */}
-              <div className="w-20 h-24 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="w-[72px] h-[90px] border-2 border-purple-300 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 bg-gray-50">
                 {employee.photo_url ? (
                   <img
                     src={employee.photo_url}
                     alt={employee.first_name}
                     className="w-full h-full object-cover"
+                    crossOrigin="anonymous"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
@@ -81,43 +87,50 @@ const IDCardPDF = ({ employee, site }) => {
               </div>
 
               {/* Details */}
-              <div className="flex-grow">
-                <h4 className="font-bold text-lg leading-tight">
+              <div className="flex-grow min-w-0">
+                <h4 className="font-bold text-base text-gray-800 leading-tight truncate">
                   {employee.first_name} {employee.last_name}
                 </h4>
-                <p className="text-indigo-200 text-sm">{employee.designation || 'Employee'}</p>
+                <p className="text-purple-600 text-xs font-medium">{employee.designation || 'Employee'}</p>
 
-                <div className="mt-2 space-y-1">
-                  <div className="flex items-center text-[11px]">
-                    <span className="text-indigo-200 w-16">Dept:</span>
-                    <span>{employee.department || '-'}</span>
+                <div className="mt-2 space-y-0.5">
+                  <div className="flex items-center text-[10px]">
+                    <span className="text-gray-500 w-14">Dept:</span>
+                    <span className="text-gray-700 font-medium">{employee.department || '-'}</span>
                   </div>
-                  <div className="flex items-center text-[11px]">
-                    <span className="text-indigo-200 w-16">Site:</span>
-                    <span>{site?.site_name || '-'}</span>
+                  <div className="flex items-center text-[10px]">
+                    <span className="text-gray-500 w-14">Site:</span>
+                    <span className="text-gray-700 font-medium truncate">{site?.site_name || '-'}</span>
                   </div>
-                  <div className="flex items-center text-[11px]">
-                    <span className="text-indigo-200 w-16">Blood:</span>
-                    <span className="border border-dashed border-indigo-300 px-2 rounded">______</span>
+                  <div className="flex items-center text-[10px]">
+                    <span className="text-gray-500 w-14">Blood:</span>
+                    <span className="text-gray-400 border border-dashed border-gray-300 px-1.5 rounded text-[9px]">_____</span>
                   </div>
+                </div>
+
+                {/* Footer inside content */}
+                <div className="mt-2 pt-1 border-t border-gray-100 flex justify-between items-center text-[8px] text-gray-400">
+                  <span>Valid: Dec 2026</span>
+                  <span>If found, return to HR</span>
                 </div>
               </div>
 
               {/* QR Code */}
-              <div className="w-16 h-16 bg-white rounded p-1">
-                <QRCodeSVG
-                  value={verifyUrl}
-                  size={56}
-                  level="M"
-                />
+              <div className="flex-shrink-0 flex flex-col items-center">
+                <div className="w-[56px] h-[56px] bg-white border border-purple-200 rounded p-1">
+                  <QRCodeSVG
+                    value={verifyUrl}
+                    size={48}
+                    level="M"
+                    fgColor="#7c3aed"
+                  />
+                </div>
+                <p className="text-[7px] text-gray-400 mt-1">Scan to verify</p>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="absolute bottom-2 left-4 right-4 flex justify-between items-center text-[9px] text-indigo-200">
-              <span>Valid Till: Dec 2025</span>
-              <span>If found, please return to HR</span>
-            </div>
+            {/* Bottom accent line */}
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600"></div>
           </div>
         </div>
 

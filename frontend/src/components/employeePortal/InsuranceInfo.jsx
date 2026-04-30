@@ -56,68 +56,6 @@ const InsuranceInfo = () => {
         </div>
       </div>
 
-      {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* What's Covered */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-            <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            What's Covered
-          </h3>
-          <ul className="space-y-3">
-            <li className="flex items-start">
-              <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></span>
-              <span className="text-gray-600">Medical expenses including hospitalization</span>
-            </li>
-            <li className="flex items-start">
-              <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></span>
-              <span className="text-gray-600">Maternity benefits for female employees</span>
-            </li>
-            <li className="flex items-start">
-              <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></span>
-              <span className="text-gray-600">Sickness benefits (cash during illness)</span>
-            </li>
-            <li className="flex items-start">
-              <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></span>
-              <span className="text-gray-600">Disablement benefits</span>
-            </li>
-            <li className="flex items-start">
-              <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></span>
-              <span className="text-gray-600">Dependent benefits for family</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* How to Claim */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-            <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            How to Claim
-          </h3>
-          <ol className="space-y-3">
-            <li className="flex items-start">
-              <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium mr-3">1</span>
-              <span className="text-gray-600">Visit any ESI-empaneled hospital</span>
-            </li>
-            <li className="flex items-start">
-              <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium mr-3">2</span>
-              <span className="text-gray-600">Show your ESI card or ESI number</span>
-            </li>
-            <li className="flex items-start">
-              <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium mr-3">3</span>
-              <span className="text-gray-600">Treatment is cashless at ESI hospitals</span>
-            </li>
-            <li className="flex items-start">
-              <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium mr-3">4</span>
-              <span className="text-gray-600">For reimbursement, submit bills to HR</span>
-            </li>
-          </ol>
-        </div>
-      </div>
 
       {/* Hospital List */}
       {insurance?.hospital_list_url && (
@@ -137,6 +75,59 @@ const InsuranceInfo = () => {
             </svg>
             View Hospital List
           </a>
+        </div>
+      )}
+
+      {/* Insurance Contact */}
+      {(insurance?.contact_person || insurance?.contact_phone || insurance?.support_email) && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+            <svg className="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            Insurance Contact
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {insurance.contact_person && (
+              <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Contact Person</p>
+                  <p className="font-medium text-gray-900">{insurance.contact_person}</p>
+                </div>
+              </div>
+            )}
+            {insurance.contact_phone && (
+              <a href={`tel:${insurance.contact_phone}`} className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-indigo-50 transition-colors">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Phone</p>
+                  <p className="font-medium text-gray-900">{insurance.contact_phone}</p>
+                </div>
+              </a>
+            )}
+            {insurance.support_email && (
+              <a href={`mailto:${insurance.support_email}`} className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-indigo-50 transition-colors">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Email</p>
+                  <p className="font-medium text-gray-900">{insurance.support_email}</p>
+                </div>
+              </a>
+            )}
+          </div>
         </div>
       )}
 
