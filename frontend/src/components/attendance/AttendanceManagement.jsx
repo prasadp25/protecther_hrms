@@ -651,6 +651,30 @@ const AttendanceManagement = () => {
     }
   };
 
+  // NEW: Unfinalize attendance (Admin only)
+  const handleUnfinalize = async () => {
+    const confirmed = window.confirm(
+      '🔓 UNFINALIZE ATTENDANCE\n\n' +
+      'This will unlock attendance records for this month and allow editing again.\n\n' +
+      '⚠️ WARNING: If payslips have already been generated, they may become inconsistent with attendance data.\n\n' +
+      'Are you sure you want to unfinalize attendance?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      await attendanceService.unfinalizeAttendance(selectedMonth);
+      alert('✅ Attendance unfinalized successfully! You can now edit attendance records.');
+      loadAttendance();
+    } catch (error) {
+      console.error('Failed to unfinalize attendance:', error);
+      alert('❌ Failed to unfinalize attendance');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Apply all filters
   const filteredAttendance = attendanceData.filter((att) => {
     // Filter by site
@@ -725,9 +749,19 @@ const AttendanceManagement = () => {
             Marking Attendance for: <span className="text-yellow-300">{getMonthName()}</span>
           </p>
           {isFinalized && (
-            <span className="ml-4 px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full">
-              ✓ FINALIZED
-            </span>
+            <div className="ml-4 flex items-center gap-2">
+              <span className="px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full">
+                ✓ FINALIZED
+              </span>
+              <button
+                onClick={handleUnfinalize}
+                disabled={saving}
+                className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-full disabled:bg-orange-300 transition-colors"
+                title="Unlock attendance for editing"
+              >
+                🔓 Unfinalize
+              </button>
+            </div>
           )}
         </div>
         {/* Pay Cycle Info */}

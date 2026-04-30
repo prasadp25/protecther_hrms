@@ -233,6 +233,49 @@ const finalizeAttendance = async (req, res) => {
 };
 
 // ==============================================
+// UNFINALIZE ATTENDANCE (Admin only)
+// ==============================================
+const unfinalizeAttendance = async (req, res) => {
+  try {
+    const { month, site_id } = req.body;
+
+    if (!month) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month is required'
+      });
+    }
+
+    let query = `
+      UPDATE attendance
+      SET status = 'DRAFT'
+      WHERE attendance_month = ? AND status = 'FINALIZED'
+    `;
+    const params = [month];
+
+    if (site_id) {
+      query += ' AND site_id = ?';
+      params.push(site_id);
+    }
+
+    const result = await executeQuery(query, params);
+
+    res.status(200).json({
+      success: true,
+      message: `Attendance for ${month} unfinalized successfully`,
+      recordsUpdated: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Error unfinalizing attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to unfinalize attendance',
+      error: error.message
+    });
+  }
+};
+
+// ==============================================
 // DELETE ATTENDANCE
 // ==============================================
 const deleteAttendance = async (req, res) => {
@@ -317,6 +360,7 @@ module.exports = {
   getEmployeeAttendance,
   saveAttendance,
   finalizeAttendance,
+  unfinalizeAttendance,
   deleteAttendance,
   getAttendanceSummary
 };

@@ -243,9 +243,9 @@ const styles = StyleSheet.create({
   netPayRow: {
     flexDirection: 'row',
     borderTop: '1px solid black',
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
     fontWeight: 'bold',
-    fontSize: 10,
+    fontSize: 9,
   },
   netPayLabel: {
     width: '50%',
@@ -257,6 +257,48 @@ const styles = StyleSheet.create({
     width: '50%',
     padding: 5,
     textAlign: 'center',
+  },
+
+  // Bonus Row
+  bonusRow: {
+    flexDirection: 'row',
+    borderTop: '1px solid black',
+    backgroundColor: '#e8f4fd',
+    fontWeight: 'bold',
+    fontSize: 9,
+  },
+  bonusLabel: {
+    width: '50%',
+    padding: 5,
+    textAlign: 'center',
+    borderRight: '1px solid black',
+  },
+  bonusAmount: {
+    width: '50%',
+    padding: 5,
+    textAlign: 'center',
+    color: '#1e40af',
+  },
+
+  // Net Pay With Bonus Row
+  netPayWithBonusRow: {
+    flexDirection: 'row',
+    borderTop: '1px solid black',
+    backgroundColor: '#e0e0e0',
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  netPayWithBonusLabel: {
+    width: '50%',
+    padding: 5,
+    textAlign: 'center',
+    borderRight: '1px solid black',
+  },
+  netPayWithBonusAmount: {
+    width: '50%',
+    padding: 5,
+    textAlign: 'center',
+    color: '#166534',
   },
 
   // Amount in Words Row - Attached to Net Pay
@@ -352,6 +394,8 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
     (parseFloat(payslip.professionalTax) || 0) +
     (parseFloat(payslip.welfareDeduction) || 0);
   const netPay = parseFloat(payslip.netSalary) || 0;
+  const bonus = parseFloat(payslip.bonus) || 0;
+  const netPayWithBonus = parseFloat(payslip.netPayableWithBonus) || (netPay + bonus);
 
   // Earnings breakdown
   const basicSalary = parseFloat(payslip.basicSalary) || 0;
@@ -558,11 +602,25 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
             <Text style={styles.netPayAmount}>{formatCurrency(netPay)}</Text>
           </View>
 
+          {/* Bonus Row - Only show if bonus > 0 */}
+          {bonus > 0 && (
+            <View style={styles.bonusRow}>
+              <Text style={styles.bonusLabel}>BONUS (8.33%)</Text>
+              <Text style={styles.bonusAmount}>+ {formatCurrency(bonus)}</Text>
+            </View>
+          )}
+
+          {/* Net Pay With Bonus Row */}
+          <View style={styles.netPayWithBonusRow}>
+            <Text style={styles.netPayWithBonusLabel}>NET PAY WITH BONUS</Text>
+            <Text style={styles.netPayWithBonusAmount}>{formatCurrency(netPayWithBonus)}</Text>
+          </View>
+
           {/* Amount in Words Row - Attached to Net Pay */}
           <View style={styles.amountInWordsRow}>
             <Text style={styles.amountInWordsContent}>
               <Text style={styles.amountLabel}>Amount in words: </Text>
-              {numberToWords(netPay)}
+              {numberToWords(netPayWithBonus)}
             </Text>
           </View>
         </View>

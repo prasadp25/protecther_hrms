@@ -210,22 +210,56 @@ const generatePayslip = async (req, res) => {
     const fixedBasic = parseFloat(salaryData.basic_salary);
     const fixedHra = parseFloat(salaryData.hra || 0);
     const fixedAllowance = parseFloat(salaryData.special_allowance || 0);
-    const fixedIncentive = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
-    const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive;
+    const fixedIncentiveRaw = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
 
-    // Calculate actual (prorated) components first - needed for PF/ESI calculation
+    // Fixed bonus: 8.33% of min(basic, 7000) if basic <= 21000
+    // Bonus is CARVED OUT from Other Allowances (not added on top)
+    const fixedBonusEligible = fixedBasic <= 21000;
+    const fixedBonusBase = Math.min(fixedBasic, 7000);
+    const fixedBonus = fixedBonusEligible ? Math.round(fixedBonusBase * 0.0833) : 0;
+
+    // Fixed gratuity: 4.81% of Basic (Payment of Gratuity Act 1972)
+    // Formula: (Basic × 15) / 26 / 12 = Basic × 0.0481
+    // Gratuity is CARVED OUT from Other Allowances (not added on top)
+    const fixedGratuity = Math.round(fixedBasic * 0.0481);
+
+    // Deduct bonus and gratuity from incentive/other allowances so total stays same as CTC
+    const fixedIncentive = Math.max(0, fixedIncentiveRaw - fixedBonus - fixedGratuity);
+
+    // Gross = Basic + HRA + Allowance + Incentive + Bonus + Gratuity = Original CTC (unchanged)
+    const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive + fixedBonus + fixedGratuity;
+
+    // Calculate actual (prorated) components
     const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
     const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
     const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
-    const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
 
-    // Bonus Calculation: 8.33% of min(Basic, ₹7000) - Payment of Bonus Act 1965
-    // Eligible if Basic ≤ ₹21,000/month
+    // Bonus: Payment of Bonus Act 1965 - 8.33% of min(earned basic, 7000)
+    // Bonus is CARVED OUT from Other Allowances (part of CTC, not extra)
     const bonusEligible = fixedBasic <= 21000;
-    const bonusBase = Math.min(actualBasic, 7000); // Calculation ceiling ₹7,000
+    const bonusBase = Math.min(actualBasic, 7000);
     const bonus = bonusEligible ? Math.round(bonusBase * 0.0833) : 0;
 
-    const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive + bonus;
+    // Gratuity: 4.81% of Earned Basic (Payment of Gratuity Act 1972)
+    // Gratuity is CARVED OUT from Other Allowances (part of CTC, not extra)
+    const gratuity = Math.round(actualBasic * 0.0481);
+
+    // Deduct bonus and gratuity from incentive so total gross stays same as prorated CTC
+    const actualIncentiveRaw = Math.round((fixedIncentiveRaw / daysInMonth) * actualDaysPresent);
+    const actualIncentive = Math.max(0, actualIncentiveRaw - bonus - gratuity);
+
+    // Gross = Basic + HRA + Allowance + Incentive + Bonus + Gratuity = Prorated CTC (unchanged)
+    const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive + bonus + gratuity;
+
+    // DEBUG: Log bonus and gratuity calculation
+    console.log('=== BONUS & GRATUITY CALCULATION DEBUG ===');
+    console.log('fixedIncentiveRaw:', fixedIncentiveRaw);
+    console.log('bonus:', bonus);
+    console.log('gratuity:', gratuity);
+    console.log('actualIncentiveRaw:', actualIncentiveRaw);
+    console.log('actualIncentive (after bonus & gratuity deduction):', actualIncentive);
+    console.log('actualGross:', actualGross);
+    console.log('==========================================');
 
     // PF Calculation: 12% of Earned Basic (as per EPFO rules)
     // Wage ceiling: ₹15,000 basic = max PF ₹1,800
@@ -245,7 +279,9 @@ const generatePayslip = async (req, res) => {
     const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
 
     // Net Salary = Earned Gross - Deductions
+    // Since bonus is already included in gross, net salary includes bonus
     const netSalary = Math.round(actualGross - totalDeductions);
+    const netPayableWithBonus = netSalary; // Same as net salary since bonus is in gross
 
     // Calculate fixed values for reference (full month without absence)
     const fixedPF = pfApplicable ? Math.min(Math.round(fixedBasic * 0.12), 1800) : 0;
@@ -258,12 +294,12 @@ const generatePayslip = async (req, res) => {
       INSERT INTO payslips (
         employee_id, salary_id, month,
         total_working_days, total_days_in_month, days_present, days_absent,
-        basic_salary, hra, other_allowances, bonus, gross_salary,
+        basic_salary, hra, other_allowances, bonus, gratuity, gross_salary,
         fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
         pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
         advance_deduction, other_deductions, total_deductions,
-        net_salary, payment_status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        net_salary, net_payable_with_bonus, payment_status, remarks
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -278,7 +314,8 @@ const generatePayslip = async (req, res) => {
       actualHra,     // Actual (prorated) HRA
       actualAllowance + actualIncentive, // Combined allowances (actual prorated)
       bonus,         // Bonus (8.33% of min(basic, 7000))
-      actualGross,   // Actual (prorated) gross (includes bonus)
+      gratuity,      // Gratuity (4.81% of basic)
+      actualGross,   // Actual (prorated) gross (includes bonus & gratuity)
       fixedBasic,    // Fixed monthly basic
       fixedHra,      // Fixed monthly HRA
       fixedAllowance + fixedIncentive, // Fixed monthly incentive
@@ -292,6 +329,7 @@ const generatePayslip = async (req, res) => {
       otherDeductions,
       totalDeductions,
       netSalary,
+      netPayableWithBonus,  // Net salary (includes bonus & gratuity)
       'PENDING',
       remarks || null
     ];
@@ -421,21 +459,43 @@ const bulkGeneratePayslips = async (req, res) => {
         const fixedBasic = parseFloat(salaryData.basic_salary);
         const fixedHra = parseFloat(salaryData.hra || 0);
         const fixedAllowance = parseFloat(salaryData.special_allowance || 0);
-        const fixedIncentive = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
-        const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive;
+        const fixedIncentiveRaw = parseFloat(salaryData.incentive_allowance || salaryData.other_allowances || 0);
 
-        // Calculate actual (prorated) components first - needed for PF/ESI calculation
+        // Fixed bonus: 8.33% of min(basic, 7000) if basic <= 21000
+        // Bonus is CARVED OUT from Other Allowances (not added on top)
+        const fixedBonusEligible = fixedBasic <= 21000;
+        const fixedBonusBase = Math.min(fixedBasic, 7000);
+        const fixedBonus = fixedBonusEligible ? Math.round(fixedBonusBase * 0.0833) : 0;
+
+        // Fixed gratuity: 4.81% of Basic (Payment of Gratuity Act 1972)
+        // Gratuity is CARVED OUT from Other Allowances (not added on top)
+        const fixedGratuity = Math.round(fixedBasic * 0.0481);
+
+        // Deduct bonus and gratuity from incentive/other allowances so total stays same as CTC
+        const fixedIncentive = Math.max(0, fixedIncentiveRaw - fixedBonus - fixedGratuity);
+        const fixedGross = fixedBasic + fixedHra + fixedAllowance + fixedIncentive + fixedBonus + fixedGratuity;
+
+        // Calculate actual (prorated) components
         const actualBasic = Math.round((fixedBasic / daysInMonth) * actualDaysPresent);
         const actualHra = Math.round((fixedHra / daysInMonth) * actualDaysPresent);
         const actualAllowance = Math.round((fixedAllowance / daysInMonth) * actualDaysPresent);
-        const actualIncentive = Math.round((fixedIncentive / daysInMonth) * actualDaysPresent);
 
-        // Bonus Calculation: 8.33% of min(Basic, ₹7000) - Payment of Bonus Act 1965
+        // Bonus: Payment of Bonus Act 1965 - 8.33% of min(earned basic, 7000)
+        // Bonus is CARVED OUT from Other Allowances (part of CTC, not extra)
         const bonusEligible = fixedBasic <= 21000;
         const bonusBase = Math.min(actualBasic, 7000);
         const bonus = bonusEligible ? Math.round(bonusBase * 0.0833) : 0;
 
-        const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive + bonus;
+        // Gratuity: 4.81% of Earned Basic (Payment of Gratuity Act 1972)
+        // Gratuity is CARVED OUT from Other Allowances (part of CTC, not extra)
+        const gratuity = Math.round(actualBasic * 0.0481);
+
+        // Deduct bonus and gratuity from incentive so total gross stays same as prorated CTC
+        const actualIncentiveRaw = Math.round((fixedIncentiveRaw / daysInMonth) * actualDaysPresent);
+        const actualIncentive = Math.max(0, actualIncentiveRaw - bonus - gratuity);
+
+        // Gross = Basic + HRA + Allowance + Incentive + Bonus + Gratuity = Prorated CTC (unchanged)
+        const actualGross = actualBasic + actualHra + actualAllowance + actualIncentive + bonus + gratuity;
 
         // PF Calculation: 12% of Earned Basic (as per EPFO rules)
         // Wage ceiling: ₹15,000 basic = max PF ₹1,800
@@ -455,7 +515,9 @@ const bulkGeneratePayslips = async (req, res) => {
         const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
 
         // Net Salary = Earned Gross - Deductions
+        // Since bonus is already included in gross, net salary includes bonus
         const netSalary = Math.round(actualGross - totalDeductions);
+        const netPayableWithBonus = netSalary; // Same as net salary since bonus is in gross
 
         // Calculate fixed values for reference (full month without absence)
         const fixedPF = pfApplicable ? Math.min(Math.round(fixedBasic * 0.12), 1800) : 0;
@@ -467,20 +529,20 @@ const bulkGeneratePayslips = async (req, res) => {
           `INSERT INTO payslips (
             employee_id, salary_id, month,
             total_working_days, total_days_in_month, days_present, days_absent,
-            basic_salary, hra, other_allowances, bonus, gross_salary,
+            basic_salary, hra, other_allowances, bonus, gratuity, gross_salary,
             fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
             pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
             advance_deduction, other_deductions, total_deductions,
-            net_salary, payment_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            net_salary, net_payable_with_bonus, payment_status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             emp.employee_id, salaryData.salary_id, monthStr,
             totalWorkingDays, daysInMonth, actualDaysPresent, daysAbsent,
-            actualBasic, actualHra, actualAllowance + actualIncentive, bonus, actualGross,
+            actualBasic, actualHra, actualAllowance + actualIncentive, bonus, gratuity, actualGross,
             fixedBasic, fixedHra, fixedAllowance + fixedIncentive, fixedGross, fixedNetSalary,
             pfDeduction, esiDeduction, professionalTax, mediclaimDeduction,
             advanceDeduction, otherDeductions, totalDeductions,
-            netSalary, 'PENDING'
+            netSalary, netPayableWithBonus, 'PENDING'
           ]
         );
 

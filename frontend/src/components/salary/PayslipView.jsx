@@ -89,6 +89,8 @@ const PayslipView = ({ onBack }) => {
           totalWorkingDays: p.total_working_days,
           totalDaysInMonth: p.total_days_in_month || 31,
           overtime: p.overtime || 0,
+          bonus: parseFloat(p.bonus) || 0,
+          netPayableWithBonus: parseFloat(p.net_payable_with_bonus) || 0,
           paymentStatus: p.payment_status,
           paymentDate: p.payment_date,
           paymentMethod: p.payment_method
@@ -141,7 +143,7 @@ const PayslipView = ({ onBack }) => {
 
     // Filter by site
     if (selectedSite !== 'ALL') {
-      const siteEmployees = employees.filter(emp => emp.site_id === selectedSite);
+      const siteEmployees = employees.filter(emp => String(emp.site_id) === String(selectedSite));
       const siteEmployeeIds = siteEmployees.map(emp => emp.employee_id);
       filtered = filtered.filter(slip => siteEmployeeIds.includes(slip.employee_id));
     }
@@ -427,8 +429,8 @@ const PayslipView = ({ onBack }) => {
       // Row 3: Section Headers
       wsData.push([
         '', '', '', '', '', '',
-        'Fixed Salary', '', '', '', '',
-        'Earnings (Pro-rata)', '', '', '',
+        'Fixed Salary', '', '', '', '', '',
+        'Earnings (Pro-rata)', '', '', '', '',
         'Deductions', '', '', '', '', '',
         'Final', '', ''
       ]);
@@ -441,10 +443,10 @@ const PayslipView = ({ onBack }) => {
         'Designation',
         'Location',
         'Days',
-        // Fixed Salary
-        'BASIC', 'HRA', 'Incentive', 'Gross', 'Net',
-        // Earnings (Pro-rata)
-        'BASIC', 'HRA', 'Incentive', 'Gross',
+        // Fixed Salary (7 cols: BASIC, HRA, Incentive, Bonus, Gratuity, Gross, Net)
+        'BASIC', 'HRA', 'Incentive', 'Bonus', 'Gratuity', 'Gross', 'Net',
+        // Earnings (Pro-rata) (6 cols: BASIC, HRA, Incentive, Bonus, Gratuity, Gross)
+        'BASIC', 'HRA', 'Incentive', 'Bonus', 'Gratuity', 'Gross',
         // Deductions
         'PF', 'Mediclaim', 'PT', 'Advance', 'ESIC', 'Total Ded',
         // Final
@@ -477,6 +479,15 @@ const PayslipView = ({ onBack }) => {
         const esic = payslip.esiDeduction || 0;
         const totalDeductions = payslip.totalDeductions || (pfDeduction + mediclaim + pt + advance + esic);
 
+        // Bonus and Gratuity values
+        const bonus = payslip.bonus || 0;
+        const gratuity = payslip.gratuity || 0;
+        const netPayWithBonus = payslip.netPayableWithBonus || payslip.netSalary;
+
+        // Calculate fixed bonus and gratuity for display
+        const fixedBonus = payslip.fixedBasic <= 21000 ? Math.round(Math.min(payslip.fixedBasic || 0, 7000) * 0.0833) : 0;
+        const fixedGratuity = Math.round((payslip.fixedBasic || 0) * 0.0481);
+
         const row = [
           index + 1,                                    // Sr No
           payslip.employeeCode,                         // EMP CODE
@@ -484,17 +495,21 @@ const PayslipView = ({ onBack }) => {
           employee?.designation || payslip.designation || '-',  // Designation
           siteName,                                     // Location
           `${daysPresent}/${daysInMonth}`,              // Days (X/Y format)
-          // Fixed Salary
+          // Fixed Salary (BASIC + HRA + Incentive + Bonus + Gratuity = Gross)
           fixedBasic,                                   // BASIC
           fixedHRA,                                     // HRA
-          fixedIncentive,                               // Incentive
-          fixedGross,                                   // Gross
+          fixedIncentive,                               // Incentive (reduced by bonus & gratuity)
+          fixedBonus,                                   // Bonus
+          fixedGratuity,                                // Gratuity (4.81% of Basic)
+          fixedGross,                                   // Gross (includes bonus & gratuity)
           fixedNet,                                     // Net (Gross - Deductions)
-          // Earnings (Pro-rata)
+          // Earnings (Pro-rata) (BASIC + HRA + Incentive + Bonus + Gratuity = Gross)
           earnedBasic,                                  // BASIC
           earnedHRA,                                    // HRA
-          earnedIncentive,                              // Incentive
-          earnedGross,                                  // Gross
+          earnedIncentive,                              // Incentive (reduced by bonus & gratuity)
+          bonus,                                        // Bonus
+          gratuity,                                     // Gratuity (4.81% of earned Basic)
+          earnedGross,                                  // Gross (includes bonus & gratuity)
           // Deductions
           pfDeduction,                                  // PF
           mediclaim,                                    // Mediclaim
@@ -503,7 +518,7 @@ const PayslipView = ({ onBack }) => {
           esic,                                         // ESIC
           totalDeductions,                              // Total Ded
           // Final
-          payslip.netSalary,                            // Net Pay
+          payslip.netSalary,                            // Net Pay (Gross - Deductions)
           payslip.ifscCode || employee?.ifsc_code || '',       // IFSC
           payslip.accountNumber || employee?.account_number || ''  // Account
         ];
@@ -530,16 +545,27 @@ const PayslipView = ({ onBack }) => {
       const totalEarnedIncentive = siteData.reduce((sum, item) => sum + (item.payslip.otherAllowances || 0), 0);
       const totalEarnedGross = siteData.reduce((sum, item) => sum + (item.payslip.grossSalary || 0), 0);
       const totalNet = siteData.reduce((sum, item) => sum + (item.payslip.netSalary || 0), 0);
+      const totalBonus = siteData.reduce((sum, item) => sum + (item.payslip.bonus || 0), 0);
+      const totalGratuity = siteData.reduce((sum, item) => sum + (item.payslip.gratuity || 0), 0);
+
+      // Calculate total fixed bonus and gratuity
+      const totalFixedBonus = siteData.reduce((sum, item) => {
+        const fb = item.payslip.fixedBasic || 0;
+        return sum + (fb <= 21000 ? Math.round(Math.min(fb, 7000) * 0.0833) : 0);
+      }, 0);
+      const totalFixedGratuity = siteData.reduce((sum, item) => {
+        return sum + Math.round((item.payslip.fixedBasic || 0) * 0.0481);
+      }, 0);
 
       wsData.push([
         '',
         'TOTAL',
         `${siteData.length} employees`,
         '', '', '',
-        // Fixed Salary totals
-        totalFixedBasic, totalFixedHRA, totalFixedIncentive, totalFixedGross, totalFixedNet,
-        // Earnings totals
-        totalEarnedBasic, totalEarnedHRA, totalEarnedIncentive, totalEarnedGross,
+        // Fixed Salary totals (BASIC + HRA + Incentive + Bonus + Gratuity = Gross)
+        totalFixedBasic, totalFixedHRA, totalFixedIncentive, totalFixedBonus, totalFixedGratuity, totalFixedGross, totalFixedNet,
+        // Earnings totals (BASIC + HRA + Incentive + Bonus + Gratuity = Gross)
+        totalEarnedBasic, totalEarnedHRA, totalEarnedIncentive, totalBonus, totalGratuity, totalEarnedGross,
         // Deductions totals
         totalPF, totalMediclaim, totalPT, totalAdvance, totalESIC, totalDeductions,
         // Final total
@@ -552,10 +578,10 @@ const PayslipView = ({ onBack }) => {
       // Merge cells for headers
       if (!ws['!merges']) ws['!merges'] = [];
       ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }); // Site name
-      ws['!merges'].push({ s: { r: 2, c: 6 }, e: { r: 2, c: 10 } }); // Fixed Salary header (5 cols: BASIC, HRA, Incentive, Gross, Net)
-      ws['!merges'].push({ s: { r: 2, c: 11 }, e: { r: 2, c: 14 } }); // Earnings header
-      ws['!merges'].push({ s: { r: 2, c: 15 }, e: { r: 2, c: 20 } }); // Deductions header
-      ws['!merges'].push({ s: { r: 2, c: 21 }, e: { r: 2, c: 23 } }); // Final header
+      ws['!merges'].push({ s: { r: 2, c: 6 }, e: { r: 2, c: 12 } }); // Fixed Salary header (7 cols: BASIC, HRA, Incentive, Bonus, Gratuity, Gross, Net)
+      ws['!merges'].push({ s: { r: 2, c: 13 }, e: { r: 2, c: 18 } }); // Earnings header (6 cols: BASIC, HRA, Incentive, Bonus, Gratuity, Gross)
+      ws['!merges'].push({ s: { r: 2, c: 19 }, e: { r: 2, c: 24 } }); // Deductions header (6 cols: PF, Mediclaim, PT, Advance, ESIC, Total)
+      ws['!merges'].push({ s: { r: 2, c: 25 }, e: { r: 2, c: 27 } }); // Final header (3 cols: Net Pay, IFSC, Account)
 
       // Set column widths
       ws['!cols'] = [
@@ -565,25 +591,29 @@ const PayslipView = ({ onBack }) => {
         { wch: 15 },  // Designation
         { wch: 15 },  // Location
         { wch: 8 },   // Days
-        // Fixed Salary
+        // Fixed Salary (7 cols: BASIC + HRA + Incentive + Bonus + Gratuity = Gross, Net)
         { wch: 10 },  // BASIC
         { wch: 8 },   // HRA
         { wch: 10 },  // Incentive
+        { wch: 8 },   // Bonus
+        { wch: 8 },   // Gratuity
         { wch: 10 },  // Gross
         { wch: 10 },  // Net
-        // Earnings
+        // Earnings (6 cols: BASIC + HRA + Incentive + Bonus + Gratuity = Gross)
         { wch: 10 },  // BASIC
         { wch: 8 },   // HRA
         { wch: 10 },  // Incentive
+        { wch: 8 },   // Bonus
+        { wch: 8 },   // Gratuity
         { wch: 10 },  // Gross
-        // Deductions
+        // Deductions (6 cols)
         { wch: 8 },   // PF
         { wch: 10 },  // Mediclaim
         { wch: 6 },   // PT
         { wch: 8 },   // Advance
         { wch: 8 },   // ESIC
         { wch: 10 },  // Total Ded
-        // Final
+        // Final (3 cols)
         { wch: 12 },  // Net Pay
         { wch: 12 },  // IFSC
         { wch: 15 }   // Account
@@ -597,7 +627,7 @@ const PayslipView = ({ onBack }) => {
     // Generate filename
     const monthText = selectedMonth ? `_${selectedMonth}` : '';
     const filterText = selectedSite !== 'ALL'
-      ? `_${sites.find(s => s.siteId === selectedSite)?.siteCode || 'Site'}`
+      ? `_${sites.find(s => String(s.siteId) === String(selectedSite))?.siteCode || 'Site'}`
       : '_AllSites';
     const filename = `Payslips${monthText}${filterText}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
@@ -638,7 +668,7 @@ const PayslipView = ({ onBack }) => {
       // Get site information
       const site = selectedSite === 'ALL'
         ? { siteId: 'ALL', siteName: 'All Sites', siteCode: 'ALL' }
-        : sites.find(s => s.siteId === selectedSite);
+        : sites.find(s => String(s.siteId) === String(selectedSite));
 
       if (!site) {
         alert('Please select a valid site');
@@ -765,7 +795,7 @@ const PayslipView = ({ onBack }) => {
           </div>
           <div className="mt-2 text-sm text-gray-600">
             Showing {filteredPayslips.length} payslips
-            {selectedSite !== 'ALL' && ` (Filtered by: ${sites.find(s => s.siteId === selectedSite)?.siteName})`}
+            {selectedSite !== 'ALL' && ` (Filtered by: ${sites.find(s => String(s.siteId) === String(selectedSite))?.siteName})`}
           </div>
         </div>
 
@@ -1351,12 +1381,26 @@ const PayslipView = ({ onBack }) => {
             </div>
           </div>
 
-          {/* Net Salary */}
-          <div className="bg-green-50 p-6 rounded-lg">
+          {/* Net Salary Section */}
+          <div className="bg-gray-50 p-6 rounded-lg space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xl font-semibold text-gray-700">Net Salary Payable:</span>
-              <span className="text-4xl font-bold text-green-600">
+              <span className="text-lg font-medium text-gray-700">Net Payable:</span>
+              <span className="text-2xl font-bold text-gray-800">
                 {formatCurrency(selectedPayslip.netSalary)}
+              </span>
+            </div>
+            {selectedPayslip.bonus > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-medium text-gray-700">Bonus (8.33%):</span>
+                <span className="text-2xl font-bold text-blue-600">
+                  + {formatCurrency(selectedPayslip.bonus)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-center border-t pt-3 bg-green-50 -mx-6 px-6 -mb-6 pb-6 rounded-b-lg">
+              <span className="text-xl font-semibold text-gray-700">Net Payable with Bonus:</span>
+              <span className="text-4xl font-bold text-green-600">
+                {formatCurrency(selectedPayslip.netPayableWithBonus || (selectedPayslip.netSalary + (selectedPayslip.bonus || 0)))}
               </span>
             </div>
           </div>

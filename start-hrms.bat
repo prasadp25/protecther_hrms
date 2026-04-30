@@ -1,76 +1,86 @@
 @echo off
-REM ===================================================
-REM HRMS Application Startup Script
-REM ===================================================
-REM This script starts the HRMS application using PM2
-REM Run this script to start both frontend and backend
-REM ===================================================
-
-echo ========================================
-echo Starting HRMS Application...
-echo ========================================
+echo ============================================
+echo HRMS Startup Script
+echo ============================================
 echo.
 
-REM Navigate to the project directory
-cd /d "%~dp0"
-
-REM Check if PM2 is installed
-call pm2 --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: PM2 is not installed!
-    echo Please install PM2 using: npm install -g pm2
+:: Check for admin rights
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    echo ERROR: Please right-click and select "Run as Administrator"
     pause
     exit /b 1
 )
 
-REM Check if MySQL service is running
-echo Checking MySQL service...
-sc query MySQL | find "RUNNING" >nul
+cd /d C:\hrms-frontend
+
+:: Step 1: Check MySQL
+echo [1/4] Checking MySQL service...
+sc query MySQL | find "RUNNING" >nul 2>&1
 if errorlevel 1 (
-    echo WARNING: MySQL service is not running!
-    echo Starting MySQL service...
-    net start MySQL
-    if errorlevel 1 (
-        echo ERROR: Failed to start MySQL service
-        echo Please start it manually from Services or check service name
-        echo Common service names: MySQL, MySQL80, MySQL57
-        pause
-        exit /b 1
-    )
+    echo      MySQL not running, starting...
+    net start MySQL >nul 2>&1
+    timeout /t 3 >nul
 )
+echo      MySQL is running.
 
-echo MySQL service is running
-echo.
-
-REM Start the application using PM2
-echo Starting HRMS with PM2...
-call pm2 start ecosystem.config.js
-
+:: Step 2: Test MySQL connection
+echo [2/4] Testing MySQL connection...
+mysql -u root -proot -e "SELECT 1" >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Failed to start HRMS application
-    pause
-    exit /b 1
+    echo      ERROR: MySQL password issue detected!
+    echo      Running password fix...
+    call :FixMySQL
 )
+echo      MySQL connection OK.
 
-echo.
-echo ========================================
-echo HRMS Application Started Successfully!
-echo ========================================
-echo.
-echo Frontend: http://localhost:8000
-echo Backend API: http://localhost:8001
-echo.
-echo Useful Commands:
-echo   pm2 status          - Check application status
-echo   pm2 logs            - View application logs
-echo   pm2 monit           - Monitor applications
-echo   pm2 restart all     - Restart all applications
-echo   pm2 stop all        - Stop all applications
-echo.
-echo To access from other devices on network:
-echo   Frontend: http://YOUR_IP:8000
-echo   Backend API: http://YOUR_IP:8001
-echo.
-echo ========================================
+:: Step 3: Stop any existing PM2 processes
+echo [3/4] Starting PM2 services...
+pm2 delete all >nul 2>&1
+pm2 start ecosystem.config.js >nul 2>&1
+timeout /t 3 >nul
+echo      PM2 services started.
 
-timeout /t 10
+:: Step 4: Show status
+echo [4/4] Checking status...
+echo.
+pm2 status
+echo.
+echo ============================================
+echo HRMS Started Successfully!
+echo ============================================
+echo.
+echo Frontend: http://192.168.1.36:8000
+echo Backend:  http://192.168.1.36:8001/api/v1
+echo.
+echo NOTE: If IP changed, update .env files and rebuild frontend
+echo See STARTUP_GUIDE.md for instructions
+echo.
+pause
+exit /b 0
+
+:FixMySQL
+echo      Stopping MySQL...
+net stop MySQL >nul 2>&1
+taskkill /F /IM mysqld.exe >nul 2>&1
+timeout /t 2 >nul
+
+echo      Adding skip-grant-tables...
+echo skip-grant-tables>> "C:\ProgramData\MySQL\MySQL Server 8.0\my.ini"
+
+echo      Starting MySQL in safe mode...
+net start MySQL >nul 2>&1
+timeout /t 5 >nul
+
+echo      Resetting password...
+mysql -u root -e "FLUSH PRIVILEGES; ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';" >nul 2>&1
+
+echo      Cleaning up config...
+net stop MySQL >nul 2>&1
+timeout /t 2 >nul
+powershell -Command "(Get-Content 'C:\ProgramData\MySQL\MySQL Server 8.0\my.ini') | Where-Object { $_ -notmatch 'skip-grant-tables' } | Set-Content 'C:\ProgramData\MySQL\MySQL Server 8.0\my.ini'"
+
+echo      Starting MySQL normally...
+net start MySQL >nul 2>&1
+timeout /t 3 >nul
+goto :eof

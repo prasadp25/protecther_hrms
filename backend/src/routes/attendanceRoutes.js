@@ -5,6 +5,7 @@ const {
   getEmployeeAttendance,
   saveAttendance,
   finalizeAttendance,
+  unfinalizeAttendance,
   deleteAttendance,
   getAttendanceSummary
 } = require('../controllers/attendanceController');
@@ -17,6 +18,7 @@ router.get('/summary/:month', getAttendanceSummary);  // GET /api/v1/attendance/
 // POST routes
 router.post('/save', saveAttendance);  // POST /api/v1/attendance/save
 router.post('/finalize', finalizeAttendance);  // POST /api/v1/attendance/finalize
+router.post('/unfinalize', unfinalizeAttendance);  // POST /api/v1/attendance/unfinalize
 
 // DELETE routes
 router.delete('/:attendanceId', deleteAttendance);  // DELETE /api/v1/attendance/1

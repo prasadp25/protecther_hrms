@@ -53,6 +53,17 @@ export const attendanceService = {
     }
   },
 
+  // Unfinalize attendance for a month (unlock it for editing)
+  unfinalizeAttendance: async (month) => {
+    try {
+      const response = await api.post('/attendance/unfinalize', { month });
+      return response.data;
+    } catch (error) {
+      console.error('Unfinalize attendance error:', error);
+      throw error;
+    }
+  },
+
   // Delete attendance record
   deleteAttendance: async (attendanceId) => {
     try {

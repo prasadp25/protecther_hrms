@@ -7,7 +7,9 @@ const {
   getEmployeeById,
   createEmployee,
   updateEmployee,
-  deleteEmployee
+  deleteEmployee,
+  getDepartments,
+  getDesignations
 } = require('../controllers/employeeController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { uploadEmployeeDocuments, handleUploadError } = require('../middleware/upload');
@@ -20,6 +22,8 @@ router.use(authenticate);
 router.get('/', getAllEmployees);
 router.get('/active', getActiveEmployees);
 router.get('/without-salary', getEmployeesWithoutSalary);
+router.get('/departments', getDepartments);
+router.get('/designations', getDesignations);
 router.get('/:id', getEmployeeById);
 
 // POST routes - Admin/HR only with audit logging

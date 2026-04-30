@@ -78,6 +78,25 @@ const generateSiteCode = (lastCode) => {
 };
 
 // ==============================================
+// GENERATE CANDIDATE CODE
+// ==============================================
+const generateCandidateCode = (lastCode) => {
+  if (!lastCode) return 'C0001';
+
+  const num = parseInt(lastCode.replace(/[^0-9]/g, '')) + 1;
+  return `C${String(num).padStart(4, '0')}`;
+};
+
+// ==============================================
+// GENERATE OFFER LETTER REFERENCE
+// Format: PLLP-YYYY-NNN (e.g., PLLP-2026-101)
+// ==============================================
+const generateOfferLetterRef = (year, lastNumber) => {
+  const nextNumber = (lastNumber || 100) + 1;
+  return `PLLP-${year}-${nextNumber}`;
+};
+
+// ==============================================
 // SANITIZE INPUT
 // ==============================================
 const sanitizeInput = (input) => {
@@ -256,6 +275,8 @@ module.exports = {
   calculateAge,
   generateEmployeeCode,
   generateSiteCode,
+  generateCandidateCode,
+  generateOfferLetterRef,
   sanitizeInput,
   calculateSalaryComponents,
   calculateWorkingHours,

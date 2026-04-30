@@ -41,18 +41,6 @@ const sendOTP = async (req, res) => {
 
     const employee = employees[0];
 
-    // TEST MODE: Skip rate limit and email sending
-    // Remove this block in production!
-    if (!process.env.SMTP_USER) {
-      console.log('📧 TEST MODE: OTP would be sent to', email);
-      console.log('📧 TEST MODE: Use OTP "123456" to login');
-      return res.status(200).json({
-        success: true,
-        message: 'OTP sent to your email (TEST MODE: use 123456)'
-      });
-    }
-    // END TEST MODE
-
     // Check rate limit - max OTPs per hour
     const recentOTPs = await executeQuery(
       `SELECT COUNT(*) as count FROM otp_tokens
@@ -115,53 +103,6 @@ const verifyOTP = async (req, res) => {
         message: 'Email and OTP are required'
       });
     }
-
-    // TEST MODE: Allow bypass with OTP "123456" for development
-    // Remove this block in production!
-    if (otp === '123456') {
-      const employees = await executeQuery(
-        `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name,
-                e.company_id, c.company_name, c.company_code
-         FROM employees e
-         JOIN companies c ON e.company_id = c.company_id
-         WHERE LOWER(e.email) = LOWER(?) AND e.status = 'ACTIVE'`,
-        [email]
-      );
-
-      if (employees.length > 0) {
-        const emp = employees[0];
-        const token = jwt.sign(
-          {
-            employee_id: emp.employee_id,
-            employee_code: emp.employee_code,
-            email: email,
-            company_id: emp.company_id,
-            type: 'employee'
-          },
-          process.env.JWT_SECRET,
-          { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-        );
-
-        return res.status(200).json({
-          success: true,
-          message: 'Login successful (TEST MODE)',
-          data: {
-            token,
-            employee: {
-              employee_id: emp.employee_id,
-              employee_code: emp.employee_code,
-              first_name: emp.first_name,
-              last_name: emp.last_name,
-              email: email,
-              company_id: emp.company_id,
-              company_name: emp.company_name,
-              company_code: emp.company_code
-            }
-          }
-        });
-      }
-    }
-    // END TEST MODE
 
     // Find valid OTP
     const otpRecords = await executeQuery(

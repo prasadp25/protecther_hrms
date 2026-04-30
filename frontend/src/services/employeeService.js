@@ -234,4 +234,16 @@ export const employeeService = {
     );
     return response.data;
   },
+
+  // Get distinct departments
+  getDepartments: async () => {
+    const response = await api.get(`${EMPLOYEE_ENDPOINT}/departments`);
+    return response.data;
+  },
+
+  // Get distinct designations
+  getDesignations: async () => {
+    const response = await api.get(`${EMPLOYEE_ENDPOINT}/designations`);
+    return response.data;
+  },
 };
