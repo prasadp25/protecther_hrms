@@ -40,6 +40,22 @@ module.exports = {
       max_restarts: 10,
       min_uptime: '10s',
       max_memory_restart: '300M'
+    },
+    // Cloudflare Tunnel for hr.protecther.in
+    {
+      name: 'hrms-tunnel',
+      script: 'cloudflared',
+      args: 'tunnel --config C:\\Users\\PC-09\\.cloudflared\\config.yml run protecther-tunnel',
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      error_file: './logs/tunnel-error.log',
+      out_file: './logs/tunnel-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s'
     }
   ]
 };
