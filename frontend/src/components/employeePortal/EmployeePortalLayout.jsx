@@ -1,15 +1,104 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { employeePortalService } from '../../services/employeePortalService';
+
+// Session timeout in milliseconds (30 minutes)
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+// Warning before timeout (1 minute before)
+const WARNING_BEFORE_TIMEOUT = 60 * 1000;
 
 const EmployeePortalLayout = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+  const [timeoutCountdown, setTimeoutCountdown] = useState(60);
   const employee = employeePortalService.getStoredEmployee();
 
-  const handleLogout = () => {
+  const timeoutRef = useRef(null);
+  const warningRef = useRef(null);
+  const countdownRef = useRef(null);
+
+  // Handle logout
+  const handleLogout = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (warningRef.current) clearTimeout(warningRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
     employeePortalService.logout();
     navigate('/employee-portal/login');
+  }, [navigate]);
+
+  // Handle session timeout
+  const handleSessionTimeout = useCallback(() => {
+    toast.warning('Session expired due to inactivity');
+    handleLogout();
+  }, [handleLogout]);
+
+  // Reset activity timer
+  const resetActivityTimer = useCallback(() => {
+    // Clear existing timers
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (warningRef.current) clearTimeout(warningRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    // Hide warning if shown
+    setShowTimeoutWarning(false);
+
+    // Set warning timer (1 minute before timeout)
+    warningRef.current = setTimeout(() => {
+      setShowTimeoutWarning(true);
+      setTimeoutCountdown(60);
+
+      // Start countdown
+      countdownRef.current = setInterval(() => {
+        setTimeoutCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }, SESSION_TIMEOUT - WARNING_BEFORE_TIMEOUT);
+
+    // Set timeout timer
+    timeoutRef.current = setTimeout(() => {
+      handleSessionTimeout();
+    }, SESSION_TIMEOUT);
+  }, [handleSessionTimeout]);
+
+  // Track user activity
+  useEffect(() => {
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    const handleActivity = () => {
+      resetActivityTimer();
+    };
+
+    // Add event listeners
+    events.forEach((event) => {
+      document.addEventListener(event, handleActivity);
+    });
+
+    // Initial timer
+    resetActivityTimer();
+
+    // Cleanup
+    return () => {
+      events.forEach((event) => {
+        document.removeEventListener(event, handleActivity);
+      });
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (warningRef.current) clearTimeout(warningRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [resetActivityTimer]);
+
+  // Extend session
+  const handleExtendSession = () => {
+    setShowTimeoutWarning(false);
+    resetActivityTimer();
+    toast.success('Session extended');
   };
 
   const menuItems = [
@@ -71,6 +160,39 @@ const EmployeePortalLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Session Timeout Warning Modal */}
+      {showTimeoutWarning && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Session Timeout Warning</h3>
+              <p className="text-gray-600 mb-4">
+                Your session will expire in <span className="font-bold text-red-600">{timeoutCountdown} seconds</span> due to inactivity.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleExtendSession}
+                  className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                >
+                  Stay Logged In
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Logout Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div

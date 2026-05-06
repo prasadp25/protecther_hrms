@@ -1,9 +1,38 @@
 
 const app = require('./src/app');
-const { testConnection } = require('./src/config/database');
+const { testConnection, executeQuery } = require('./src/config/database');
 const { unhandledRejectionHandler, uncaughtExceptionHandler } = require('./src/middleware/errorHandler');
 
 const PORT = process.env.PORT || 5000;
+
+// ==============================================
+// Scheduled Tasks
+// ==============================================
+
+// Clean up expired OTP tokens every hour
+const cleanupExpiredOTPTokens = async () => {
+  try {
+    const result = await executeQuery(
+      `DELETE FROM otp_tokens WHERE expires_at < NOW() OR (used = TRUE AND created_at < DATE_SUB(NOW(), INTERVAL 1 DAY))`
+    );
+    if (result.affectedRows > 0) {
+      console.log(`🧹 Cleaned up ${result.affectedRows} expired OTP tokens`);
+    }
+  } catch (error) {
+    console.error('❌ Failed to cleanup OTP tokens:', error.message);
+  }
+};
+
+// Start scheduled tasks
+const startScheduledTasks = () => {
+  // Run cleanup immediately on startup
+  cleanupExpiredOTPTokens();
+
+  // Then run every hour (3600000 ms)
+  setInterval(cleanupExpiredOTPTokens, 60 * 60 * 1000);
+
+  console.log('⏰ Scheduled tasks started (OTP cleanup: hourly)');
+};
 
 // ==============================================
 // Setup Process-Level Error Handlers
@@ -31,6 +60,9 @@ const startServer = async () => {
       console.log(`📝 API Base: ${process.env.API_PREFIX || '/api/v1'}`);
       console.log(`⏰ Started at: ${new Date().toLocaleString()}`);
       console.log('='.repeat(50) + '\n');
+
+      // Start scheduled tasks
+      startScheduledTasks();
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

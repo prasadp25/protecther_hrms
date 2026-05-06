@@ -5,6 +5,10 @@ import { employeePortalService } from '../../services/employeePortalService';
 
 // Resend cooldown in seconds (must match backend)
 const RESEND_COOLDOWN = 45;
+// OTP expiry time in seconds (must match backend: 10 minutes)
+const OTP_EXPIRY_SECONDS = 10 * 60;
+// LocalStorage key for remembered email
+const REMEMBERED_EMAIL_KEY = 'employee_portal_email';
 
 const EmployeeLogin = () => {
   const navigate = useNavigate();
@@ -13,16 +17,43 @@ const EmployeeLogin = () => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [otpExpiry, setOtpExpiry] = useState(0);
+  const [rememberEmail, setRememberEmail] = useState(true);
   const timerRef = useRef(null);
+  const expiryTimerRef = useRef(null);
+  const otpInputRef = useRef(null);
 
-  // Cleanup timer on unmount
+  // Load remembered email on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+  }, []);
+
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (expiryTimerRef.current) clearInterval(expiryTimerRef.current);
     };
   }, []);
 
-  // Start countdown timer
+  // Auto-focus OTP input when step changes to 'otp'
+  useEffect(() => {
+    if (step === 'otp' && otpInputRef.current) {
+      setTimeout(() => otpInputRef.current?.focus(), 100);
+    }
+  }, [step]);
+
+  // Auto-submit when 6 digits entered
+  useEffect(() => {
+    if (otp.length === 6 && !loading && step === 'otp') {
+      handleVerifyOTP({ preventDefault: () => {} });
+    }
+  }, [otp]);
+
+  // Start countdown timer for resend
   const startCountdown = (seconds) => {
     if (timerRef.current) clearInterval(timerRef.current);
     setCountdown(seconds);
@@ -35,6 +66,29 @@ const EmployeeLogin = () => {
         return prev - 1;
       });
     }, 1000);
+  };
+
+  // Start OTP expiry countdown
+  const startExpiryCountdown = () => {
+    if (expiryTimerRef.current) clearInterval(expiryTimerRef.current);
+    setOtpExpiry(OTP_EXPIRY_SECONDS);
+    expiryTimerRef.current = setInterval(() => {
+      setOtpExpiry((prev) => {
+        if (prev <= 1) {
+          clearInterval(expiryTimerRef.current);
+          toast.warning('OTP has expired. Please request a new one.');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Format seconds to MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSendOTP = async (e) => {
@@ -51,12 +105,21 @@ const EmployeeLogin = () => {
         toast.success('OTP sent to your email');
         setStep('otp');
         startCountdown(RESEND_COOLDOWN);
+        startExpiryCountdown();
+
+        // Save or remove email based on checkbox
+        if (rememberEmail) {
+          localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+        } else {
+          localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+        }
       }
     } catch (error) {
       // Handle rate limit with waitTime from backend
       if (error.data?.waitTime) {
         startCountdown(error.data.waitTime);
         setStep('otp'); // Move to OTP step if already sent
+        startExpiryCountdown();
       }
       toast.error(error.message || 'Failed to send OTP');
     } finally {
@@ -71,6 +134,11 @@ const EmployeeLogin = () => {
       return;
     }
 
+    if (otpExpiry === 0) {
+      toast.error('OTP has expired. Please request a new one.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await employeePortalService.verifyOTP(email, otp);
@@ -79,7 +147,9 @@ const EmployeeLogin = () => {
         navigate('/employee-portal/dashboard');
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid OTP');
+      toast.error(error.message || 'Invalid OTP');
+      setOtp(''); // Clear OTP on error
+      otpInputRef.current?.focus();
     } finally {
       setLoading(false);
     }
@@ -87,7 +157,13 @@ const EmployeeLogin = () => {
 
   const handleResendOTP = async () => {
     if (countdown > 0) return;
+    setOtp(''); // Clear old OTP
     await handleSendOTP({ preventDefault: () => {} });
+  };
+
+  const handleOtpChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setOtp(value);
   };
 
   return (
@@ -109,7 +185,7 @@ const EmployeeLogin = () => {
         <div className="p-8">
           {step === 'email' ? (
             <form onSubmit={handleSendOTP}>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-medium mb-2">
                   Email Address
                 </label>
@@ -120,7 +196,19 @@ const EmployeeLogin = () => {
                   placeholder="Enter your registered email"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   required
+                  autoFocus
                 />
+              </div>
+              <div className="mb-6">
+                <label className="flex items-center text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberEmail}
+                    onChange={(e) => setRememberEmail(e.target.checked)}
+                    className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Remember my email
+                </label>
               </div>
               <button
                 type="submit"
@@ -143,25 +231,38 @@ const EmployeeLogin = () => {
           ) : (
             <form onSubmit={handleVerifyOTP}>
               <div className="mb-4">
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-gray-600 text-sm mb-2">
                   We've sent a 6-digit OTP to <strong>{email}</strong>
                 </p>
+                {/* OTP Expiry Warning */}
+                {otpExpiry > 0 ? (
+                  <p className={`text-sm mb-4 ${otpExpiry <= 60 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                    ⏱ OTP expires in <strong>{formatTime(otpExpiry)}</strong>
+                  </p>
+                ) : (
+                  <p className="text-sm mb-4 text-red-500 font-medium">
+                    ⚠ OTP has expired. Please request a new one.
+                  </p>
+                )}
                 <label className="block text-gray-700 text-sm font-medium mb-2">
                   Enter OTP
                 </label>
                 <input
+                  ref={otpInputRef}
                   type="text"
+                  inputMode="numeric"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={handleOtpChange}
                   placeholder="Enter 6-digit OTP"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-center text-2xl tracking-widest"
                   maxLength={6}
+                  disabled={otpExpiry === 0}
                   required
                 />
               </div>
               <button
                 type="submit"
-                disabled={loading || otp.length !== 6}
+                disabled={loading || otp.length !== 6 || otpExpiry === 0}
                 className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 mb-4"
               >
                 {loading ? (
@@ -182,6 +283,7 @@ const EmployeeLogin = () => {
                   onClick={() => {
                     setStep('email');
                     setOtp('');
+                    if (expiryTimerRef.current) clearInterval(expiryTimerRef.current);
                   }}
                   className="text-indigo-600 hover:underline"
                 >
