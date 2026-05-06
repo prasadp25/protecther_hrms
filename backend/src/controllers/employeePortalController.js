@@ -6,8 +6,11 @@ const { generateOTP, sendOTPEmail } = require('../utils/emailService');
 const OTP_EXPIRY_MINUTES = 10;
 // Max OTP attempts
 const MAX_OTP_ATTEMPTS = 3;
-// Rate limit: max OTPs per hour
-const MAX_OTPS_PER_HOUR = 3;
+// Rate limit: max OTPs per 15 minutes
+const MAX_OTPS_PER_WINDOW = 5;
+const RATE_LIMIT_MINUTES = 15;
+// Resend cooldown in seconds
+const RESEND_COOLDOWN_SECONDS = 45;
 
 // ==============================================
 // SEND OTP
@@ -41,14 +44,32 @@ const sendOTP = async (req, res) => {
 
     const employee = employees[0];
 
-    // Check rate limit - max OTPs per hour
-    const recentOTPs = await executeQuery(
-      `SELECT COUNT(*) as count FROM otp_tokens
-       WHERE email = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
+    // Check resend cooldown - must wait 45 seconds between OTP requests
+    const lastOTP = await executeQuery(
+      `SELECT created_at, TIMESTAMPDIFF(SECOND, created_at, NOW()) as seconds_ago
+       FROM otp_tokens
+       WHERE email = ?
+       ORDER BY created_at DESC LIMIT 1`,
       [email]
     );
 
-    if (recentOTPs[0].count >= MAX_OTPS_PER_HOUR) {
+    if (lastOTP.length > 0 && lastOTP[0].seconds_ago < RESEND_COOLDOWN_SECONDS) {
+      const waitTime = RESEND_COOLDOWN_SECONDS - lastOTP[0].seconds_ago;
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${waitTime} seconds before requesting another OTP.`,
+        waitTime: waitTime
+      });
+    }
+
+    // Check rate limit - only count unused OTPs (successfully verified ones don't count)
+    const recentOTPs = await executeQuery(
+      `SELECT COUNT(*) as count FROM otp_tokens
+       WHERE email = ? AND used = FALSE AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+      [email, RATE_LIMIT_MINUTES]
+    );
+
+    if (recentOTPs[0].count >= MAX_OTPS_PER_WINDOW) {
       return res.status(429).json({
         success: false,
         message: 'Too many OTP requests. Please try again later.'

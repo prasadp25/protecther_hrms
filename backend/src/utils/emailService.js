@@ -40,7 +40,7 @@ const sendOTPEmail = async (email, otp, employeeName) => {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">ProtectHer HRMS</h1>
+          <img src="https://hr.protecther.in/company-logo.png" alt="ProtectHer HRMS" style="max-width: 180px; height: auto; margin-bottom: 10px;">
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Employee Portal</p>
         </div>
 
@@ -89,6 +89,8 @@ If you did not request this OTP, please ignore this email.
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Failed to send OTP email:', error.message);
+    console.error('❌ SMTP_USER:', process.env.SMTP_USER || 'NOT SET');
+    console.error('❌ Full error:', error);
     throw new Error('Failed to send OTP email. Please try again later.');
   }
 };

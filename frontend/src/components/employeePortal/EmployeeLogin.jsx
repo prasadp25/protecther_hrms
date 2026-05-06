@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { employeePortalService } from '../../services/employeePortalService';
+
+// Resend cooldown in seconds (must match backend)
+const RESEND_COOLDOWN = 45;
 
 const EmployeeLogin = () => {
   const navigate = useNavigate();
@@ -10,6 +13,29 @@ const EmployeeLogin = () => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  // Start countdown timer
+  const startCountdown = (seconds) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCountdown(seconds);
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
@@ -24,20 +50,15 @@ const EmployeeLogin = () => {
       if (response.success) {
         toast.success('OTP sent to your email');
         setStep('otp');
-        // Start 60 second countdown for resend
-        setCountdown(60);
-        const timer = setInterval(() => {
-          setCountdown((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        startCountdown(RESEND_COOLDOWN);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send OTP');
+      // Handle rate limit with waitTime from backend
+      if (error.data?.waitTime) {
+        startCountdown(error.data.waitTime);
+        setStep('otp'); // Move to OTP step if already sent
+      }
+      toast.error(error.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
     }

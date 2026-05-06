@@ -53,10 +53,13 @@ export const setSelectedCompany = (company) => {
 // Request interceptor - Add token and company_id from localStorage
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage and add to headers
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Don't override Authorization header if already set (e.g., employee portal)
+    if (!config.headers.Authorization) {
+      // Get admin token from localStorage and add to headers
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     // If sending FormData (file uploads), let browser set Content-Type with boundary
@@ -125,15 +128,28 @@ api.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response;
 
-      // 401 Unauthorized - Redirect to login
+      // 401 Unauthorized - Redirect to appropriate login
       if (status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        const isEmployeePortal = window.location.pathname.startsWith('/employee-portal');
 
-        // Only show toast if not already on login page
-        if (window.location.pathname !== '/login') {
-          toast.error('Session expired. Please log in again.');
-          window.location.href = '/login';
+        if (isEmployeePortal) {
+          // Employee portal - clear employee data and redirect to employee login
+          localStorage.removeItem('employee_token');
+          localStorage.removeItem('employee_data');
+
+          if (window.location.pathname !== '/employee-portal/login') {
+            toast.error('Session expired. Please log in again.');
+            window.location.href = '/employee-portal/login';
+          }
+        } else {
+          // Admin portal - clear admin data and redirect to admin login
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+
+          if (window.location.pathname !== '/login') {
+            toast.error('Session expired. Please log in again.');
+            window.location.href = '/login';
+          }
         }
       }
       // 403 Forbidden
