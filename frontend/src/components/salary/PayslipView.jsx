@@ -641,9 +641,6 @@ const PayslipView = ({ onBack }) => {
       // Find employee data
       const employee = employees.find(e => e.employee_id === payslip.employeeId);
 
-      // Debug: Log employee data to check what fields are available
-      console.log('Employee data for PDF:', employee);
-
       // Generate PDF blob using our React component
       const blob = await pdf(
         <PayslipPDFTemplateNew payslip={payslip} employee={employee} />

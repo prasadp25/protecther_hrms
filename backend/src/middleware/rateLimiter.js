@@ -12,10 +12,10 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Login limiter - disabled (unlimited attempts)
+// Login limiter - 5 attempts per 15 minutes
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 0, // 0 = unlimited attempts
+  max: 5, // 5 attempts per window
   message: {
     success: false,
     message: 'Too many login attempts from this IP, please try again after 15 minutes.'

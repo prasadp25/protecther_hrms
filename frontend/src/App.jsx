@@ -308,6 +308,7 @@ const MainApp = () => {
 
         {/* Page Content */}
         <main className="p-4 lg:p-6">
+          <ErrorBoundary>
           {module === 'dashboard' && (
             <Dashboard key={selectedCompany?.company_id || 'all'} />
           )}
@@ -421,6 +422,7 @@ const MainApp = () => {
           {module === 'notices' && <NoticeList />}
 
           {module === 'settings' && <InsuranceSettings />}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

@@ -166,7 +166,7 @@ const createCandidate = asyncHandler(async (req, res) => {
   const mediclaim = parseFloat(candidateData.mediclaim_deduction) || 0;
   const totalDeductions = pfDeduction + ptDeduction + mediclaim;
   const netSalary = grossSalary - totalDeductions;
-  const ctc = (grossSalary * 12) + (pfDeduction * 12);
+  const ctc = grossSalary * 12;
 
   const query = 'INSERT INTO candidates (candidate_code, company_id, first_name, last_name, gender, mobile, email, dob, address, city, state, pincode, aadhaar_no, pan_no, designation, department, site_id, expected_joining_date, reporting_manager, ctc, basic_salary, hra, conveyance_allowance, other_allowances, bonus, gratuity, gross_salary, pf_deduction, pt_deduction, mediclaim_deduction, total_deductions, net_salary, probation_period, notice_period, status, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
@@ -236,7 +236,7 @@ const updateCandidate = asyncHandler(async (req, res) => {
   const mediclaim = parseFloat(candidateData.mediclaim_deduction) || existing[0].mediclaim_deduction;
   const totalDeductions = pfDeduction + ptDeduction + mediclaim;
   const netSalary = grossSalary - totalDeductions;
-  const ctc = (grossSalary * 12) + (pfDeduction * 12);
+  const ctc = grossSalary * 12;
 
   const query = 'UPDATE candidates SET first_name = ?, last_name = ?, gender = ?, mobile = ?, email = ?, dob = ?, address = ?, city = ?, state = ?, pincode = ?, aadhaar_no = ?, pan_no = ?, designation = ?, department = ?, site_id = ?, expected_joining_date = ?, reporting_manager = ?, ctc = ?, basic_salary = ?, hra = ?, conveyance_allowance = ?, other_allowances = ?, bonus = ?, gratuity = ?, gross_salary = ?, pf_deduction = ?, pt_deduction = ?, mediclaim_deduction = ?, total_deductions = ?, net_salary = ?, probation_period = ?, notice_period = ?, status = ?, remarks = ? WHERE candidate_id = ?';
 
@@ -323,17 +323,19 @@ const generateOfferLetter = asyncHandler(async (req, res) => {
   let offerLetterRef = candidate.offer_letter_ref;
 
   if (!offerLetterRef) {
-    let sequence = await executeQuery('SELECT * FROM offer_letter_sequence WHERE company_id = ? AND year = ?', [candidate.company_id, currentYear]);
+    // Find the actual max number used in candidates table for this year (across ALL companies due to unique constraint)
+    const pattern = `PLLP-${currentYear}-%`;
+    const maxUsedResult = await executeQuery(
+      'SELECT MAX(CAST(SUBSTRING_INDEX(offer_letter_ref, "-", -1) AS UNSIGNED)) as max_num FROM candidates WHERE offer_letter_ref LIKE ?',
+      [pattern]
+    );
 
-    let lastNumber = 100;
-    if (sequence.length > 0) {
-      lastNumber = sequence[0].last_number;
-      await executeQuery('UPDATE offer_letter_sequence SET last_number = ? WHERE company_id = ? AND year = ?', [lastNumber + 1, candidate.company_id, currentYear]);
-    } else {
-      await executeQuery('INSERT INTO offer_letter_sequence (company_id, year, last_number) VALUES (?, ?, ?)', [candidate.company_id, currentYear, 101]);
+    let nextNumber = 101; // Start from 101
+    if (maxUsedResult[0].max_num) {
+      nextNumber = maxUsedResult[0].max_num + 1;
     }
 
-    offerLetterRef = generateOfferLetterRef(currentYear, lastNumber);
+    offerLetterRef = generateOfferLetterRef(currentYear, nextNumber - 1); // generateOfferLetterRef adds 1
 
     await executeQuery('UPDATE candidates SET offer_letter_ref = ?, offer_letter_date = ?, status = ? WHERE candidate_id = ?', [offerLetterRef, offer_letter_date || new Date(), 'OFFERED', id]);
   }

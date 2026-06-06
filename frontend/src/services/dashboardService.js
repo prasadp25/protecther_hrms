@@ -4,15 +4,10 @@ import { siteService } from './siteService';
 import { companyService } from './companyService';
 import api from '../config/api';
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export const dashboardService = {
   // Get comprehensive dashboard data
   getDashboardData: async () => {
     try {
-      await delay(500);
-
-      console.log('🔍 Fetching dashboard API data...');
 
       // Get current month for attendance
       const currentMonth = new Date().toISOString().slice(0, 7);
@@ -27,26 +22,12 @@ export const dashboardService = {
         api.get(`/salaries/report/site-wise`).catch(() => ({ data: { success: true, data: [] } }))
       ]);
 
-      console.log('📦 API Responses received:', {
-        employees: employeesResponse,
-        salaries: salariesResponse,
-        payslips: payslipsResponse,
-        sites: sitesResponse,
-        attendance: attendanceResponse
-      });
-
       const employees = employeesResponse.data || [];
       const salaries = salariesResponse.data || [];
       const payslips = payslipsResponse.data || [];
       const sites = sitesResponse.data || [];
       const attendance = attendanceResponse.data?.data || [];
       const siteWiseSalary = siteWiseSalaryResponse.data?.data || [];
-
-      console.log('📊 Data arrays:', {
-        employeesCount: employees.length,
-        salariesCount: salaries.length,
-        payslipsCount: payslips.length
-      });
 
       // Calculate employee statistics
       const totalEmployees = employees.length;
@@ -208,7 +189,6 @@ export const dashboardService = {
   // Get quick stats for header
   getQuickStats: async () => {
     try {
-      await delay(200);
 
       const [employeesResponse, salaryResponse] = await Promise.all([
         employeeService.getActiveEmployees(),
@@ -279,8 +259,7 @@ export const dashboardService = {
         data: filteredStats,
       };
     } catch (error) {
-      console.error('Failed to get company-wise summary:', error);
-      return {
+            return {
         success: false,
         data: [],
         message: 'Failed to load company summary',
@@ -330,8 +309,7 @@ export const dashboardService = {
         }
       };
     } catch (error) {
-      console.error('Failed to load pending tasks:', error);
-      return {
+            return {
         success: false,
         data: {
           employeesWithoutSalary: 0,
@@ -393,8 +371,7 @@ function calculateUpcomingBirthdays(employees) {
             isToday: daysUntil === 0,
           };
         } catch (err) {
-          console.warn('Failed to parse birthday for employee:', emp.employee_id, err);
-          return null;
+                    return null;
         }
       })
       .filter((b) => b !== null);
@@ -404,8 +381,7 @@ function calculateUpcomingBirthdays(employees) {
       .filter((b) => b.daysUntil <= 30)
       .sort((a, b) => a.daysUntil - b.daysUntil);
   } catch (error) {
-    console.error('Error calculating birthdays:', error);
-    return [];
+        return [];
   }
 }
 
@@ -469,8 +445,7 @@ function generateRecentActivities(employees, payslips) {
           icon: slip.payment_status === 'PAID' ? 'check-circle' : 'file-text',
         });
       } catch (err) {
-        console.warn('Failed to process payslip activity:', slip.payslip_id, err);
-      }
+              }
     });
 
     // Sort all activities by date and return top 5
@@ -486,7 +461,6 @@ function generateRecentActivities(employees, payslips) {
       })
       .slice(0, 5);
   } catch (error) {
-    console.error('Error generating recent activities:', error);
-    return [];
+        return [];
   }
 }

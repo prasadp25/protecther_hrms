@@ -15,11 +15,11 @@ const { authenticate, authorize } = require('../middleware/auth');
 // All routes require authentication
 router.use(authenticate);
 
-// GET routes
-router.get('/', getAllPayslips);
-router.get('/summary', getPayslipSummary);
-router.get('/month/:month', getPayslipsByMonth);
-router.get('/:id', getPayslipById);
+// GET routes - Admin/HR/Manager can view
+router.get('/', authorize('ADMIN', 'HR', 'MANAGER'), getAllPayslips);
+router.get('/summary', authorize('ADMIN', 'HR', 'MANAGER'), getPayslipSummary);
+router.get('/month/:month', authorize('ADMIN', 'HR', 'MANAGER'), getPayslipsByMonth);
+router.get('/:id', authorize('ADMIN', 'HR', 'MANAGER'), getPayslipById);
 
 // POST routes - Admin/HR only
 router.post('/generate', authorize('ADMIN', 'HR'), generatePayslip);

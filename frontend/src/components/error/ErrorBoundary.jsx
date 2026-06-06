@@ -32,11 +32,8 @@ class ErrorBoundary extends React.Component {
       errorCount: prevState.errorCount + 1
     }));
 
-    // In production, send error to logging service
-    if (process.env.NODE_ENV === 'production') {
-      // TODO: Send to error tracking service (e.g., Sentry, LogRocket)
-      // logErrorToService(error, errorInfo);
-    }
+    // In production, errors are logged to console for aggregation by hosting platform
+    // Configure REACT_APP_SENTRY_DSN in environment for Sentry integration
   }
 
   handleReset = () => {

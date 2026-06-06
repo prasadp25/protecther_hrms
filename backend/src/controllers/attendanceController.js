@@ -1,4 +1,4 @@
-const { executeQuery } = require('../config/database');
+const { executeQuery, executeTransaction } = require('../config/database');
 const { logAttendanceFinalize } = require('../utils/auditLogger');
 
 // ==============================================
@@ -115,29 +115,24 @@ const saveAttendance = async (req, res) => {
     const [year, monthNum] = month.split('-');
     const defaultTotalDaysInMonth = new Date(year, monthNum, 0).getDate();
 
-    let successCount = 0;
-    let errorCount = 0;
+    // Validate all records first
+    const validRecords = [];
     const errors = [];
 
     for (const record of attendanceRecords) {
-      try {
-        const { employee_id, days_present, remarks, total_days_in_month } = record;
+      const { employee_id, days_present, remarks, total_days_in_month } = record;
+      const totalDaysInMonth = total_days_in_month || defaultTotalDaysInMonth;
 
-        // Use provided total_days_in_month or fall back to default calendar days
-        const totalDaysInMonth = total_days_in_month || defaultTotalDaysInMonth;
+      if (days_present < 0 || days_present > totalDaysInMonth) {
+        errors.push({
+          employee_id,
+          error: `Invalid days present (${days_present}). Must be between 0 and ${totalDaysInMonth}`
+        });
+        continue;
+      }
 
-        // Validate days_present
-        if (days_present < 0 || days_present > totalDaysInMonth) {
-          errors.push({
-            employee_id,
-            error: `Invalid days present (${days_present}). Must be between 0 and ${totalDaysInMonth}`
-          });
-          errorCount++;
-          continue;
-        }
-
-        // Insert or update attendance
-        const query = `
+      validRecords.push({
+        query: `
           INSERT INTO attendance
           (employee_id, attendance_month, days_present, total_days_in_month, remarks, status)
           VALUES (?, ?, ?, ?, ?, 'DRAFT')
@@ -146,33 +141,34 @@ const saveAttendance = async (req, res) => {
             total_days_in_month = VALUES(total_days_in_month),
             remarks = VALUES(remarks),
             updated_at = CURRENT_TIMESTAMP
-        `;
+        `,
+        params: [employee_id, month, days_present, totalDaysInMonth, remarks || null]
+      });
+    }
 
-        await executeQuery(query, [
-          employee_id,
-          month,
-          days_present,
-          totalDaysInMonth,
-          remarks || null
-        ]);
-
-        successCount++;
-      } catch (err) {
-        errors.push({
-          employee_id: record.employee_id,
-          error: err.message
+    // Execute all valid records in a transaction
+    let successCount = 0;
+    if (validRecords.length > 0) {
+      try {
+        await executeTransaction(validRecords);
+        successCount = validRecords.length;
+      } catch (txError) {
+        // Transaction failed - all records rolled back
+        return res.status(500).json({
+          success: false,
+          message: 'Transaction failed. No records were saved.',
+          error: txError.message
         });
-        errorCount++;
       }
     }
 
     res.status(200).json({
       success: true,
-      message: `Attendance saved: ${successCount} successful, ${errorCount} failed`,
+      message: `Attendance saved: ${successCount} successful, ${errors.length} failed`,
       stats: {
         total: attendanceRecords.length,
         successful: successCount,
-        failed: errorCount
+        failed: errors.length
       },
       errors: errors.length > 0 ? errors : undefined
     });

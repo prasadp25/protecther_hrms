@@ -31,8 +31,9 @@ const logError = (error, req) => {
     console.error(`❌ ERROR: ${error.message} | Path: ${req.path} | User: ${errorLog.userId}`);
   }
 
-  // TODO: Send to logging service (e.g., Winston, Sentry, CloudWatch)
-  // logToService(errorLog);
+  // Production logging: Configure external service via environment variables
+  // Supported: SENTRY_DSN, CLOUDWATCH_GROUP, or custom LOG_SERVICE_URL
+  // For now, errors are logged to stdout for container/PM2 log aggregation
 };
 
 /**

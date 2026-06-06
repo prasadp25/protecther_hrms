@@ -11,8 +11,7 @@ export const employeePortalService = {
       const response = await api.post('/employee-portal/send-otp', { email });
       return response.data;
     } catch (error) {
-      console.error('Send OTP error:', error);
-      throw error;
+            throw error;
     }
   },
 
@@ -27,8 +26,7 @@ export const employeePortalService = {
       }
       return response.data;
     } catch (error) {
-      console.error('Verify OTP error:', error);
-      throw error;
+            throw error;
     }
   },
 
@@ -63,8 +61,7 @@ export const employeePortalService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Get profile error:', error);
-      throw error;
+            throw error;
     }
   },
 
@@ -78,8 +75,7 @@ export const employeePortalService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Get payslips error:', error);
-      throw error;
+            throw error;
     }
   },
 
@@ -92,8 +88,7 @@ export const employeePortalService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Get payslip error:', error);
-      throw error;
+            throw error;
     }
   },
 
@@ -106,8 +101,7 @@ export const employeePortalService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Get notices error:', error);
-      throw error;
+            throw error;
     }
   },
 
@@ -120,8 +114,7 @@ export const employeePortalService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Get insurance error:', error);
-      throw error;
+            throw error;
     }
   },
 
@@ -134,8 +127,7 @@ export const employeePortalService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Get documents error:', error);
-      throw error;
+            throw error;
     }
   }
 };

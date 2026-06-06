@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { executeQuery } = require('../config/database');
 const { generateOTP, sendOTPEmail } = require('../utils/emailService');
 
@@ -80,20 +81,23 @@ const sendOTP = async (req, res) => {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
+    // Hash OTP before storing for security
+    const otpHash = await bcrypt.hash(otp, 10);
+
     // Invalidate previous OTPs for this email
     await executeQuery(
       `UPDATE otp_tokens SET used = TRUE WHERE email = ? AND used = FALSE`,
       [email]
     );
 
-    // Store new OTP
+    // Store hashed OTP
     await executeQuery(
       `INSERT INTO otp_tokens (employee_id, email, otp_code, expires_at)
        VALUES (?, ?, ?, ?)`,
-      [employee.employee_id, email, otp, expiresAt]
+      [employee.employee_id, email, otpHash, expiresAt]
     );
 
-    // Send OTP email
+    // Send plain OTP via email (user sees this)
     const employeeName = `${employee.first_name} ${employee.last_name}`;
     await sendOTPEmail(email, otp, employeeName);
 
@@ -160,8 +164,9 @@ const verifyOTP = async (req, res) => {
       });
     }
 
-    // Verify OTP
-    if (otpRecord.otp_code !== otp) {
+    // Verify OTP using bcrypt compare (OTP is stored hashed)
+    const isValidOTP = await bcrypt.compare(otp, otpRecord.otp_code);
+    if (!isValidOTP) {
       // Increment attempts
       await executeQuery(
         `UPDATE otp_tokens SET attempts = attempts + 1 WHERE id = ?`,

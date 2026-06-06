@@ -1,16 +1,24 @@
 const nodemailer = require('nodemailer');
 
 // ==============================================
-// EMAIL TRANSPORTER CONFIGURATION
+// EMAIL TRANSPORTER CONFIGURATION (Singleton)
 // ==============================================
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
+let transporter = null;
+
+const getTransporter = () => {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      pool: true, // Use connection pooling
+      maxConnections: 5,
+      maxMessages: 100,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+  }
+  return transporter;
 };
 
 // ==============================================
@@ -24,7 +32,7 @@ const generateOTP = () => {
 // SEND OTP EMAIL
 // ==============================================
 const sendOTPEmail = async (email, otp, employeeName) => {
-  const transporter = createTransporter();
+  const emailTransporter = getTransporter();
 
   const mailOptions = {
     from: process.env.SMTP_FROM || `ProtectHer HRMS <${process.env.SMTP_USER}>`,
@@ -84,13 +92,11 @@ If you did not request this OTP, please ignore this email.
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('📧 OTP email sent:', info.messageId);
+    const info = await emailTransporter.sendMail(mailOptions);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('❌ Failed to send OTP email:', error.message);
-    console.error('❌ SMTP_USER:', process.env.SMTP_USER || 'NOT SET');
-    console.error('❌ Full error:', error);
+    // Log minimal error info, don't expose SMTP credentials
+    console.error('Email send failed:', error.code || error.message);
     throw new Error('Failed to send OTP email. Please try again later.');
   }
 };
@@ -99,7 +105,7 @@ If you did not request this OTP, please ignore this email.
 // SEND GENERIC EMAIL
 // ==============================================
 const sendEmail = async (to, subject, htmlContent, textContent) => {
-  const transporter = createTransporter();
+  const emailTransporter = getTransporter();
 
   const mailOptions = {
     from: process.env.SMTP_FROM || `ProtectHer HRMS <${process.env.SMTP_USER}>`,
@@ -110,11 +116,10 @@ const sendEmail = async (to, subject, htmlContent, textContent) => {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('📧 Email sent:', info.messageId);
+    const info = await emailTransporter.sendMail(mailOptions);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('❌ Failed to send email:', error.message);
+    console.error('Email send failed:', error.code || error.message);
     throw new Error('Failed to send email. Please try again later.');
   }
 };

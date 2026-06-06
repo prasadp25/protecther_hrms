@@ -103,9 +103,8 @@ const OfferLetterGenerator = ({ candidate, onSuccess, onCancel }) => {
     doc.setTextColor(60, 60, 60);
     doc.setFont('helvetica', 'normal');
     doc.text('PROTECTHER LLP', pageWidth - margin, y + 5, { align: 'right' });
-    doc.text('CIN: AAR-2877', pageWidth - margin, y + 10, { align: 'right' });
-    doc.text('+91 9699791896 | hr@protecther.in', pageWidth - margin, y + 15, { align: 'right' });
-    doc.text('Pune, Maharashtra, India', pageWidth - margin, y + 20, { align: 'right' });
+    doc.text('+91 9699791896 | hr@protecther.in', pageWidth - margin, y + 10, { align: 'right' });
+    doc.text('Pune, Maharashtra, India', pageWidth - margin, y + 15, { align: 'right' });
 
     y += 30;
 
@@ -118,7 +117,7 @@ const OfferLetterGenerator = ({ candidate, onSuccess, onCancel }) => {
     // Reference and Date
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
-    doc.text('Ref. No: ' + (offerData.offer_letter_ref || 'PLLP-XXXX-XXX'), margin, y);
+    doc.text('Ref. No: ' + (offerData.offer_letter_ref || 'Pending Assignment'), margin, y);
     doc.text('Date: ' + formatDate(offerData.offer_letter_date), pageWidth - margin, y, { align: 'right' });
     y += 15;
 

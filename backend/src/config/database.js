@@ -1,7 +1,7 @@
 const mysql = require('mysql2');
 require('dotenv').config();
 
-// Create connection pool
+// Create connection pool with production-ready settings
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
@@ -9,13 +9,15 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'hrms_db',
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+  connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT) || 20,
+  queueLimit: 100,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
+  keepAliveInitialDelay: 10000,
   supportBigNumbers: true,
   bigNumberStrings: false,
-  decimalNumbers: true
+  decimalNumbers: true,
+  connectTimeout: 10000,
+  acquireTimeout: 10000
 });
 
 // Get promise-based pool

@@ -144,12 +144,9 @@ const Login = () => {
           </form>
         </div>
 
-        {/* Test Credentials */}
+        {/* Footer */}
         <div className="mt-6 text-center">
-          <p className="text-slate-500 text-sm">Demo Credentials</p>
-          <p className="text-slate-400 text-xs mt-1 font-mono bg-slate-800/50 px-4 py-2 rounded-lg inline-block">
-            admin / admin123
-          </p>
+          <p className="text-slate-500 text-sm">ProtectHer HRMS</p>
         </div>
       </div>
     </div>

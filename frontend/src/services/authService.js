@@ -8,24 +8,17 @@ const authService = {
   // Login
   login: async (username, password) => {
     try {
-      console.log('🔐 [authService] Attempting login for:', username);
-      console.log('🌐 [authService] API URL:', api.defaults.baseURL);
-
       const response = await api.post('/auth/login', { username, password });
-
-      console.log('✅ [authService] Login response:', response);
 
       if (response.data.success) {
         // Store token in localStorage for Bearer token authentication
         localStorage.setItem('token', response.data.data.token);
         // Store user data in localStorage for UI convenience
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
-        console.log('💾 [authService] Token and user stored in localStorage');
       }
 
       return response.data;
     } catch (error) {
-      console.error('❌ [authService] Login error:', error);
       throw error;
     }
   },

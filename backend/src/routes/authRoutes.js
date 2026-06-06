@@ -4,8 +4,8 @@ const { login, register, getMe, logout, changePassword } = require('../controlle
 const { authenticate } = require('../middleware/auth');
 const { loginLimiter, passwordResetLimiter } = require('../middleware/rateLimiter');
 
-// Public routes with rate limiting (temporarily disabled for development)
-router.post('/login', login);  // loginLimiter temporarily removed
+// Public routes with rate limiting
+router.post('/login', loginLimiter, login);
 router.post('/register', loginLimiter, register);
 
 // Protected routes
