@@ -324,40 +324,44 @@ export const dashboardService = {
 // Helper function to calculate upcoming birthdays
 function calculateUpcomingBirthdays(employees) {
   try {
-    const today = new Date();
-    const currentYear = today.getFullYear();
+    const now = new Date();
+    // Compare against local midnight so a birthday today counts as today,
+    // not as "passed" and pushed to next year
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const currentYear = todayMidnight.getFullYear();
 
     // Filter active and on-leave employees with valid DOB
     const eligibleEmployees = employees.filter(
       (emp) =>
-        (emp.status === 'ACTIVE' || emp.status === 'ON_LEAVE') &&
-        emp.dob &&
-        emp.dob.trim() !== ''
+        (emp.status === 'ACTIVE' || emp.status === 'ON_LEAVE') && emp.dob
     );
 
     const birthdays = eligibleEmployees
       .map((emp) => {
         try {
-          const dobParts = emp.dob.split('-');
-          if (dobParts.length !== 3) return null;
+          // dob arrives as an ISO timestamp like "2001-10-17T18:30:00.000Z"
+          // (MySQL DATE shifted to UTC by the driver). Parsing via Date and
+          // reading LOCAL components recovers the stored calendar date;
+          // plain 'YYYY-MM-DD' strings also work this way.
+          const dobDate = new Date(emp.dob);
+          if (isNaN(dobDate.getTime())) return null;
 
-          const [year, month, day] = dobParts.map(Number);
-          if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+          const year = dobDate.getFullYear();
+          const month = dobDate.getMonth(); // 0-based
+          const day = dobDate.getDate();
 
           // Calculate birthday for current year
-          let birthdayThisYear = new Date(currentYear, month - 1, day);
-          if (isNaN(birthdayThisYear.getTime())) return null;
-
-          // If birthday has passed this year, use next year
-          if (birthdayThisYear < today) {
-            birthdayThisYear = new Date(currentYear + 1, month - 1, day);
+          let birthday = new Date(currentYear, month, day);
+          if (birthday < todayMidnight) {
+            birthday = new Date(currentYear + 1, month, day);
           }
 
-          // Calculate days until birthday
-          const daysUntil = Math.ceil((birthdayThisYear - today) / (1000 * 60 * 60 * 24));
+          const daysUntil = Math.round((birthday - todayMidnight) / (1000 * 60 * 60 * 24));
+          const age = birthday.getFullYear() - year;
 
-          // Calculate age
-          const age = currentYear - year + (birthdayThisYear.getFullYear() > currentYear ? 1 : 0);
+          // Format locally — toISOString() would shift the date back a day in IST
+          const pad = (n) => String(n).padStart(2, '0');
+          const birthdayDate = `${birthday.getFullYear()}-${pad(birthday.getMonth() + 1)}-${pad(birthday.getDate())}`;
 
           return {
             employeeId: emp.employee_id,
@@ -365,7 +369,7 @@ function calculateUpcomingBirthdays(employees) {
             employeeName: `${emp.first_name} ${emp.last_name}`,
             status: emp.status,
             dob: emp.dob,
-            birthdayDate: birthdayThisYear.toISOString().split('T')[0],
+            birthdayDate,
             daysUntil,
             age,
             isToday: daysUntil === 0,
