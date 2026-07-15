@@ -61,10 +61,10 @@ const calculateAge = (dob) => {
 // GENERATE EMPLOYEE CODE
 // ==============================================
 const generateEmployeeCode = (lastCode) => {
-  if (!lastCode) return 'P0001';
+  if (!lastCode) return 'P00001';
 
   const num = parseInt(lastCode.replace(/[^0-9]/g, '')) + 1;
-  return `P${String(num).padStart(4, '0')}`;
+  return `P${String(num).padStart(5, '0')}`;
 };
 
 // ==============================================

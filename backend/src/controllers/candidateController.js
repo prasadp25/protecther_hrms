@@ -417,10 +417,10 @@ const convertToEmployee = asyncHandler(async (req, res) => {
 
   // Generate employee code
   const lastEmployee = await executeQuery('SELECT employee_code FROM employees ORDER BY employee_id DESC LIMIT 1');
-  let employeeCode = 'P0001';
+  let employeeCode = 'P00001';
   if (lastEmployee.length > 0) {
     const num = parseInt(lastEmployee[0].employee_code.replace(/[^0-9]/g, '')) + 1;
-    employeeCode = 'P' + String(num).padStart(4, '0');
+    employeeCode = 'P' + String(num).padStart(5, '0');
   }
 
   // Insert employee

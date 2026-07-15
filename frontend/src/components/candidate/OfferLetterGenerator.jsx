@@ -3,17 +3,42 @@ import { candidateService } from '../../services/candidateService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const OfferLetterGenerator = ({ candidate, onSuccess, onCancel }) => {
+const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [logoBase64, setLogoBase64] = useState(null);
+  const [candidate, setCandidate] = useState(initialCandidate);
   const [offerData, setOfferData] = useState({
-    offer_letter_ref: candidate?.offer_letter_ref || '',
-    offer_letter_date: candidate?.offer_letter_date ? candidate.offer_letter_date.split('T')[0] : new Date().toISOString().split('T')[0],
-    expected_joining_date: candidate?.expected_joining_date ? candidate.expected_joining_date.split('T')[0] : '',
-    reporting_manager: candidate?.reporting_manager || '',
-    site_name: candidate?.site_name || '',
-    site_location: candidate?.site_location || ''
+    offer_letter_ref: '',
+    offer_letter_date: new Date().toISOString().split('T')[0],
+    expected_joining_date: '',
+    reporting_manager: '',
+    site_name: '',
+    site_location: ''
   });
+
+  // Fetch fresh candidate data on mount
+  useEffect(() => {
+    const fetchCandidate = async () => {
+      try {
+        const response = await candidateService.getCandidateById(initialCandidate.candidate_id);
+        if (response.success) {
+          const freshCandidate = response.data;
+          setCandidate(freshCandidate);
+          setOfferData({
+            offer_letter_ref: freshCandidate.offer_letter_ref || '',
+            offer_letter_date: freshCandidate.offer_letter_date ? freshCandidate.offer_letter_date.split('T')[0] : new Date().toISOString().split('T')[0],
+            expected_joining_date: freshCandidate.expected_joining_date ? freshCandidate.expected_joining_date.split('T')[0] : '',
+            reporting_manager: freshCandidate.reporting_manager || '',
+            site_name: freshCandidate.site_name || '',
+            site_location: freshCandidate.site_location || ''
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch candidate:', error);
+      }
+    };
+    fetchCandidate();
+  }, [initialCandidate.candidate_id]);
 
   const formatCurrency = (amount) => {
     if (!amount) return '0';
@@ -26,7 +51,7 @@ const OfferLetterGenerator = ({ candidate, onSuccess, onCancel }) => {
     return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  // Load logo and auto-generate reference on mount
+  // Load logo on mount
   useEffect(() => {
     const loadLogo = async () => {
       try {
@@ -42,10 +67,12 @@ const OfferLetterGenerator = ({ candidate, onSuccess, onCancel }) => {
       }
     };
     loadLogo();
+  }, []);
 
-    // Auto-generate offer letter reference if not exists
+  // Auto-generate offer letter reference if not exists (after candidate data is loaded)
+  useEffect(() => {
     const autoGenerateRef = async () => {
-      if (!candidate?.offer_letter_ref) {
+      if (candidate && !candidate.offer_letter_ref && !offerData.offer_letter_ref) {
         setLoading(true);
         try {
           const response = await candidateService.generateOfferLetter(candidate.candidate_id, {
@@ -62,7 +89,7 @@ const OfferLetterGenerator = ({ candidate, onSuccess, onCancel }) => {
       }
     };
     autoGenerateRef();
-  }, []);
+  }, [candidate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

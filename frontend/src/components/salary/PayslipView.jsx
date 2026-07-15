@@ -3,6 +3,7 @@ import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
 import { attendanceService } from '../../services/attendanceService';
+import { ecrService } from '../../services/ecrService';
 import * as XLSX from 'xlsx';
 import { pdf } from '@react-pdf/renderer';
 import PayslipPDFTemplateNew from './PayslipPDFTemplateNew';
@@ -37,6 +38,11 @@ const PayslipView = ({ onBack }) => {
   const [bulkMonth, setBulkMonth] = useState(new Date().toISOString().slice(0, 7));
   const [bulkRegenerate, setBulkRegenerate] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
+
+  // ECR state
+  const [showECRModal, setShowECRModal] = useState(false);
+  const [ecrPreview, setEcrPreview] = useState(null);
+  const [ecrLoading, setEcrLoading] = useState(false);
 
   useEffect(() => {
     loadPayslips();
@@ -659,6 +665,37 @@ const PayslipView = ({ onBack }) => {
     }
   };
 
+  // ECR Preview and Download
+  const handleECRPreview = async () => {
+    try {
+      setEcrLoading(true);
+      setEcrPreview(null);
+      const response = await ecrService.previewECR(selectedMonth);
+      if (response.success) {
+        setEcrPreview(response.data);
+        setShowECRModal(true);
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to preview ECR data';
+      alert(errorMsg);
+    } finally {
+      setEcrLoading(false);
+    }
+  };
+
+  const handleECRDownload = async () => {
+    try {
+      setEcrLoading(true);
+      await ecrService.downloadECR(selectedMonth);
+      alert('ECR file downloaded successfully');
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to download ECR file';
+      alert(errorMsg);
+    } finally {
+      setEcrLoading(false);
+    }
+  };
+
   // Site-wise Salary Sheet PDF Download
   const downloadSiteWisePDF = async () => {
     try {
@@ -788,6 +825,17 @@ const PayslipView = ({ onBack }) => {
                 <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
               Download Site PDF
+            </button>
+            <button
+              onClick={handleECRPreview}
+              disabled={ecrLoading || filteredPayslips.length === 0}
+              className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Download ECR file for EPFO portal upload"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+              </svg>
+              {ecrLoading ? 'Loading...' : 'Download ECR'}
             </button>
           </div>
           <div className="mt-2 text-sm text-gray-600">
@@ -991,6 +1039,170 @@ const PayslipView = ({ onBack }) => {
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
                 >
                   {loading ? 'Generating...' : 'Generate Payslips'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ECR Preview Modal */}
+        {showECRModal && ecrPreview && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">ECR Preview - {ecrPreview.month}</h3>
+                <button
+                  onClick={() => {
+                    setShowECRModal(false);
+                    setEcrPreview(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Company Info */}
+              <div className="bg-gray-50 p-3 rounded-md mb-4">
+                <p className="text-sm text-gray-600">
+                  <strong>Company:</strong> {ecrPreview.company_name} ({ecrPreview.company_code})
+                </p>
+              </div>
+
+              {/* Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600">{ecrPreview.summary.valid_employees}</div>
+                  <div className="text-sm text-gray-600">Valid Employees</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(ecrPreview.summary.total_epf_contribution)}
+                  </div>
+                  <div className="text-sm text-gray-600">Total EPF (EE)</div>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {formatCurrency(ecrPreview.summary.total_employer_contribution)}
+                  </div>
+                  <div className="text-sm text-gray-600">Employer Share</div>
+                </div>
+                <div className="bg-indigo-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-indigo-600">
+                    {formatCurrency(ecrPreview.summary.total_epf_wages)}
+                  </div>
+                  <div className="text-sm text-gray-600">Total EPF Wages</div>
+                </div>
+              </div>
+
+              {/* Warnings */}
+              {ecrPreview.warnings && ecrPreview.warnings.length > 0 && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h4 className="text-sm font-medium text-yellow-800">
+                        {ecrPreview.warnings.length} Employee(s) Missing Valid UAN
+                      </h4>
+                      <div className="mt-2 text-sm text-yellow-700">
+                        <ul className="list-disc pl-5 space-y-1 max-h-24 overflow-y-auto">
+                          {ecrPreview.warnings.map((warning, idx) => (
+                            <li key={idx}>
+                              {warning.employee_code} - {warning.name} (UAN: {warning.uan || 'Not provided'})
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <p className="mt-2 text-xs text-yellow-600">
+                        These employees will be excluded from the ECR file.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Employee Table */}
+              <div className="overflow-x-auto mb-4">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">UAN</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Gross</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">EPF Wages</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">EPF (EE)</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">EPS</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">EPF (ER)</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">NCP Days</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {ecrPreview.employees.map((emp, idx) => (
+                      <tr key={idx} className={emp.uan_valid ? '' : 'bg-yellow-50'}>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="font-medium text-gray-900">{emp.name}</div>
+                          <div className="text-gray-500 text-xs">{emp.employee_code}</div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {emp.uan_valid ? (
+                            <span className="text-green-600 font-mono text-xs">{emp.uan}</span>
+                          ) : (
+                            <span className="text-red-500 text-xs">Invalid/Missing</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right">{formatCurrency(emp.gross_wages)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right">{formatCurrency(emp.epf_wages)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right text-blue-600">{formatCurrency(emp.epf_contribution)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right">{formatCurrency(emp.eps_contribution)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right">{formatCurrency(emp.epf_er_diff)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-center">{emp.ncp_days}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-100 font-semibold">
+                    <tr>
+                      <td className="px-3 py-2" colSpan="2">TOTAL ({ecrPreview.summary.valid_employees} employees)</td>
+                      <td className="px-3 py-2 text-right">{formatCurrency(ecrPreview.summary.total_gross_wages)}</td>
+                      <td className="px-3 py-2 text-right">{formatCurrency(ecrPreview.summary.total_epf_wages)}</td>
+                      <td className="px-3 py-2 text-right text-blue-600">{formatCurrency(ecrPreview.summary.total_epf_contribution)}</td>
+                      <td className="px-3 py-2 text-right">{formatCurrency(ecrPreview.summary.total_eps_contribution)}</td>
+                      <td className="px-3 py-2 text-right">{formatCurrency(ecrPreview.summary.total_epf_er_diff)}</td>
+                      <td className="px-3 py-2 text-center">-</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* ECR Format Info */}
+              <div className="bg-blue-50 p-3 rounded-md mb-4 text-xs text-blue-800">
+                <strong>ECR File Format:</strong> UAN|Member Name|Gross Wages|EPF Wages|EPS Wages|EDLI Wages|EPF (EE)|EPS|EPF (ER Diff)|NCP Days|Refund
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowECRModal(false);
+                    setEcrPreview(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleECRDownload}
+                  disabled={ecrLoading || ecrPreview.summary.valid_employees === 0}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                  {ecrLoading ? 'Downloading...' : 'Download ECR File'}
                 </button>
               </div>
             </div>

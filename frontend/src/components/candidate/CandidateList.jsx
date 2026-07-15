@@ -121,6 +121,7 @@ const CandidateList = ({ onEdit, onAddNew, onGenerateOfferLetter, onConvertToEmp
             <option value={10}>10 per page</option>
             <option value={25}>25 per page</option>
             <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
           </select>
         </div>
       </div>
@@ -199,9 +200,9 @@ const CandidateList = ({ onEdit, onAddNew, onGenerateOfferLetter, onConvertToEmp
             </table>
           </div>
         )}
-        {pagination && pagination.totalPages > 1 && (
+        {pagination && pagination.totalPages > 0 && (
           <div className="px-6 py-4 border-t border-slate-100">
-            <Pagination currentPage={page} totalPages={pagination.totalPages} onPageChange={setPage} totalItems={pagination.total} itemsPerPage={limit} />
+            <Pagination pagination={pagination} onPageChange={setPage} />
           </div>
         )}
       </div>
