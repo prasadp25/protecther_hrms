@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs');
 const { executeQuery } = require('../config/database');
 const {
   parsePaginationParams,
@@ -9,6 +11,15 @@ const { asyncHandler } = require('../utils/errors');
 const { getCompanyFilter } = require('../middleware/auth');
 const { validateEmployeeData } = require('../utils/validators');
 const { logEmployeeCreate, logEmployeeUpdate, logEmployeeDelete } = require('../utils/auditLogger');
+
+// Mask identity/bank numbers for list responses; full values are only
+// returned by getEmployeeById (ADMIN/HR-only), which the edit form uses.
+const maskEmployeePII = (emp) => ({
+  ...emp,
+  aadhaar_no: emp.aadhaar_no ? 'XXXX-XXXX-' + String(emp.aadhaar_no).slice(-4) : emp.aadhaar_no,
+  pan_no: emp.pan_no ? 'XXXXXX' + String(emp.pan_no).slice(-4) : emp.pan_no,
+  account_number: emp.account_number ? 'XXXX' + String(emp.account_number).slice(-4) : emp.account_number
+});
 
 // ==============================================
 // GET ALL EMPLOYEES (with pagination)
@@ -80,8 +91,8 @@ const getAllEmployees = asyncHandler(async (req, res) => {
   `;
   const employees = await executeQuery(dataQuery, [...params, limit, offset]);
 
-  // Send paginated response
-  const response = buildPaginatedResponse(employees, total, page, limit);
+  // Send paginated response with masked PII
+  const response = buildPaginatedResponse(employees.map(maskEmployeePII), total, page, limit);
   res.json(response);
 });
 
@@ -111,7 +122,7 @@ const getActiveEmployees = async (req, res) => {
     res.status(200).json({
       success: true,
       count: employees.length,
-      data: employees
+      data: employees.map(maskEmployeePII)
     });
   } catch (error) {
     console.error('Get active employees error:', error);
@@ -150,7 +161,7 @@ const getEmployeesWithoutSalary = async (req, res) => {
     res.status(200).json({
       success: true,
       count: employees.length,
-      data: employees
+      data: employees.map(maskEmployeePII)
     });
   } catch (error) {
     console.error('Get employees without salary error:', error);
@@ -235,7 +246,6 @@ const createEmployee = async (req, res) => {
     const validation = validateEmployeeData(employeeData);
     if (!validation.valid) {
       console.log('❌ Employee validation failed:', validation.errors);
-      console.log('📋 Employee data received:', JSON.stringify(employeeData, null, 2));
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -308,9 +318,9 @@ const createEmployee = async (req, res) => {
       if (lastEmployee.length > 0) {
         const lastCode = lastEmployee[0].employee_code;
         const num = parseInt(lastCode.replace(/[^0-9]/g, '')) + 1;
-        employeeData.employee_code = `P${String(num).padStart(4, '0')}`;
+        employeeData.employee_code = `P${String(num).padStart(5, '0')}`;
       } else {
-        employeeData.employee_code = 'P0001';
+        employeeData.employee_code = 'P00001';
       }
     }
 
@@ -716,6 +726,66 @@ const getDesignations = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: designations });
 });
 
+// ==============================================
+// GET EMPLOYEE DOCUMENT (authenticated file serving)
+// ==============================================
+const DOCUMENT_TYPES = {
+  'offer-letter': { column: 'offer_letter_url', folder: 'offer-letters' },
+  'aadhaar': { column: 'aadhaar_card_url', folder: 'aadhaar-cards' },
+  'pan': { column: 'pan_card_url', folder: 'pan-cards' }
+};
+
+const getEmployeeDocument = async (req, res) => {
+  try {
+    const { id, type } = req.params;
+    const docType = DOCUMENT_TYPES[type];
+
+    if (!docType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid document type'
+      });
+    }
+
+    let query = `SELECT ${docType.column} AS doc_url FROM employees WHERE employee_id = ?`;
+    const params = [id];
+
+    const companyId = getCompanyFilter(req);
+    if (companyId) {
+      query += ' AND company_id = ?';
+      params.push(companyId);
+    }
+
+    const rows = await executeQuery(query, params);
+
+    if (rows.length === 0 || !rows[0].doc_url) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    // Stored value is a path like /uploads/aadhaar-cards/<file>; basename prevents traversal
+    const filename = path.basename(rows[0].doc_url);
+    const filePath = path.join(__dirname, '../../uploads', docType.folder, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document file not found on server'
+      });
+    }
+
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Get employee document error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch document'
+    });
+  }
+};
+
 module.exports = {
   getAllEmployees,
   getActiveEmployees,
@@ -725,5 +795,6 @@ module.exports = {
   updateEmployee,
   deleteEmployee,
   getDepartments,
-  getDesignations
+  getDesignations,
+  getEmployeeDocument
 };

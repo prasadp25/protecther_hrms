@@ -1,3 +1,4 @@
+
 @echo off
 echo ============================================
 echo HRMS Startup Script
@@ -24,20 +25,29 @@ if errorlevel 1 (
 )
 echo      MySQL is running.
 
-:: Step 2: Test MySQL connection
+:: Step 2: Test MySQL connection (credentials come from backend\.env)
 echo [2/4] Testing MySQL connection...
-mysql -u root -proot -e "SELECT 1" >nul 2>&1
+set DB_USER=
+set DB_PASSWORD=
+if exist "backend\.env" (
+    for /f "tokens=2 delims==" %%a in ('type backend\.env ^| findstr /b "DB_USER"') do set DB_USER=%%a
+    for /f "tokens=2 delims==" %%a in ('type backend\.env ^| findstr /b "DB_PASSWORD"') do set DB_PASSWORD=%%a
+)
+if "%DB_USER%"=="" set DB_USER=root
+
+mysql -u %DB_USER% -p%DB_PASSWORD% -e "SELECT 1" >nul 2>&1
 if errorlevel 1 (
-    echo      ERROR: MySQL password issue detected!
-    echo      Running password fix...
-    call :FixMySQL
+    echo      ERROR: Cannot connect to MySQL with credentials from backend\.env
+    echo      Check that MySQL is running and DB_USER/DB_PASSWORD in backend\.env are correct.
+    echo      Do NOT reset the MySQL password blindly - investigate first.
+    pause
+    exit /b 1
 )
 echo      MySQL connection OK.
 
-:: Step 3: Stop any existing PM2 processes
+:: Step 3: Start/reload PM2 services (does not touch other PM2 apps)
 echo [3/4] Starting PM2 services...
-pm2 delete all >nul 2>&1
-pm2 start ecosystem.config.js >nul 2>&1
+pm2 startOrReload ecosystem.config.js >nul 2>&1
 timeout /t 3 >nul
 echo      PM2 services started.
 
@@ -52,35 +62,10 @@ echo ============================================
 echo.
 echo Frontend: http://192.168.1.36:8000
 echo Backend:  http://192.168.1.36:8001/api/v1
+echo Public:   https://hr.protecther.in
 echo.
-echo NOTE: If IP changed, update .env files and rebuild frontend
+echo NOTE: Production builds use frontend\.env.production (not .env)
 echo See STARTUP_GUIDE.md for instructions
 echo.
 pause
 exit /b 0
-
-:FixMySQL
-echo      Stopping MySQL...
-net stop MySQL >nul 2>&1
-taskkill /F /IM mysqld.exe >nul 2>&1
-timeout /t 2 >nul
-
-echo      Adding skip-grant-tables...
-echo skip-grant-tables>> "C:\ProgramData\MySQL\MySQL Server 8.0\my.ini"
-
-echo      Starting MySQL in safe mode...
-net start MySQL >nul 2>&1
-timeout /t 5 >nul
-
-echo      Resetting password...
-mysql -u root -e "FLUSH PRIVILEGES; ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';" >nul 2>&1
-
-echo      Cleaning up config...
-net stop MySQL >nul 2>&1
-timeout /t 2 >nul
-powershell -Command "(Get-Content 'C:\ProgramData\MySQL\MySQL Server 8.0\my.ini') | Where-Object { $_ -notmatch 'skip-grant-tables' } | Set-Content 'C:\ProgramData\MySQL\MySQL Server 8.0\my.ini'"
-
-echo      Starting MySQL normally...
-net start MySQL >nul 2>&1
-timeout /t 3 >nul
-goto :eof

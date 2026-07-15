@@ -5,6 +5,22 @@ const { executeQuery } = require('../config/database');
  * Logs all CREATE, UPDATE, DELETE operations for security tracking
  */
 
+// audit_logs rows live forever — never store full identity/bank numbers in them
+const PII_FIELDS = ['aadhaar_no', 'pan_no', 'account_number', 'uan_no', 'esi_no'];
+const SECRET_FIELDS = ['password', 'token', 'secret', 'jwt'];
+
+const redactSensitive = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const out = { ...obj };
+  for (const field of PII_FIELDS) {
+    if (out[field]) out[field] = 'XXXX' + String(out[field]).slice(-4);
+  }
+  for (const field of SECRET_FIELDS) {
+    if (out[field]) out[field] = '[REDACTED]';
+  }
+  return out;
+};
+
 const auditLog = (action, tableName) => {
   return async (req, res, next) => {
     // Store original json method
@@ -23,10 +39,10 @@ const auditLog = (action, tableName) => {
           let newValue = null;
           
           if (action === 'UPDATE') {
-            oldValue = JSON.stringify(req.oldRecord || null);
-            newValue = JSON.stringify(req.body || null);
+            oldValue = JSON.stringify(redactSensitive(req.oldRecord) || null);
+            newValue = JSON.stringify(redactSensitive(req.body) || null);
           } else if (action === 'CREATE') {
-            newValue = JSON.stringify(req.body || null);
+            newValue = JSON.stringify(redactSensitive(req.body) || null);
           }
           
           // Insert audit log

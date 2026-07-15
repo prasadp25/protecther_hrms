@@ -27,14 +27,15 @@ const MyDocuments = () => {
     fetchData();
   }, []);
 
-  const handleDownload = (url, filename) => {
-    if (!url) {
+  const handleDownload = async (type) => {
+    try {
+      const blob = await employeePortalService.downloadDocument(type);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
       toast.error('Document not available');
-      return;
     }
-    // Open in new tab or download
-    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
-    window.open(`${baseUrl}${url}`, '_blank');
   };
 
   if (loading) {
@@ -73,7 +74,7 @@ const MyDocuments = () => {
       ),
       url: documents?.offer_letter_url,
       available: !!documents?.offer_letter_url,
-      action: () => handleDownload(documents?.offer_letter_url, 'Offer_Letter.pdf')
+      action: () => handleDownload('offer-letter')
     },
     {
       title: 'Employee ID Card',
@@ -97,7 +98,7 @@ const MyDocuments = () => {
       ),
       url: documents?.aadhaar_card_url,
       available: !!documents?.aadhaar_card_url,
-      action: () => handleDownload(documents?.aadhaar_card_url, 'Aadhaar_Card.pdf')
+      action: () => handleDownload('aadhaar')
     },
     {
       title: 'PAN Card',
@@ -109,7 +110,7 @@ const MyDocuments = () => {
       ),
       url: documents?.pan_card_url,
       available: !!documents?.pan_card_url,
-      action: () => handleDownload(documents?.pan_card_url, 'PAN_Card.pdf')
+      action: () => handleDownload('pan')
     }
   ];
 

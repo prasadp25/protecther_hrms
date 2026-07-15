@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
 const { executeQuery } = require('../config/database');
 const { generateOTP, sendOTPEmail } = require('../utils/emailService');
 
@@ -411,8 +413,9 @@ const getPayslipById = async (req, res) => {
 
     const query = `
       SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
-             e.mobile, e.account_number, e.ifsc_code, e.bank_name, e.uan_no,
-             e.esi_no, st.site_name, st.site_code
+             e.department, e.mobile, e.account_number, e.ifsc_code, e.bank_name,
+             e.uan_no, e.esi_no, e.pf_no, e.pan_no, e.date_of_joining,
+             st.site_name, st.site_code
       FROM payslips p
       JOIN employees e ON p.employee_id = e.employee_id
       LEFT JOIN sites st ON e.site_id = st.site_id
@@ -541,6 +544,57 @@ const getDocuments = async (req, res) => {
   }
 };
 
+// ==============================================
+// DOWNLOAD OWN DOCUMENT (authenticated file serving)
+// ==============================================
+const PORTAL_DOCUMENT_TYPES = {
+  'offer-letter': { column: 'offer_letter_url', folder: 'offer-letters' },
+  'aadhaar': { column: 'aadhaar_card_url', folder: 'aadhaar-cards' },
+  'pan': { column: 'pan_card_url', folder: 'pan-cards' }
+};
+
+const downloadMyDocument = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const { type } = req.params;
+    const docType = PORTAL_DOCUMENT_TYPES[type];
+
+    if (!docType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid document type'
+      });
+    }
+
+    const docUrl = employee[docType.column];
+    if (!docUrl) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    // Stored value is a path like /uploads/aadhaar-cards/<file>; basename prevents traversal
+    const filename = path.basename(docUrl);
+    const filePath = path.join(__dirname, '../../uploads', docType.folder, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document file not found on server'
+      });
+    }
+
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Download document error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to download document'
+    });
+  }
+};
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -550,5 +604,6 @@ module.exports = {
   getPayslipById,
   getNotices,
   getInsurance,
-  getDocuments
+  getDocuments,
+  downloadMyDocument
 };

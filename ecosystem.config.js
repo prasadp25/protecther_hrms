@@ -17,7 +17,10 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       autorestart: true,
-      max_restarts: 10,
+      // Exponential backoff so a slow MySQL start can't exhaust restarts
+      // and leave the app permanently errored after a reboot
+      exp_backoff_restart_delay: 5000,
+      max_restarts: 50,
       min_uptime: '10s',
       max_memory_restart: '500M'
     },
@@ -37,7 +40,8 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       autorestart: true,
-      max_restarts: 10,
+      exp_backoff_restart_delay: 5000,
+      max_restarts: 50,
       min_uptime: '10s',
       max_memory_restart: '300M'
     },
@@ -54,7 +58,8 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       autorestart: true,
-      max_restarts: 10,
+      exp_backoff_restart_delay: 5000,
+      max_restarts: 50,
       min_uptime: '10s'
     }
   ]

@@ -96,6 +96,7 @@ const candidateRoutes = require('./routes/candidateRoutes');
 const employeePortalRoutes = require('./routes/employeePortalRoutes');
 const noticeRoutes = require('./routes/noticeRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const ecrRoutes = require('./routes/ecrRoutes');
 
 // Mount routes
 app.use(`${apiPrefix}/auth`, authRoutes);
@@ -111,11 +112,16 @@ app.use(`${apiPrefix}/candidates`, candidateRoutes);
 app.use(`${apiPrefix}/employee-portal`, employeePortalRoutes);
 app.use(`${apiPrefix}/notices`, noticeRoutes);
 app.use(`${apiPrefix}/settings`, settingsRoutes);
+app.use(`${apiPrefix}/ecr`, ecrRoutes);
 
 // ==============================================
 // Static Files (must be after API routes)
 // ==============================================
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Only employee photos are public (rendered in <img> tags).
+// Identity documents (Aadhaar/PAN/offer letters) are served through
+// authenticated endpoints: /employees/:id/documents/:type and
+// /employee-portal/documents/:type/download
+app.use('/uploads/employee-photos', express.static(path.join(__dirname, '../uploads/employee-photos')));
 
 // ==============================================
 // Error Handling Middleware (must be last)

@@ -41,13 +41,28 @@ uncaughtExceptionHandler();
 unhandledRejectionHandler();
 
 // Test database connection before starting server
+// Retry with backoff instead of exiting — after a reboot MySQL often
+// starts slower than the backend, and exiting burns PM2 restart attempts
+const waitForDatabase = async () => {
+  const RETRY_DELAY_MS = 5000;
+  const MAX_ATTEMPTS = 60; // ~5 minutes
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const dbConnected = await testConnection();
+    if (dbConnected) return true;
+
+    console.error(`❌ Database not reachable (attempt ${attempt}/${MAX_ATTEMPTS}). Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+  }
+  return false;
+};
+
 const startServer = async () => {
   try {
-    // Test database connection
-    const dbConnected = await testConnection();
+    const dbConnected = await waitForDatabase();
 
     if (!dbConnected) {
-      console.error('❌ Failed to connect to database. Please check your database configuration.');
+      console.error('❌ Failed to connect to database after all retries. Please check your database configuration.');
       process.exit(1);
     }
 

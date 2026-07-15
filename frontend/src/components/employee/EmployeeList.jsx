@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../../config/api';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
 import usePagination from '../../hooks/usePagination';
@@ -104,30 +105,17 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
     }
   };
 
-  const handleViewDocument = (url, type) => {
-    if (!url) return;
-    const backendUrl = 'http://localhost:5000';
-
-    // If URL already starts with /uploads/, use it directly
-    if (url.startsWith('/uploads/')) {
-      window.open(`${backendUrl}${url}`, '_blank');
-    } else {
-      // Otherwise, construct the full path
-      let folderPath = '';
-      switch(type) {
-        case 'offer-letter':
-          folderPath = 'offer-letters';
-          break;
-        case 'aadhaar':
-          folderPath = 'aadhaar-cards';
-          break;
-        case 'pan':
-          folderPath = 'pan-cards';
-          break;
-        default:
-          folderPath = '';
-      }
-      window.open(`${backendUrl}/uploads/${folderPath}/${url}`, '_blank');
+  const handleViewDocument = async (employeeId, type) => {
+    try {
+      const response = await api.get(`/employees/${employeeId}/documents/${type}`, {
+        responseType: 'blob'
+      });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, '_blank');
+      // Revoke after the new tab has had time to load the blob
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      alert('Failed to open document');
     }
   };
 
@@ -427,9 +415,9 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {employee.offer_letter_url ? (
                         <button
-                          onClick={() => handleViewDocument(employee.offer_letter_url, 'offer-letter')}
+                          onClick={() => handleViewDocument(employee.employee_id, 'offer-letter')}
                           className="text-blue-600 hover:text-blue-800 cursor-pointer underline"
-                          title={employee.offer_letter_url}
+                          title="View offer letter"
                         >
                           📄 View
                         </button>

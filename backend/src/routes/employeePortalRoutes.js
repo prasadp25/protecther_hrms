@@ -9,7 +9,8 @@ const {
   getPayslipById,
   getNotices,
   getInsurance,
-  getDocuments
+  getDocuments,
+  downloadMyDocument
 } = require('../controllers/employeePortalController');
 
 // ==============================================
@@ -27,5 +28,6 @@ router.get('/payslips/:id', authenticateEmployee, getPayslipById);
 router.get('/notices', authenticateEmployee, getNotices);
 router.get('/insurance', authenticateEmployee, getInsurance);
 router.get('/documents', authenticateEmployee, getDocuments);
+router.get('/documents/:type/download', authenticateEmployee, downloadMyDocument);
 
 module.exports = router;

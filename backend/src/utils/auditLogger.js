@@ -55,6 +55,7 @@ const logAudit = async ({
     }
 
     // Filter sensitive fields from values
+    // audit_logs rows live forever — mask identity/bank numbers to last-4
     const filterSensitive = (obj) => {
       if (!obj) return null;
       const filtered = { ...obj };
@@ -62,6 +63,12 @@ const logAudit = async ({
       for (const field of sensitiveFields) {
         if (filtered[field]) {
           filtered[field] = '[REDACTED]';
+        }
+      }
+      const piiFields = ['aadhaar_no', 'pan_no', 'account_number', 'uan_no', 'esi_no'];
+      for (const field of piiFields) {
+        if (filtered[field]) {
+          filtered[field] = 'XXXX' + String(filtered[field]).slice(-4);
         }
       }
       return filtered;

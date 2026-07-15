@@ -9,7 +9,8 @@ const {
   updateEmployee,
   deleteEmployee,
   getDepartments,
-  getDesignations
+  getDesignations,
+  getEmployeeDocument
 } = require('../controllers/employeeController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { uploadEmployeeDocuments, handleUploadError } = require('../middleware/upload');
@@ -18,13 +19,14 @@ const { auditLog } = require('../middleware/auditLogger');
 // All routes require authentication
 router.use(authenticate);
 
-// GET routes
-router.get('/', getAllEmployees);
-router.get('/active', getActiveEmployees);
-router.get('/without-salary', getEmployeesWithoutSalary);
-router.get('/departments', getDepartments);
-router.get('/designations', getDesignations);
-router.get('/:id', getEmployeeById);
+// GET routes - Admin/HR only (responses contain PII)
+router.get('/', authorize('ADMIN', 'HR'), getAllEmployees);
+router.get('/active', authorize('ADMIN', 'HR'), getActiveEmployees);
+router.get('/without-salary', authorize('ADMIN', 'HR'), getEmployeesWithoutSalary);
+router.get('/departments', authorize('ADMIN', 'HR'), getDepartments);
+router.get('/designations', authorize('ADMIN', 'HR'), getDesignations);
+router.get('/:id/documents/:type', authorize('ADMIN', 'HR'), getEmployeeDocument);
+router.get('/:id', authorize('ADMIN', 'HR'), getEmployeeById);
 
 // POST routes - Admin/HR only with audit logging
 router.post('/',

@@ -129,6 +129,16 @@ export const employeePortalService = {
     } catch (error) {
             throw error;
     }
+  },
+
+  // Download own document as a blob (type: 'offer-letter' | 'aadhaar' | 'pan')
+  downloadDocument: async (type) => {
+    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
+    const response = await api.get(`/employee-portal/documents/${type}/download`, {
+      responseType: 'blob',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
   }
 };
 
