@@ -1102,14 +1102,21 @@ const Dashboard = () => {
         {/* Upcoming Birthdays */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Upcoming Birthdays</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Upcoming Birthdays
+              {upcomingBirthdays?.length > 0 && (
+                <span className="ml-2 text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                  {upcomingBirthdays.length}
+                </span>
+              )}
+            </h3>
             <span className="text-2xl">🎂</span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-96 overflow-y-auto">
             {!upcomingBirthdays || upcomingBirthdays.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No upcoming birthdays</p>
             ) : (
-              upcomingBirthdays.slice(0, 5).map((birthday) => (
+              upcomingBirthdays.map((birthday) => (
                 <div
                   key={birthday.employeeId}
                   className={`flex items-start space-x-3 p-3 rounded-lg transition ${
