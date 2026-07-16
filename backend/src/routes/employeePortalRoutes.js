@@ -12,12 +12,13 @@ const {
   getDocuments,
   downloadMyDocument
 } = require('../controllers/employeePortalController');
+const { otpRequestLimiter, otpVerifyLimiter } = require('../middleware/rateLimiter');
 
 // ==============================================
-// PUBLIC ROUTES (No auth required)
+// PUBLIC ROUTES (No auth required, rate limited)
 // ==============================================
-router.post('/send-otp', sendOTP);
-router.post('/verify-otp', verifyOTP);
+router.post('/send-otp', otpRequestLimiter, sendOTP);
+router.post('/verify-otp', otpVerifyLimiter, verifyOTP);
 
 // ==============================================
 // PROTECTED ROUTES (Employee auth required)

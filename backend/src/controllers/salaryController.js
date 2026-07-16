@@ -93,8 +93,9 @@ const getAllSalaries = asyncHandler(async (req, res) => {
 const getSalaryById = async (req, res) => {
   try {
     const { id } = req.params;
+    const companyId = getCompanyFilter(req);
 
-    const query = `
+    let query = `
       SELECT s.*, e.employee_code, e.first_name, e.last_name, e.designation,
              st.site_name, st.site_code
       FROM salaries s
@@ -102,8 +103,14 @@ const getSalaryById = async (req, res) => {
       LEFT JOIN sites st ON e.site_id = st.site_id
       WHERE s.salary_id = ?
     `;
+    const params = [id];
 
-    const salaries = await executeQuery(query, [id]);
+    if (companyId) {
+      query += ' AND e.company_id = ?';
+      params.push(companyId);
+    }
+
+    const salaries = await executeQuery(query, params);
 
     if (salaries.length === 0) {
       return res.status(404).json({
@@ -132,19 +139,29 @@ const getSalaryById = async (req, res) => {
 const getSalaryByEmployeeId = async (req, res) => {
   try {
     const { id } = req.params;
+    const companyId = getCompanyFilter(req);
 
-    const query = `
+    let query = `
       SELECT s.*, e.employee_code, e.first_name, e.last_name, e.designation,
              st.site_name, st.site_code
       FROM salaries s
       JOIN employees e ON s.employee_id = e.employee_id
       LEFT JOIN sites st ON e.site_id = st.site_id
       WHERE s.employee_id = ? AND s.status = 'ACTIVE'
+    `;
+    const params = [id];
+
+    if (companyId) {
+      query += ' AND e.company_id = ?';
+      params.push(companyId);
+    }
+
+    query += `
       ORDER BY s.effective_from DESC
       LIMIT 1
     `;
 
-    const salaries = await executeQuery(query, [id]);
+    const salaries = await executeQuery(query, params);
 
     if (salaries.length === 0) {
       return res.status(404).json({
@@ -173,12 +190,16 @@ const getSalaryByEmployeeId = async (req, res) => {
 const createSalary = async (req, res) => {
   try {
     const salaryData = req.body;
+    const companyId = getCompanyFilter(req);
 
-    // Check if employee exists
-    const employee = await executeQuery(
-      'SELECT employee_id FROM employees WHERE employee_id = ?',
-      [salaryData.employee_id]
-    );
+    // Check if employee exists (within the user's company)
+    let employeeQuery = 'SELECT employee_id FROM employees WHERE employee_id = ?';
+    const employeeParams = [salaryData.employee_id];
+    if (companyId) {
+      employeeQuery += ' AND company_id = ?';
+      employeeParams.push(companyId);
+    }
+    const employee = await executeQuery(employeeQuery, employeeParams);
 
     if (employee.length === 0) {
       return res.status(404).json({
@@ -272,12 +293,20 @@ const updateSalary = async (req, res) => {
   try {
     const { id } = req.params;
     const salaryData = req.body;
+    const companyId = getCompanyFilter(req);
 
-    // Get existing salary for audit log
-    const existing = await executeQuery(
-      'SELECT * FROM salaries WHERE salary_id = ?',
-      [id]
-    );
+    // Get existing salary for audit log (within the user's company)
+    let existingQuery = `
+      SELECT s.* FROM salaries s
+      JOIN employees e ON s.employee_id = e.employee_id
+      WHERE s.salary_id = ?
+    `;
+    const existingParams = [id];
+    if (companyId) {
+      existingQuery += ' AND e.company_id = ?';
+      existingParams.push(companyId);
+    }
+    const existing = await executeQuery(existingQuery, existingParams);
 
     if (existing.length === 0) {
       return res.status(404).json({
@@ -374,12 +403,20 @@ const updateSalary = async (req, res) => {
 const deleteSalary = async (req, res) => {
   try {
     const { id } = req.params;
+    const companyId = getCompanyFilter(req);
 
-    // Check if salary exists
-    const existing = await executeQuery(
-      'SELECT salary_id FROM salaries WHERE salary_id = ?',
-      [id]
-    );
+    // Check if salary exists (within the user's company)
+    let existingQuery = `
+      SELECT s.salary_id FROM salaries s
+      JOIN employees e ON s.employee_id = e.employee_id
+      WHERE s.salary_id = ?
+    `;
+    const existingParams = [id];
+    if (companyId) {
+      existingQuery += ' AND e.company_id = ?';
+      existingParams.push(companyId);
+    }
+    const existing = await executeQuery(existingQuery, existingParams);
 
     if (existing.length === 0) {
       return res.status(404).json({

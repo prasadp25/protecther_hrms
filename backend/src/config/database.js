@@ -16,8 +16,12 @@ const pool = mysql.createPool({
   supportBigNumbers: true,
   bigNumberStrings: false,
   decimalNumbers: true,
-  connectTimeout: 10000,
-  acquireTimeout: 10000
+  // Return DATE columns as 'YYYY-MM-DD' strings instead of JS Date objects.
+  // Otherwise mysql2 serializes them as UTC-shifted timestamps
+  // ("2001-10-17T18:30:00.000Z" for an IST server), which pushed every
+  // displayed date one day back. DATETIME/TIMESTAMP are unaffected.
+  dateStrings: ['DATE'],
+  connectTimeout: 10000
 });
 
 // Get promise-based pool

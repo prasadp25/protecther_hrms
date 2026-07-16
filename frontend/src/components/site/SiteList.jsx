@@ -56,24 +56,6 @@ const SiteList = ({ onEdit, onAddNew }) => {
     setFilteredSites(filtered);
   };
 
-  const handleSearch = async () => {
-    if (searchKeyword.trim()) {
-      try {
-        setLoading(true);
-        const response = await siteService.searchSites(searchKeyword);
-        if (response.success) {
-          setSites(response.data);
-        }
-      } catch (error) {
-        alert('Search failed');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      loadSites();
-    }
-  };
-
   const handleDelete = async (id, name) => {
     if (window.confirm(`Are you sure you want to mark ${name} as inactive?`)) {
       try {
@@ -128,22 +110,13 @@ const SiteList = ({ onEdit, onAddNew }) => {
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
-            <div className="flex">
-              <input
-                type="text"
-                placeholder="Search by site name, client, code, or address..."
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
-              />
-              <button
-                onClick={handleSearch}
-                className="px-6 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700"
-              >
-                Search
-              </button>
-            </div>
+            <input
+              type="text"
+              placeholder="Search by site name, client, code, or address..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+            />
           </div>
 
           <div>

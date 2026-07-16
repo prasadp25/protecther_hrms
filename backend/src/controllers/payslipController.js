@@ -1,12 +1,14 @@
 const { executeQuery } = require('../config/database');
 const { calculatePayslip } = require('../utils/payslipCalculator');
+const { getCompanyFilter } = require('../middleware/auth');
 
 // ==============================================
 // GET ALL PAYSLIPS
 // ==============================================
 const getAllPayslips = async (req, res) => {
   try {
-    const { month, year, site_id, employee_id, payment_status, company_id } = req.query;
+    const { month, year, site_id, employee_id, payment_status } = req.query;
+    const companyId = getCompanyFilter(req);
 
     let query = `
       SELECT DISTINCT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
@@ -19,10 +21,10 @@ const getAllPayslips = async (req, res) => {
     `;
     const params = [];
 
-    // Filter by company_id (important for multi-company support)
-    if (company_id) {
+    // Company filter derived from the authenticated user (not client input)
+    if (companyId) {
       query += ' AND e.company_id = ?';
-      params.push(company_id);
+      params.push(companyId);
     }
 
     // Add filters
@@ -81,7 +83,7 @@ const getAllPayslips = async (req, res) => {
 const getPayslipById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { company_id } = req.query;
+    const companyId = getCompanyFilter(req);
 
     let query = `
       SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
@@ -95,10 +97,10 @@ const getPayslipById = async (req, res) => {
     `;
     const params = [id];
 
-    // Add company filter for authorization
-    if (company_id) {
+    // Company filter derived from the authenticated user (not client input)
+    if (companyId) {
       query += ' AND e.company_id = ?';
-      params.push(company_id);
+      params.push(companyId);
     }
 
     const payslips = await executeQuery(query, params);
@@ -290,7 +292,11 @@ const generatePayslip = async (req, res) => {
 // ==============================================
 const bulkGeneratePayslips = async (req, res) => {
   try {
-    const { month, year, site_id, regenerate, company_id } = req.body;
+    const { month, year, site_id, regenerate } = req.body;
+    // Company scope: own company for ADMIN/HR; SUPER_ADMIN may target one via body/query
+    const companyId = req.user.role === 'SUPER_ADMIN'
+      ? (req.body.company_id || req.query.company_id || null)
+      : req.user.company_id;
 
     // Validation
     if (!month || !year) {
@@ -315,10 +321,9 @@ const bulkGeneratePayslips = async (req, res) => {
     `;
     const params = [monthStr];
 
-    // Filter by company_id
-    if (company_id) {
+    if (companyId) {
       query += ' AND e.company_id = ?';
-      params.push(company_id);
+      params.push(companyId);
     }
 
     if (site_id) {
@@ -489,7 +494,8 @@ const updatePaymentStatus = async (req, res) => {
 // ==============================================
 const getPayslipSummary = async (req, res) => {
   try {
-    const { month, year, site_id, company_id } = req.query;
+    const { month, year, site_id } = req.query;
+    const companyId = getCompanyFilter(req);
 
     let query = `
       SELECT
@@ -505,10 +511,9 @@ const getPayslipSummary = async (req, res) => {
     `;
     const params = [];
 
-    // Filter by company_id
-    if (company_id) {
+    if (companyId) {
       query += ' AND e.company_id = ?';
-      params.push(company_id);
+      params.push(companyId);
     }
 
     if (month && year) {
@@ -550,7 +555,7 @@ const getPayslipSummary = async (req, res) => {
 const getPayslipsByMonth = async (req, res) => {
   try {
     const { month } = req.params; // Format: YYYY-MM
-    const { company_id } = req.query;
+    const companyId = getCompanyFilter(req);
 
     let query = `
       SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
@@ -562,10 +567,10 @@ const getPayslipsByMonth = async (req, res) => {
     `;
     const params = [month];
 
-    // Filter by company_id
-    if (company_id) {
+    // Company filter derived from the authenticated user (not client input)
+    if (companyId) {
       query += ' AND e.company_id = ?';
-      params.push(company_id);
+      params.push(companyId);
     }
 
     query += ' ORDER BY st.site_name, e.employee_code';
@@ -593,9 +598,29 @@ const getPayslipsByMonth = async (req, res) => {
 const deletePayslipsByMonth = async (req, res) => {
   try {
     const { month } = req.params; // Format: YYYY-MM
+    const companyId = getCompanyFilter(req);
 
-    const query = 'DELETE FROM payslips WHERE month = ?';
-    const result = await executeQuery(query, [month]);
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid month format. Expected YYYY-MM'
+      });
+    }
+
+    // Scope the delete to the user's company via the employees join
+    let query = `
+      DELETE p FROM payslips p
+      JOIN employees e ON p.employee_id = e.employee_id
+      WHERE p.month = ?
+    `;
+    const params = [month];
+
+    if (companyId) {
+      query += ' AND e.company_id = ?';
+      params.push(companyId);
+    }
+
+    const result = await executeQuery(query, params);
 
     res.status(200).json({
       success: true,

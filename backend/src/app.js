@@ -8,6 +8,11 @@ require('dotenv').config();
 
 const app = express();
 
+// Production runs behind the Cloudflare tunnel (one proxy hop). Trusting it
+// makes req.ip the real client IP from X-Forwarded-For, so rate limits apply
+// per visitor instead of lumping everyone into the tunnel's single IP.
+app.set('trust proxy', 1);
+
 // ==============================================
 // CORS Configuration - Whitelist specific origins
 // ==============================================
@@ -68,9 +73,15 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // ==============================================
+// Rate Limiting (global ceiling; stricter per-route limiters in routes)
+// ==============================================
+const { apiLimiter } = require('./middleware/rateLimiter');
+
+// ==============================================
 // API Routes
 // ==============================================
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
+app.use(apiPrefix, apiLimiter);
 
 // Health check endpoint
 app.get(`${apiPrefix}/health`, (req, res) => {
