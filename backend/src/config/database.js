@@ -51,6 +51,25 @@ const executeQuery = async (query, params = []) => {
   }
 };
 
+// Transaction helper for dependent statements: the callback receives a
+// dedicated connection and can use intermediate results (e.g. insertId).
+// Commits on success, rolls back on any thrown error.
+const withTransaction = async (callback) => {
+  const connection = await promisePool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 // Transaction helper
 const executeTransaction = async (queries) => {
   const connection = await promisePool.getConnection();
@@ -79,5 +98,6 @@ module.exports = {
   promisePool,
   testConnection,
   executeQuery,
-  executeTransaction
+  executeTransaction,
+  withTransaction
 };

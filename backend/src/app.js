@@ -83,11 +83,22 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
 app.use(apiPrefix, apiLimiter);
 
-// Health check endpoint
-app.get(`${apiPrefix}/health`, (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'HRMS API is running',
+// Health check endpoint - verifies the database too, so external monitors
+// catch "API up but DB down" instead of reporting a healthy site
+app.get(`${apiPrefix}/health`, async (req, res) => {
+  let dbOk = false;
+  try {
+    const { executeQuery } = require('./config/database');
+    await executeQuery('SELECT 1');
+    dbOk = true;
+  } catch (err) {
+    console.error('Health check DB ping failed:', err.message);
+  }
+
+  res.status(dbOk ? 200 : 503).json({
+    success: dbOk,
+    message: dbOk ? 'HRMS API is running' : 'API up but database unreachable',
+    database: dbOk ? 'connected' : 'down',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV
   });

@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { executeQuery } = require('../config/database');
+const { executeQuery, withTransaction } = require('../config/database');
 const {
   parsePaginationParams,
   parseSortParams,
@@ -653,17 +653,18 @@ const deleteEmployee = async (req, res) => {
 
     const employeeData = existing[0];
 
-    // Soft delete - set status to INACTIVE
-    await executeQuery(
-      'UPDATE employees SET status = ?, date_of_leaving = NOW() WHERE employee_id = ?',
-      ['INACTIVE', id]
-    );
-
-    // Also deactivate salary records
-    await executeQuery(
-      'UPDATE salaries SET status = ? WHERE employee_id = ?',
-      ['INACTIVE', id]
-    );
+    // Soft delete employee and deactivate salaries atomically — a failure
+    // between the two must not leave an inactive employee with active salary
+    await withTransaction(async (conn) => {
+      await conn.query(
+        'UPDATE employees SET status = ?, date_of_leaving = NOW() WHERE employee_id = ?',
+        ['INACTIVE', id]
+      );
+      await conn.query(
+        'UPDATE salaries SET status = ? WHERE employee_id = ?',
+        ['INACTIVE', id]
+      );
+    });
 
     // Log audit trail
     await logEmployeeDelete(id, employeeData, req);

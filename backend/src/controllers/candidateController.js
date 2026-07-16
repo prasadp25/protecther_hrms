@@ -1,4 +1,4 @@
-const { executeQuery } = require('../config/database');
+const { executeQuery, withTransaction } = require('../config/database');
 const {
   parsePaginationParams,
   parseSortParams,
@@ -415,47 +415,54 @@ const convertToEmployee = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Aadhaar, PAN, and Date of Joining are required for conversion' });
   }
 
-  // Generate employee code
-  const lastEmployee = await executeQuery('SELECT employee_code FROM employees ORDER BY employee_id DESC LIMIT 1');
-  let employeeCode = 'P00001';
-  if (lastEmployee.length > 0) {
-    const num = parseInt(lastEmployee[0].employee_code.replace(/[^0-9]/g, '')) + 1;
-    employeeCode = 'P' + String(num).padStart(5, '0');
-  }
+  // Employee insert, salary insert, and candidate update must all succeed
+  // together — a failure mid-way must not leave an employee without salary
+  // or a candidate stuck half-converted.
+  const { employeeId, employeeCode } = await withTransaction(async (conn) => {
+    // Generate employee code (FOR UPDATE so concurrent conversions can't pick the same code)
+    const [lastEmployee] = await conn.query('SELECT employee_code FROM employees ORDER BY employee_id DESC LIMIT 1 FOR UPDATE');
+    let employeeCode = 'P00001';
+    if (lastEmployee.length > 0) {
+      const num = parseInt(lastEmployee[0].employee_code.replace(/[^0-9]/g, '')) + 1;
+      employeeCode = 'P' + String(num).padStart(5, '0');
+    }
 
-  // Insert employee
-  const employeeQuery = 'INSERT INTO employees (company_id, employee_code, first_name, last_name, mobile, email, dob, gender, address, city, state, pincode, aadhaar_no, pan_no, designation, department, date_of_joining, offer_letter_issue_date, offer_letter_url, site_id, status, emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship, account_number, ifsc_code, bank_name, branch_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    // Insert employee
+    const employeeQuery = 'INSERT INTO employees (company_id, employee_code, first_name, last_name, mobile, email, dob, gender, address, city, state, pincode, aadhaar_no, pan_no, designation, department, date_of_joining, offer_letter_issue_date, offer_letter_url, site_id, status, emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship, account_number, ifsc_code, bank_name, branch_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
-  const employeeParams = [
-    candidate.company_id, employeeCode, candidate.first_name, candidate.last_name,
-    candidate.mobile, candidate.email, candidate.dob, candidate.gender,
-    candidate.address, candidate.city, candidate.state, candidate.pincode,
-    additionalData.aadhaar_no, additionalData.pan_no, candidate.designation, candidate.department,
-    additionalData.date_of_joining, candidate.offer_letter_date, candidate.offer_letter_url,
-    candidate.site_id, 'ACTIVE',
-    additionalData.emergency_contact_name || null, additionalData.emergency_contact_mobile || null,
-    additionalData.emergency_contact_relationship || null,
-    additionalData.account_number || null, additionalData.ifsc_code || null,
-    additionalData.bank_name || null, additionalData.branch_name || null
-  ];
+    const employeeParams = [
+      candidate.company_id, employeeCode, candidate.first_name, candidate.last_name,
+      candidate.mobile, candidate.email, candidate.dob, candidate.gender,
+      candidate.address, candidate.city, candidate.state, candidate.pincode,
+      additionalData.aadhaar_no, additionalData.pan_no, candidate.designation, candidate.department,
+      additionalData.date_of_joining, candidate.offer_letter_date, candidate.offer_letter_url,
+      candidate.site_id, 'ACTIVE',
+      additionalData.emergency_contact_name || null, additionalData.emergency_contact_mobile || null,
+      additionalData.emergency_contact_relationship || null,
+      additionalData.account_number || null, additionalData.ifsc_code || null,
+      additionalData.bank_name || null, additionalData.branch_name || null
+    ];
 
-  const employeeResult = await executeQuery(employeeQuery, employeeParams);
-  const employeeId = employeeResult.insertId;
+    const [employeeResult] = await conn.query(employeeQuery, employeeParams);
+    const employeeId = employeeResult.insertId;
 
-  // Create salary structure
-  const salaryQuery = 'INSERT INTO salaries (company_id, employee_id, basic_salary, hra, conveyance_allowance, incentive_allowance, gross_salary, pf_deduction, professional_tax, total_deductions, net_salary, effective_from, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    // Create salary structure
+    const salaryQuery = 'INSERT INTO salaries (company_id, employee_id, basic_salary, hra, conveyance_allowance, incentive_allowance, gross_salary, pf_deduction, professional_tax, total_deductions, net_salary, effective_from, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
-  const salaryParams = [
-    candidate.company_id, employeeId, candidate.basic_salary, candidate.hra,
-    candidate.conveyance_allowance, candidate.other_allowances || 0, candidate.gross_salary,
-    candidate.pf_deduction, candidate.pt_deduction, candidate.total_deductions, candidate.net_salary,
-    additionalData.date_of_joining, 'ACTIVE'
-  ];
+    const salaryParams = [
+      candidate.company_id, employeeId, candidate.basic_salary, candidate.hra,
+      candidate.conveyance_allowance, candidate.other_allowances || 0, candidate.gross_salary,
+      candidate.pf_deduction, candidate.pt_deduction, candidate.total_deductions, candidate.net_salary,
+      additionalData.date_of_joining, 'ACTIVE'
+    ];
 
-  await executeQuery(salaryQuery, salaryParams);
+    await conn.query(salaryQuery, salaryParams);
 
-  // Update candidate status
-  await executeQuery('UPDATE candidates SET status = ?, converted_employee_id = ?, converted_at = NOW() WHERE candidate_id = ?', ['CONVERTED', employeeId, id]);
+    // Update candidate status
+    await conn.query('UPDATE candidates SET status = ?, converted_employee_id = ?, converted_at = NOW() WHERE candidate_id = ?', ['CONVERTED', employeeId, id]);
+
+    return { employeeId, employeeCode };
+  });
 
   res.status(201).json({
     success: true,

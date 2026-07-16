@@ -65,12 +65,6 @@ export const employeeService = {
     return response.data;
   },
 
-  // Permanent delete
-  permanentDeleteEmployee: async (id) => {
-    const response = await api.delete(`${EMPLOYEE_ENDPOINT}/${id}/permanent`);
-    return response.data;
-  },
-
   // Upload document
   uploadDocument: async (employeeId, file, documentType) => {
     const formData = new FormData();
