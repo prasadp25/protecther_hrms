@@ -18,9 +18,14 @@ npm run preview  # Preview production build
 
 ### Backend (from `backend/`)
 ```bash
-npm run dev      # Start with nodemon (http://localhost:5000)
-npm start        # Production start
+npm run dev              # Start with nodemon (http://localhost:5000)
+npm start                # Production start
+npm test                 # Run unit tests (node:test - payroll math, validators)
+npm run staging:refresh  # Clone live hrms_db -> hrms_staging (safe dump, no USE statement)
+npm run staging          # Start backend on port 5100 against hrms_staging
 ```
+
+**Always test risky changes against staging** (`staging:refresh` + `staging`), never against the live `hrms_db`. WARNING: the nightly backup files in `backups/database/` embed `USE hrms_db` — feeding one to `mysql <other_db>` will overwrite production. Use `scripts/refresh-staging.js`, which dumps without `--databases`.
 
 ### Database
 MySQL migrations are in `backend/database/migrations/`. Run them in order (001, 002, etc.) against your MySQL instance.
