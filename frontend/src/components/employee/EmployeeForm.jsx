@@ -158,6 +158,8 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
     let processedValue = value;
     if (name === 'panNo' || name === 'ifscCode') {
       processedValue = value.trim().toUpperCase();
+    } else if (name === 'aadhaarNo' || name === 'uanNo') {
+      processedValue = value.replace(/\D/g, ''); // digits only (pasted values often have spaces)
     }
 
     let updatedData = {

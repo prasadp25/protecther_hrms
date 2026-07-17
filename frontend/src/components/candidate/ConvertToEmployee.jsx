@@ -20,7 +20,16 @@ const ConvertToEmployee = ({ candidate, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Normalize the actual value (CSS textTransform only changes the display)
+    let processedValue = value;
+    if (name === 'pan_no' || name === 'ifsc_code') {
+      processedValue = value.trim().toUpperCase();
+    } else if (name === 'aadhaar_no' || name === 'uan_no') {
+      processedValue = value.replace(/\D/g, ''); // digits only (pasted values often have spaces)
+    }
+
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 

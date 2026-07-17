@@ -413,6 +413,12 @@ const convertToEmployee = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Only accepted candidates can be converted to employees' });
   }
 
+  // Normalize before validating: uppercase/trim PAN, strip spaces from
+  // Aadhaar/UAN (values pasted from documents often contain spaces)
+  if (additionalData.pan_no) additionalData.pan_no = String(additionalData.pan_no).trim().toUpperCase();
+  if (additionalData.aadhaar_no) additionalData.aadhaar_no = String(additionalData.aadhaar_no).replace(/\s/g, '');
+  if (additionalData.uan_no) additionalData.uan_no = String(additionalData.uan_no).replace(/\s/g, '');
+
   if (!additionalData.aadhaar_no || !additionalData.pan_no || !additionalData.uan_no || !additionalData.date_of_joining) {
     return res.status(400).json({ success: false, message: 'Aadhaar, PAN, UAN, and Date of Joining are required for conversion' });
   }
