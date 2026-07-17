@@ -51,17 +51,29 @@ const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel
     return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  // Load logo on mount
+  // Load logo on mount, downscaled to a small JPEG. Embedding the raw PNG
+  // makes jsPDF store it as an uncompressed bitmap and the PDF balloons
+  // past the server's upload limit.
   useEffect(() => {
     const loadLogo = async () => {
       try {
         const response = await fetch('/protecther-logo.png');
         const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setLogoBase64(reader.result);
+        const img = new Image();
+        img.onload = () => {
+          const targetWidth = 500; // plenty for a 50mm-wide print
+          const scale = Math.min(1, targetWidth / img.width);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff'; // JPEG has no transparency - keep header white
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          setLogoBase64(canvas.toDataURL('image/jpeg', 0.85));
+          URL.revokeObjectURL(img.src);
         };
-        reader.readAsDataURL(blob);
+        img.src = URL.createObjectURL(blob);
       } catch (error) {
         console.error('Failed to load logo:', error);
       }
@@ -122,7 +134,7 @@ const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel
     // Header with Logo
     if (logoBase64) {
       // Add logo on the left side (width: 50, height: auto based on aspect ratio ~2.5:1)
-      doc.addImage(logoBase64, 'PNG', margin, y, 50, 20);
+      doc.addImage(logoBase64, 'JPEG', margin, y, 50, 20);
     }
 
     // Company details on the right side

@@ -137,9 +137,10 @@ const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     // Multer-specific errors
     if (err.code === 'LIMIT_FILE_SIZE') {
+      const limitMb = Math.round((parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024) / (1024 * 1024));
       return res.status(400).json({
         success: false,
-        message: 'File size exceeds the maximum limit of 5MB'
+        message: `File size exceeds the maximum limit of ${limitMb}MB`
       });
     }
 
