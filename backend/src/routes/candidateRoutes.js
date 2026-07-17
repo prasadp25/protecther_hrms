@@ -10,9 +10,11 @@ const {
   deleteCandidate,
   generateOfferLetter,
   updateCandidateStatus,
-  convertToEmployee
+  convertToEmployee,
+  uploadOfferLetterFile
 } = require('../controllers/candidateController');
 const { authenticate, authorize } = require('../middleware/auth');
+const { uploadSingle, handleUploadError } = require('../middleware/upload');
 
 // All routes require authentication
 router.use(authenticate);
@@ -27,6 +29,7 @@ router.get('/:id', getCandidateById);
 router.post('/', authorize('ADMIN', 'HR'), createCandidate);
 router.post('/:id/generate-offer-letter', authorize('ADMIN', 'HR'), generateOfferLetter);
 router.post('/:id/convert-to-employee', authorize('ADMIN', 'HR'), convertToEmployee);
+router.post('/:id/offer-letter-file', authorize('ADMIN', 'HR'), uploadSingle('offerLetter'), handleUploadError, uploadOfferLetterFile);
 
 // PUT routes - Admin/HR only
 router.put('/:id', authorize('ADMIN', 'HR'), updateCandidate);

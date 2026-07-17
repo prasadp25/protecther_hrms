@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs');
 const { executeQuery, withTransaction } = require('../config/database');
 const {
   parsePaginationParams,
@@ -481,6 +483,48 @@ const convertToEmployee = asyncHandler(async (req, res) => {
   });
 });
 
+// ==============================================
+// UPLOAD OFFER LETTER FILE (generated PDF from frontend)
+// ==============================================
+const uploadOfferLetterFile = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const companyId = getCompanyFilter(req);
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+
+  let query = 'SELECT candidate_id, offer_letter_url FROM candidates WHERE candidate_id = ?';
+  const params = [id];
+  if (companyId) {
+    query += ' AND company_id = ?';
+    params.push(companyId);
+  }
+  const candidates = await executeQuery(query, params);
+
+  if (candidates.length === 0) {
+    // Candidate not found - remove the orphaned upload
+    fs.unlink(req.file.path, () => {});
+    return res.status(404).json({ success: false, message: 'Candidate not found' });
+  }
+
+  // Replace previously stored file (regeneration keeps only the latest version)
+  const oldUrl = candidates[0].offer_letter_url;
+  if (oldUrl) {
+    const oldFile = path.join(__dirname, '../../uploads/offer-letters', path.basename(oldUrl));
+    fs.unlink(oldFile, () => {});
+  }
+
+  const fileUrl = `/uploads/offer-letters/${req.file.filename}`;
+  await executeQuery('UPDATE candidates SET offer_letter_url = ? WHERE candidate_id = ?', [fileUrl, id]);
+
+  res.status(200).json({
+    success: true,
+    message: 'Offer letter attached to candidate',
+    data: { offer_letter_url: fileUrl }
+  });
+});
+
 module.exports = {
   getAllCandidates,
   getCandidateById,
@@ -491,5 +535,6 @@ module.exports = {
   deleteCandidate,
   generateOfferLetter,
   updateCandidateStatus,
-  convertToEmployee
+  convertToEmployee,
+  uploadOfferLetterFile
 };

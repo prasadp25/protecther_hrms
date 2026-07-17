@@ -61,5 +61,15 @@ export const candidateService = {
   convertToEmployee: async (id, additionalData) => {
     const response = await api.post(`${CANDIDATE_ENDPOINT}/${id}/convert-to-employee`, additionalData);
     return response.data;
+  },
+
+  // Attach the generated offer letter PDF to the candidate record
+  uploadOfferLetterFile: async (id, pdfBlob, fileName) => {
+    const formData = new FormData();
+    formData.append('offerLetter', pdfBlob, fileName);
+    const response = await api.post(`${CANDIDATE_ENDPOINT}/${id}/offer-letter-file`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
   }
 };

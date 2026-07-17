@@ -113,7 +113,7 @@ const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel
     }
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
@@ -279,9 +279,17 @@ const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel
     doc.setTextColor(100, 100, 100);
     doc.text('www.protecther.in | hr@protecther.in | +91 9699791896', pageWidth / 2, 285, { align: 'center' });
 
-    // Save PDF
+    // Save PDF locally and attach the same file to the candidate record,
+    // so it carries over to the employee's documents on conversion
     const fileName = 'Offer_Letter_' + candidate.candidate_code + '_' + candidate.first_name + '_' + candidate.last_name + '.pdf';
     doc.save(fileName);
+
+    try {
+      const pdfBlob = doc.output('blob');
+      await candidateService.uploadOfferLetterFile(candidate.candidate_id, pdfBlob, fileName);
+    } catch (error) {
+      alert('PDF downloaded, but attaching it to the candidate record failed. Click Download PDF again to retry.');
+    }
   };
 
   const handleMarkAsOffered = async () => {
