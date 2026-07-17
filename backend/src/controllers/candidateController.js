@@ -500,7 +500,7 @@ const uploadOfferLetterFile = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
 
-  let query = 'SELECT candidate_id, offer_letter_url FROM candidates WHERE candidate_id = ?';
+  let query = 'SELECT candidate_id, offer_letter_url, status, converted_employee_id FROM candidates WHERE candidate_id = ?';
   const params = [id];
   if (companyId) {
     query += ' AND company_id = ?';
@@ -524,10 +524,23 @@ const uploadOfferLetterFile = asyncHandler(async (req, res) => {
   const fileUrl = `/uploads/offer-letters/${req.file.filename}`;
   await executeQuery('UPDATE candidates SET offer_letter_url = ? WHERE candidate_id = ?', [fileUrl, id]);
 
+  // If this candidate was already converted, attach to the employee record
+  // too so the letter shows up in Employee Management and the portal
+  let attachedToEmployee = false;
+  if (candidates[0].status === 'CONVERTED' && candidates[0].converted_employee_id) {
+    await executeQuery(
+      'UPDATE employees SET offer_letter_url = ? WHERE employee_id = ?',
+      [fileUrl, candidates[0].converted_employee_id]
+    );
+    attachedToEmployee = true;
+  }
+
   res.status(200).json({
     success: true,
-    message: 'Offer letter attached to candidate',
-    data: { offer_letter_url: fileUrl }
+    message: attachedToEmployee
+      ? 'Offer letter attached to candidate and linked employee'
+      : 'Offer letter attached to candidate',
+    data: { offer_letter_url: fileUrl, attached_to_employee: attachedToEmployee }
   });
 });
 
