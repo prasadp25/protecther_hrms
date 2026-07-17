@@ -4,6 +4,7 @@ const {
   isValidAadhaar,
   isValidPAN,
   isValidIFSC,
+  isValidUAN,
   generateEmployeeCode,
   generateSiteCode,
   getDaysInMonth,
@@ -25,6 +26,14 @@ describe('document validators', () => {
     assert.equal(isValidPAN('abcde1234f'), false); // lowercase rejected
     assert.equal(isValidPAN('ABCD1234F'), false);
     assert.equal(isValidPAN('ABCDE12345'), false);
+  });
+
+  test('UAN: exactly 12 digits', () => {
+    assert.equal(isValidUAN('100123456789'), true);
+    assert.equal(isValidUAN('10012345678'), false);   // 11 digits
+    assert.equal(isValidUAN('1001234567890'), false); // 13 digits
+    assert.equal(isValidUAN('10012345678a'), false);
+    assert.equal(isValidUAN(''), false);
   });
 
   test('IFSC: 4 letters, 0, 6 alphanumeric', () => {

@@ -190,6 +190,14 @@ const isValidIFSC = (ifsc) => {
 };
 
 // ==============================================
+// VALIDATE UAN NUMBER (EPFO Universal Account Number)
+// ==============================================
+const isValidUAN = (uan) => {
+  const uanRegex = /^\d{12}$/;
+  return uanRegex.test(uan);
+};
+
+// ==============================================
 // PAGINATION HELPER
 // ==============================================
 const paginate = (page = 1, limit = 10) => {
@@ -285,6 +293,7 @@ module.exports = {
   isValidAadhaar,
   isValidPAN,
   isValidIFSC,
+  isValidUAN,
   paginate,
   buildPaginationResponse,
   formatCurrency,

@@ -7,7 +7,7 @@ const {
 } = require('../utils/pagination');
 const { asyncHandler } = require('../utils/errors');
 const { getCompanyFilter } = require('../middleware/auth');
-const { generateCandidateCode, generateOfferLetterRef } = require('../utils/helpers');
+const { generateCandidateCode, generateOfferLetterRef, isValidAadhaar, isValidPAN, isValidUAN } = require('../utils/helpers');
 
 // ==============================================
 // GET ALL CANDIDATES (with pagination)
@@ -411,8 +411,18 @@ const convertToEmployee = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Only accepted candidates can be converted to employees' });
   }
 
-  if (!additionalData.aadhaar_no || !additionalData.pan_no || !additionalData.date_of_joining) {
-    return res.status(400).json({ success: false, message: 'Aadhaar, PAN, and Date of Joining are required for conversion' });
+  if (!additionalData.aadhaar_no || !additionalData.pan_no || !additionalData.uan_no || !additionalData.date_of_joining) {
+    return res.status(400).json({ success: false, message: 'Aadhaar, PAN, UAN, and Date of Joining are required for conversion' });
+  }
+
+  if (!isValidAadhaar(additionalData.aadhaar_no)) {
+    return res.status(400).json({ success: false, message: 'Invalid Aadhaar number (must be 12 digits)' });
+  }
+  if (!isValidPAN(additionalData.pan_no)) {
+    return res.status(400).json({ success: false, message: 'Invalid PAN number (format: ABCDE1234F)' });
+  }
+  if (!isValidUAN(additionalData.uan_no)) {
+    return res.status(400).json({ success: false, message: 'Invalid UAN number (must be 12 digits)' });
   }
 
   // Employee insert, salary insert, and candidate update must all succeed
@@ -428,13 +438,13 @@ const convertToEmployee = asyncHandler(async (req, res) => {
     }
 
     // Insert employee
-    const employeeQuery = 'INSERT INTO employees (company_id, employee_code, first_name, last_name, mobile, email, dob, gender, address, city, state, pincode, aadhaar_no, pan_no, designation, department, date_of_joining, offer_letter_issue_date, offer_letter_url, site_id, status, emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship, account_number, ifsc_code, bank_name, branch_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    const employeeQuery = 'INSERT INTO employees (company_id, employee_code, first_name, last_name, mobile, email, dob, gender, address, city, state, pincode, aadhaar_no, pan_no, uan_no, designation, department, date_of_joining, offer_letter_issue_date, offer_letter_url, site_id, status, emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship, account_number, ifsc_code, bank_name, branch_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     const employeeParams = [
       candidate.company_id, employeeCode, candidate.first_name, candidate.last_name,
       candidate.mobile, candidate.email, candidate.dob, candidate.gender,
       candidate.address, candidate.city, candidate.state, candidate.pincode,
-      additionalData.aadhaar_no, additionalData.pan_no, candidate.designation, candidate.department,
+      additionalData.aadhaar_no, additionalData.pan_no, additionalData.uan_no, candidate.designation, candidate.department,
       additionalData.date_of_joining, candidate.offer_letter_date, candidate.offer_letter_url,
       candidate.site_id, 'ACTIVE',
       additionalData.emergency_contact_name || null, additionalData.emergency_contact_mobile || null,

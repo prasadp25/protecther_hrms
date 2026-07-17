@@ -6,6 +6,7 @@ const ConvertToEmployee = ({ candidate, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
     aadhaar_no: candidate?.aadhaar_no || '',
     pan_no: candidate?.pan_no || '',
+    uan_no: '',
     date_of_joining: candidate?.expected_joining_date ? candidate.expected_joining_date.split('T')[0] : '',
     emergency_contact_name: '',
     emergency_contact_mobile: '',
@@ -27,6 +28,7 @@ const ConvertToEmployee = ({ candidate, onSuccess, onCancel }) => {
     const newErrors = {};
     if (!formData.aadhaar_no || formData.aadhaar_no.length !== 12) newErrors.aadhaar_no = 'Valid 12-digit Aadhaar required';
     if (!formData.pan_no || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_no)) newErrors.pan_no = 'Valid PAN required (e.g., ABCDE1234F)';
+    if (!formData.uan_no || !/^\d{12}$/.test(formData.uan_no)) newErrors.uan_no = 'Valid 12-digit UAN required';
     if (!formData.date_of_joining) newErrors.date_of_joining = 'Joining date is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -92,6 +94,11 @@ const ConvertToEmployee = ({ candidate, onSuccess, onCancel }) => {
               <label className="block text-sm font-medium mb-1">PAN Number *</label>
               <input type="text" name="pan_no" value={formData.pan_no} onChange={handleChange} maxLength={10} className={errors.pan_no ? errorInputClass : inputClass} placeholder="e.g., ABCDE1234F" style={{ textTransform: 'uppercase' }} />
               {errors.pan_no && <p className="text-red-500 text-xs mt-1">{errors.pan_no}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">UAN Number *</label>
+              <input type="text" name="uan_no" value={formData.uan_no} onChange={handleChange} maxLength={12} className={errors.uan_no ? errorInputClass : inputClass} placeholder="12 digit UAN (EPFO)" />
+              {errors.uan_no && <p className="text-red-500 text-xs mt-1">{errors.uan_no}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Date of Joining *</label>
