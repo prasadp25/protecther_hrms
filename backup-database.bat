@@ -81,6 +81,22 @@ if errorlevel 1 (
     echo Old backups cleaned
 )
 
+REM ===================================================
+REM Off-machine copy to NAS (survives disk failure/theft)
+REM ===================================================
+set NAS_DIR=\\PLLP_NAS\Software Backups\HRMS
+echo.
+echo Copying backup to NAS: %NAS_DIR%
+copy /y "%BACKUP_FILE%" "%NAS_DIR%\" >nul
+if errorlevel 1 (
+    echo WARNING: NAS copy FAILED - backup exists only on this PC!
+    echo Check that PLLP_NAS is powered on and reachable.
+) else (
+    echo NAS copy OK
+    REM Keep 60 days of history on the NAS
+    forfiles /p "%NAS_DIR%" /m *.sql /d -60 /c "cmd /c del @path" 2>nul
+)
+
 echo.
 echo Backup process complete!
 echo.
