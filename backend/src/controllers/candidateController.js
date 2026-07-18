@@ -10,6 +10,7 @@ const {
 const { asyncHandler } = require('../utils/errors');
 const { getCompanyFilter } = require('../middleware/auth');
 const { generateCandidateCode, generateOfferLetterRef, isValidAadhaar, isValidPAN, isValidUAN } = require('../utils/helpers');
+const { buildOfferLetterPdf } = require('../utils/offerLetterPdf');
 
 // ==============================================
 // GET ALL CANDIDATES (with pagination)
@@ -303,7 +304,7 @@ const deleteCandidate = asyncHandler(async (req, res) => {
 const generateOfferLetter = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const companyId = getCompanyFilter(req);
-  const { offer_letter_date } = req.body;
+  const { offer_letter_date, expected_joining_date, reporting_manager, site_name } = req.body;
 
   let query = 'SELECT c.*, s.site_name, s.location as site_location FROM candidates c LEFT JOIN sites s ON c.site_id = s.site_id WHERE c.candidate_id = ?';
   const params = [id];
@@ -339,14 +340,82 @@ const generateOfferLetter = asyncHandler(async (req, res) => {
 
     offerLetterRef = generateOfferLetterRef(currentYear, nextNumber - 1); // generateOfferLetterRef adds 1
 
-    await executeQuery('UPDATE candidates SET offer_letter_ref = ?, offer_letter_date = ?, status = ? WHERE candidate_id = ?', [offerLetterRef, offer_letter_date || new Date(), 'OFFERED', id]);
+    const newStatus = candidate.status === 'CONVERTED' ? 'CONVERTED' : 'OFFERED';
+    await executeQuery('UPDATE candidates SET offer_letter_ref = ?, offer_letter_date = ?, status = ? WHERE candidate_id = ?', [offerLetterRef, offer_letter_date || new Date(), newStatus, id]);
+  }
+
+  // Persist offer details HR filled in so regeneration reproduces the same letter
+  if (expected_joining_date || reporting_manager) {
+    await executeQuery(
+      'UPDATE candidates SET expected_joining_date = COALESCE(?, expected_joining_date), reporting_manager = COALESCE(?, reporting_manager) WHERE candidate_id = ?',
+      [expected_joining_date || null, reporting_manager || null, id]
+    );
+  }
+
+  const offer = {
+    offer_letter_ref: offerLetterRef,
+    offer_letter_date: offer_letter_date || candidate.offer_letter_date || new Date(),
+    expected_joining_date: expected_joining_date || candidate.expected_joining_date,
+    reporting_manager: reporting_manager || candidate.reporting_manager,
+    site_name: site_name || candidate.site_name || candidate.site_location
+  };
+
+  // Generate and store the PDF server-side - the stored copy is the record,
+  // regardless of whether HR keeps the downloaded file
+  const pdfBuffer = buildOfferLetterPdf(candidate, offer);
+
+  const uploadsDir = path.join(__dirname, '../../uploads/offer-letters');
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+  const safeName = `${candidate.candidate_code}_${candidate.first_name}`.replace(/[^A-Za-z0-9_-]/g, '');
+  const fileName = `Offer_Letter_${safeName}-${Date.now()}.pdf`;
+  fs.writeFileSync(path.join(uploadsDir, fileName), pdfBuffer);
+
+  // Replace previously stored file (keep only the latest version)
+  if (candidate.offer_letter_url) {
+    fs.unlink(path.join(uploadsDir, path.basename(candidate.offer_letter_url)), () => {});
+  }
+
+  const fileUrl = `/uploads/offer-letters/${fileName}`;
+  await executeQuery('UPDATE candidates SET offer_letter_url = ? WHERE candidate_id = ?', [fileUrl, id]);
+
+  // Already-converted candidate: keep the linked employee's copy in sync
+  if (candidate.status === 'CONVERTED' && candidate.converted_employee_id) {
+    await executeQuery('UPDATE employees SET offer_letter_url = ? WHERE employee_id = ?', [fileUrl, candidate.converted_employee_id]);
   }
 
   res.status(200).json({
     success: true,
-    message: 'Offer letter generated successfully',
-    data: { ...candidate, offer_letter_ref: offerLetterRef, offer_letter_date: offer_letter_date || new Date() }
+    message: 'Offer letter generated and stored successfully',
+    data: { ...candidate, offer_letter_ref: offerLetterRef, offer_letter_date: offer.offer_letter_date, offer_letter_url: fileUrl }
   });
+});
+
+// ==============================================
+// DOWNLOAD STORED OFFER LETTER PDF
+// ==============================================
+const downloadOfferLetter = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const companyId = getCompanyFilter(req);
+
+  let query = 'SELECT offer_letter_url, candidate_code, first_name, last_name FROM candidates WHERE candidate_id = ?';
+  const params = [id];
+  if (companyId) {
+    query += ' AND company_id = ?';
+    params.push(companyId);
+  }
+  const candidates = await executeQuery(query, params);
+
+  if (candidates.length === 0 || !candidates[0].offer_letter_url) {
+    return res.status(404).json({ success: false, message: 'Offer letter not found' });
+  }
+
+  const filePath = path.join(__dirname, '../../uploads/offer-letters', path.basename(candidates[0].offer_letter_url));
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, message: 'Offer letter file missing on server' });
+  }
+
+  res.sendFile(filePath);
 });
 
 // ==============================================
@@ -489,61 +558,6 @@ const convertToEmployee = asyncHandler(async (req, res) => {
   });
 });
 
-// ==============================================
-// UPLOAD OFFER LETTER FILE (generated PDF from frontend)
-// ==============================================
-const uploadOfferLetterFile = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const companyId = getCompanyFilter(req);
-
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: 'No file uploaded' });
-  }
-
-  let query = 'SELECT candidate_id, offer_letter_url, status, converted_employee_id FROM candidates WHERE candidate_id = ?';
-  const params = [id];
-  if (companyId) {
-    query += ' AND company_id = ?';
-    params.push(companyId);
-  }
-  const candidates = await executeQuery(query, params);
-
-  if (candidates.length === 0) {
-    // Candidate not found - remove the orphaned upload
-    fs.unlink(req.file.path, () => {});
-    return res.status(404).json({ success: false, message: 'Candidate not found' });
-  }
-
-  // Replace previously stored file (regeneration keeps only the latest version)
-  const oldUrl = candidates[0].offer_letter_url;
-  if (oldUrl) {
-    const oldFile = path.join(__dirname, '../../uploads/offer-letters', path.basename(oldUrl));
-    fs.unlink(oldFile, () => {});
-  }
-
-  const fileUrl = `/uploads/offer-letters/${req.file.filename}`;
-  await executeQuery('UPDATE candidates SET offer_letter_url = ? WHERE candidate_id = ?', [fileUrl, id]);
-
-  // If this candidate was already converted, attach to the employee record
-  // too so the letter shows up in Employee Management and the portal
-  let attachedToEmployee = false;
-  if (candidates[0].status === 'CONVERTED' && candidates[0].converted_employee_id) {
-    await executeQuery(
-      'UPDATE employees SET offer_letter_url = ? WHERE employee_id = ?',
-      [fileUrl, candidates[0].converted_employee_id]
-    );
-    attachedToEmployee = true;
-  }
-
-  res.status(200).json({
-    success: true,
-    message: attachedToEmployee
-      ? 'Offer letter attached to candidate and linked employee'
-      : 'Offer letter attached to candidate',
-    data: { offer_letter_url: fileUrl, attached_to_employee: attachedToEmployee }
-  });
-});
-
 module.exports = {
   getAllCandidates,
   getCandidateById,
@@ -553,7 +567,7 @@ module.exports = {
   updateCandidate,
   deleteCandidate,
   generateOfferLetter,
+  downloadOfferLetter,
   updateCandidateStatus,
-  convertToEmployee,
-  uploadOfferLetterFile
+  convertToEmployee
 };

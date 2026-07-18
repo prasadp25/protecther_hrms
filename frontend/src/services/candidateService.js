@@ -63,12 +63,10 @@ export const candidateService = {
     return response.data;
   },
 
-  // Attach the generated offer letter PDF to the candidate record
-  uploadOfferLetterFile: async (id, pdfBlob, fileName) => {
-    const formData = new FormData();
-    formData.append('offerLetter', pdfBlob, fileName);
-    const response = await api.post(`${CANDIDATE_ENDPOINT}/${id}/offer-letter-file`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+  // Download the server-stored offer letter PDF as a blob
+  downloadOfferLetter: async (id) => {
+    const response = await api.get(`${CANDIDATE_ENDPOINT}/${id}/offer-letter-file`, {
+      responseType: 'blob'
     });
     return response.data;
   }
