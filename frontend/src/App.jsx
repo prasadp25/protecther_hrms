@@ -1,40 +1,52 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ErrorBoundary from './components/error/ErrorBoundary';
 import Login from './components/auth/Login';
 import authService from './services/authService';
-import Dashboard from './components/dashboard/Dashboard';
-import EmployeeList from './components/employee/EmployeeList';
-import EmployeeForm from './components/employee/EmployeeForm';
-import SiteList from './components/site/SiteList';
-import SiteForm from './components/site/SiteForm';
-import SalaryList from './components/salary/SalaryList';
-import SalaryForm from './components/salary/SalaryForm';
-import PayslipView from './components/salary/PayslipView';
-import AttendanceManagement from './components/attendance/AttendanceManagement';
-import Reports from './components/reports/Reports';
-import CompanyList from './components/company/CompanyList';
-import CompanyForm from './components/company/CompanyForm';
 import CompanySwitcher from './components/common/CompanySwitcher';
-import AuditLogs from './components/audit/AuditLogs';
-import { CandidateList, CandidateForm, OfferLetterGenerator, ConvertToEmployee } from './components/candidate';
 import Sidebar, { MenuIcon } from './components/layout/Sidebar';
 import { getSelectedCompany, setSelectedCompany } from './config/api';
-import NoticeList from './components/notices/NoticeList';
-import InsuranceSettings from './components/settings/InsuranceSettings';
-import {
-  EmployeeLogin,
-  EmployeePortalLayout,
-  EmployeeDashboard,
-  MyProfile,
-  MyPayslips,
-  MyDocuments,
-  InsuranceInfo,
-  Notices as EmployeeNotices
-} from './components/employeePortal';
 import { employeePortalService } from './services/employeePortalService';
+
+// Modules are lazy-loaded so heavy libraries (charts, Excel, PDF) download
+// only when their screen is opened - keeps the first load small on slow
+// site connections.
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
+const EmployeeList = lazy(() => import('./components/employee/EmployeeList'));
+const EmployeeForm = lazy(() => import('./components/employee/EmployeeForm'));
+const SiteList = lazy(() => import('./components/site/SiteList'));
+const SiteForm = lazy(() => import('./components/site/SiteForm'));
+const SalaryList = lazy(() => import('./components/salary/SalaryList'));
+const SalaryForm = lazy(() => import('./components/salary/SalaryForm'));
+const PayslipView = lazy(() => import('./components/salary/PayslipView'));
+const AttendanceManagement = lazy(() => import('./components/attendance/AttendanceManagement'));
+const Reports = lazy(() => import('./components/reports/Reports'));
+const CompanyList = lazy(() => import('./components/company/CompanyList'));
+const CompanyForm = lazy(() => import('./components/company/CompanyForm'));
+const AuditLogs = lazy(() => import('./components/audit/AuditLogs'));
+const NoticeList = lazy(() => import('./components/notices/NoticeList'));
+const InsuranceSettings = lazy(() => import('./components/settings/InsuranceSettings'));
+const CandidateList = lazy(() => import('./components/candidate/CandidateList'));
+const CandidateForm = lazy(() => import('./components/candidate/CandidateForm'));
+const OfferLetterGenerator = lazy(() => import('./components/candidate/OfferLetterGenerator'));
+const ConvertToEmployee = lazy(() => import('./components/candidate/ConvertToEmployee'));
+const EmployeeLogin = lazy(() => import('./components/employeePortal/EmployeeLogin'));
+const EmployeePortalLayout = lazy(() => import('./components/employeePortal/EmployeePortalLayout'));
+const EmployeeDashboard = lazy(() => import('./components/employeePortal/EmployeeDashboard'));
+const MyProfile = lazy(() => import('./components/employeePortal/MyProfile'));
+const MyPayslips = lazy(() => import('./components/employeePortal/MyPayslips'));
+const MyDocuments = lazy(() => import('./components/employeePortal/MyDocuments'));
+const InsuranceInfo = lazy(() => import('./components/employeePortal/InsuranceInfo'));
+const EmployeeNotices = lazy(() => import('./components/employeePortal/Notices'));
+
+// Shown while a lazily-loaded screen's code downloads
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+);
 
 // Protected Route Component for Admin
 const ProtectedRoute = ({ children }) => {
@@ -309,6 +321,7 @@ const MainApp = () => {
         {/* Page Content */}
         <main className="p-4 lg:p-6">
           <ErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
           {module === 'dashboard' && (
             <Dashboard key={selectedCompany?.company_id || 'all'} />
           )}
@@ -422,6 +435,7 @@ const MainApp = () => {
           {module === 'notices' && <NoticeList />}
 
           {module === 'settings' && <InsuranceSettings />}
+          </Suspense>
           </ErrorBoundary>
         </main>
       </div>
@@ -434,6 +448,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
         <Routes>
           {/* Admin Login */}
           <Route path="/login" element={<Login />} />
@@ -467,6 +482,7 @@ function App() {
             }
           />
         </Routes>
+        </Suspense>
       </Router>
       {/* Toast Container for global notifications */}
       <ToastContainer
