@@ -94,4 +94,16 @@ export const employeeService = {
     const response = await api.get(`${EMPLOYEE_ENDPOINT}/designations`);
     return response.data;
   },
+
+  // Bulk upload documents (Aadhaar/PAN/Photo) matched to employees by filename
+  bulkUploadDocuments: async (files) => {
+    const formData = new FormData();
+    // Each file sent under a field named for its parsed type; backend re-parses
+    // the filename itself and does not trust these field names.
+    files.forEach((f, i) => formData.append(`doc_${i}`, f, f.name));
+    const response = await api.post(`${EMPLOYEE_ENDPOINT}/documents/bulk-upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
 };

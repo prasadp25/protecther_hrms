@@ -10,10 +10,11 @@ const {
   deleteEmployee,
   getDepartments,
   getDesignations,
-  getEmployeeDocument
+  getEmployeeDocument,
+  bulkUploadDocuments
 } = require('../controllers/employeeController');
 const { authenticate, authorize } = require('../middleware/auth');
-const { uploadEmployeeDocuments, handleUploadError } = require('../middleware/upload');
+const { uploadEmployeeDocuments, bulkDocumentUpload, handleUploadError } = require('../middleware/upload');
 const { auditLog } = require('../middleware/auditLogger');
 
 // All routes require authentication
@@ -27,6 +28,15 @@ router.get('/departments', authorize('ADMIN', 'HR'), getDepartments);
 router.get('/designations', authorize('ADMIN', 'HR'), getDesignations);
 router.get('/:id/documents/:type', authorize('ADMIN', 'HR'), getEmployeeDocument);
 router.get('/:id', authorize('ADMIN', 'HR'), getEmployeeById);
+
+// Bulk document upload (Aadhaar/PAN/Photo for many employees) - Admin/HR only
+router.post('/documents/bulk-upload',
+  authorize('ADMIN', 'HR'),
+  bulkDocumentUpload,
+  handleUploadError,
+  auditLog('BULK_UPLOAD', 'employees'),
+  bulkUploadDocuments
+);
 
 // POST routes - Admin/HR only with audit logging
 router.post('/',

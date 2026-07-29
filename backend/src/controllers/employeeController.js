@@ -787,6 +787,143 @@ const getEmployeeDocument = async (req, res) => {
   }
 };
 
+// ==============================================
+// BULK DOCUMENT UPLOAD
+// ==============================================
+// Doc types that can be bulk-uploaded, mapped to their DB column + folder.
+const BULK_DOC_TYPES = {
+  aadhaar: { column: 'aadhaar_card_url', folder: 'aadhaar-cards' },
+  pan: { column: 'pan_card_url', folder: 'pan-cards' },
+  photo: { column: 'photo_url', folder: 'employee-photos' }
+};
+
+/**
+ * Parse an uploaded file's name into { code, type }.
+ * Convention: employee code first (P0012 / P00112), then a doc-type keyword
+ * anywhere in the name. Separators (_ - space) and case are ignored.
+ *   "P0012_aadhaar.jpg" -> { code: 'P0012', type: 'aadhaar' }
+ *   "p00112 PAN card.pdf" -> { code: 'P00112', type: 'pan' }
+ * Returns nulls for whichever part can't be determined so the caller can
+ * explain exactly why a file didn't match.
+ */
+const parseBulkDocFilename = (originalName) => {
+  const name = String(originalName || '');
+  const base = name.replace(/\.[^.]+$/, ''); // strip extension
+
+  // Employee codes are P + at least 3 digits (P0001 .. P00124). No word
+  // boundary here: '_' counts as a word char so \b breaks on "P0012_...".
+  const codeMatch = base.match(/P\d{3,}/i);
+  const code = codeMatch ? codeMatch[0].toUpperCase() : null;
+
+  // Normalize separators (_ - .) to spaces so short keywords like "pan" can
+  // be matched as standalone tokens without \b (which breaks on underscores).
+  const norm = ' ' + base.toLowerCase().replace(/[_\-.]+/g, ' ') + ' ';
+  let type = null;
+  if (/aadhaar|aadhar|adhaar|adhar/.test(norm)) type = 'aadhaar';
+  else if (/ pan | pan card |pancard/.test(norm)) type = 'pan';
+  else if (/ photo | pic | image | dp |photo/.test(norm)) type = 'photo';
+
+  return { code, type };
+};
+
+const bulkUploadDocuments = async (req, res) => {
+  const files = req.files || [];
+  const companyId = getCompanyFilter(req);
+
+  // Clean up every temp file no matter how we exit
+  const cleanupTemp = () => {
+    for (const f of files) {
+      if (f && f.path) fs.unlink(f.path, () => {});
+    }
+  };
+
+  try {
+    if (files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No files uploaded' });
+    }
+
+    // Load this company's employees once, indexed by uppercase code
+    let empQuery = 'SELECT employee_id, employee_code, first_name, last_name, aadhaar_card_url, pan_card_url, photo_url FROM employees WHERE status IN (?, ?)';
+    const empParams = ['ACTIVE', 'ON_LEAVE'];
+    if (companyId) {
+      empQuery += ' AND company_id = ?';
+      empParams.push(companyId);
+    }
+    const employees = await executeQuery(empQuery, empParams);
+    const byCode = new Map(employees.map(e => [e.employee_code.toUpperCase(), e]));
+
+    const results = [];
+    const seen = new Set(); // guards against two files targeting same employee+type in one batch
+
+    for (const file of files) {
+      const { code, type } = parseBulkDocFilename(file.originalname);
+      const entry = { file: file.originalname, code, type, status: 'skipped', reason: '' };
+
+      if (!code || !type) {
+        entry.reason = !code && !type ? 'Could not read employee code or document type from filename'
+          : !code ? 'Could not read employee code from filename'
+          : 'Could not read document type (expected aadhaar, pan, or photo) from filename';
+        fs.unlink(file.path, () => {});
+        results.push(entry);
+        continue;
+      }
+
+      const emp = byCode.get(code);
+      if (!emp) {
+        entry.reason = `No active employee with code ${code} in this company`;
+        fs.unlink(file.path, () => {});
+        results.push(entry);
+        continue;
+      }
+      entry.employee = `${emp.first_name} ${emp.last_name || ''}`.trim();
+
+      const dupeKey = `${code}|${type}`;
+      if (seen.has(dupeKey)) {
+        entry.reason = `Another file in this batch already targets ${code}'s ${type} — resolve which one to keep`;
+        fs.unlink(file.path, () => {});
+        results.push(entry);
+        continue;
+      }
+      seen.add(dupeKey);
+
+      const docCfg = BULK_DOC_TYPES[type];
+      const finalName = path.basename(file.path); // already unique + safe
+      const destDir = path.join(__dirname, '../../uploads', docCfg.folder);
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+
+      // Remove the employee's previous file for this doc type, if any
+      const oldUrl = emp[docCfg.column];
+      if (oldUrl) {
+        fs.unlink(path.join(destDir, path.basename(oldUrl)), () => {});
+      }
+
+      fs.renameSync(file.path, path.join(destDir, finalName));
+      const fileUrl = `/uploads/${docCfg.folder}/${finalName}`;
+      await executeQuery(
+        `UPDATE employees SET ${docCfg.column} = ? WHERE employee_id = ?`,
+        [fileUrl, emp.employee_id]
+      );
+
+      entry.status = 'uploaded';
+      results.push(entry);
+    }
+
+    const uploaded = results.filter(r => r.status === 'uploaded').length;
+    const skipped = results.length - uploaded;
+
+    res.status(200).json({
+      success: true,
+      message: `${uploaded} document(s) attached, ${skipped} skipped`,
+      summary: { total: results.length, uploaded, skipped },
+      results
+    });
+  } catch (error) {
+    console.error('Bulk document upload error:', error);
+    cleanupTemp();
+    res.status(500).json({ success: false, message: 'Bulk upload failed' });
+  }
+};
+
 module.exports = {
   getAllEmployees,
   getActiveEmployees,
@@ -797,5 +934,7 @@ module.exports = {
   deleteEmployee,
   getDepartments,
   getDesignations,
-  getEmployeeDocument
+  getEmployeeDocument,
+  bulkUploadDocuments,
+  parseBulkDocFilename
 };

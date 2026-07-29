@@ -92,6 +92,39 @@ const uploadEmployeeDocuments = upload.fields([
 ]);
 
 // ==============================================
+// BULK DOCUMENT UPLOAD (Aadhaar/PAN/Photo for many employees at once)
+// ==============================================
+// All files land in a single temp folder first; the controller independently
+// parses each filename to decide the real employee + document type + final
+// folder. It never trusts the client's field name to decide where an identity
+// document is filed - a wrong folder would mean the wrong person's Aadhaar.
+const bulkStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const tempPath = 'uploads/bulk-temp/';
+    if (!fs.existsSync(tempPath)) {
+      fs.mkdirSync(tempPath, { recursive: true });
+    }
+    cb(null, tempPath);
+  },
+  filename: (req, file, cb) => {
+    // Keep the original name recoverable (controller parses it) but make the
+    // on-disk name unique and traversal-safe.
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `bulk-${uniqueSuffix}${ext}`);
+  }
+});
+
+const bulkDocumentUpload = multer({
+  storage: bulkStorage,
+  fileFilter, // reuse the PDF/DOC/image validator (MIME + extension)
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024,
+    files: 60 // cap batch size; HR can run multiple batches
+  }
+}).any(); // accept arbitrary field names / any number of files
+
+// ==============================================
 // IMAGE-ONLY FILTER FOR PHOTOS
 // ==============================================
 const imageOnlyFilter = (req, file, cb) => {
@@ -173,5 +206,6 @@ module.exports = {
   uploadSingle,
   uploadMultiple,
   handleUploadError,
-  photoUpload
+  photoUpload,
+  bulkDocumentUpload
 };

@@ -5,7 +5,7 @@ import { siteService } from '../../services/siteService';
 import usePagination from '../../hooks/usePagination';
 import Pagination from '../common/Pagination';
 
-const EmployeeList = ({ onEdit, onAddNew }) => {
+const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
   const [employees, setEmployees] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -172,15 +172,28 @@ const EmployeeList = ({ onEdit, onAddNew }) => {
           <h2 className="text-2xl font-bold text-slate-800">Employee Management</h2>
           <p className="text-sm text-slate-500 mt-1">Manage your workforce efficiently</p>
         </div>
-        <button
-          onClick={onAddNew}
-          className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-sm hover:shadow-md font-medium"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Add Employee
-        </button>
+        <div className="flex items-center gap-3">
+          {onBulkUpload && (
+            <button
+              onClick={onBulkUpload}
+              className="inline-flex items-center px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm font-medium"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Bulk Documents
+            </button>
+          )}
+          <button
+            onClick={onAddNew}
+            className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-sm hover:shadow-md font-medium"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add Employee
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters */}
