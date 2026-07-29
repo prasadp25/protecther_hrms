@@ -9,9 +9,10 @@
  * @param {number} actualDaysPresent - Days present from attendance record
  * @param {number} daysInMonth - Total days in the month (calendar days)
  * @param {number} advanceDeduction - Optional advance deduction amount
+ * @param {boolean} waiveProfessionalTax - Waive PT entirely (company policy: no PT in an employee's joining month)
  * @returns {Object} Calculated payslip components
  */
-const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDeduction = 0) => {
+const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDeduction = 0, waiveProfessionalTax = false) => {
   // Fixed Salary Components (from salary structure)
   const fixedBasic = parseFloat(salaryData.basic_salary);
   const fixedHra = parseFloat(salaryData.hra || 0);
@@ -67,7 +68,9 @@ const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDed
   const esiDeduction = esiApplicable ? Math.round(actualGross * 0.0075) : 0;
 
   // Fixed Deductions (constant - not attendance based)
-  const professionalTax = parseFloat(salaryData.professional_tax || 0);
+  // PT is a flat monthly slab (not prorated for partial attendance), but is
+  // waived entirely for a joining-month stub period when the caller opts in.
+  const professionalTax = waiveProfessionalTax ? 0 : parseFloat(salaryData.professional_tax || 0);
   const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction || 0);
   const otherDeductions = parseFloat(salaryData.other_deductions || 0);
 

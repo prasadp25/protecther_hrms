@@ -148,7 +148,7 @@ const generatePayslip = async (req, res) => {
 
     // Check if employee exists
     const employee = await executeQuery(
-      'SELECT employee_id FROM employees WHERE employee_id = ? AND status = ?',
+      'SELECT employee_id, date_of_joining FROM employees WHERE employee_id = ? AND status = ?',
       [employee_id, 'ACTIVE']
     );
 
@@ -161,6 +161,10 @@ const generatePayslip = async (req, res) => {
 
     // Format month as YYYY-MM
     const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+
+    // Waive Professional Tax when this payslip covers the employee's joining
+    // month (company policy: no PT for a partial joining-month stub period)
+    const isJoiningMonth = employee[0].date_of_joining && employee[0].date_of_joining.slice(0, 7) === monthStr;
 
     // Check if payslip already exists
     const existing = await executeQuery(
@@ -219,7 +223,7 @@ const generatePayslip = async (req, res) => {
     const advanceDeduction = parseFloat(advance_deduction || 0);
 
     // Use shared calculation helper
-    const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction);
+    const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
     // Insert payslip with both fixed and prorated values
     const query = `
@@ -312,7 +316,7 @@ const bulkGeneratePayslips = async (req, res) => {
     // Get all employees with FINALIZED attendance for this month
     let query = `
       SELECT DISTINCT e.employee_id, e.employee_code, e.first_name, e.last_name,
-             a.days_present, a.total_days_in_month
+             e.date_of_joining, a.days_present, a.total_days_in_month
       FROM employees e
       INNER JOIN attendance a ON e.employee_id = a.employee_id
       WHERE e.status = 'ACTIVE'
@@ -374,6 +378,9 @@ const bulkGeneratePayslips = async (req, res) => {
         const actualDaysPresent = emp.days_present;
         const daysInMonth = emp.total_days_in_month;
 
+        // Waive Professional Tax for the employee's joining month (company policy)
+        const isJoiningMonth = emp.date_of_joining && emp.date_of_joining.slice(0, 7) === monthStr;
+
         // Call generatePayslip logic
         const salary = await executeQuery(
           'SELECT * FROM salaries WHERE employee_id = ? AND status = ? ORDER BY effective_from DESC LIMIT 1',
@@ -390,7 +397,7 @@ const bulkGeneratePayslips = async (req, res) => {
         const advanceDeduction = parseFloat(salaryData.advance_deduction || 0);
 
         // Use shared calculation helper
-        const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction);
+        const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
         await executeQuery(
           `INSERT INTO payslips (

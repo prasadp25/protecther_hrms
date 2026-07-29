@@ -125,6 +125,19 @@ describe('calculatePayslip - toggles and edge cases', () => {
     assert.equal(withAdvance.netSalary, base.netSalary - 2000);
   });
 
+  test('waiveProfessionalTax zeroes PT and reduces total deductions accordingly', () => {
+    const base = calculatePayslip(structure20k, 4, 31);
+    const waived = calculatePayslip(structure20k, 4, 31, 0, true);
+    assert.equal(waived.professionalTax, 0);
+    assert.equal(waived.totalDeductions, base.totalDeductions - base.professionalTax);
+    assert.equal(waived.netSalary, base.netSalary + base.professionalTax);
+  });
+
+  test('waiveProfessionalTax defaults to false (existing behavior unchanged)', () => {
+    const r = calculatePayslip(structure20k, 30, 30);
+    assert.equal(r.professionalTax, 200);
+  });
+
   test('zero days present gives zero gross', () => {
     const r = calculatePayslip(structure20k, 0, 30);
     assert.equal(r.actualGross, 0);
