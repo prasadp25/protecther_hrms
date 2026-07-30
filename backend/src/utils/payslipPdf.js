@@ -212,15 +212,15 @@ const buildPayslipPdf = (p) => {
   // Match the old template's GROSS DEDUCTION formula exactly (recomputed, not stored total)
   const totalDeductions = pf + mediclaim + esi + advance + pt + welfare;
   const netPay = n(p.net_salary);
-  const bonus = n(p.bonus);
-  const netPayWithBonus = n(p.net_payable_with_bonus) || (netPay + bonus);
 
+  // Bonus is not shown as a separate line: the statutory bonus is already
+  // included inside gross (carved out of the incentive), so net pay already
+  // accounts for it. Showing a "+ bonus / net pay with bonus" line was
+  // misleading (the total never changed). Net Pay stands on its own.
   const totalsRows = [
     [`GROSS PAY   ${formatCurrency(grossPay)}`, `GROSS DEDUCTION   ${formatCurrency(totalDeductions)}`],
     [`NET PAY`, formatCurrency(netPay)],
   ];
-  if (bonus > 0) totalsRows.push(['BONUS (8.33%)', `+ ${formatCurrency(bonus)}`]);
-  totalsRows.push(['NET PAY WITH BONUS', formatCurrency(netPayWithBonus)]);
 
   autoTable(doc, {
     startY: Math.max(earnEnd, dedEnd),
@@ -235,7 +235,7 @@ const buildPayslipPdf = (p) => {
   // Amount in words band (full width)
   autoTable(doc, {
     startY: ty,
-    body: [[`Amount in words: ${numberToWords(netPayWithBonus)}`]],
+    body: [[`Amount in words: ${numberToWords(netPay)}`]],
     theme: 'grid',
     styles: { fontSize: 9, cellPadding: 5, fontStyle: 'italic', halign: 'center', fillColor: [224, 224, 224], lineColor: [0, 0, 0], lineWidth: 0.5, textColor: [0, 0, 0] },
     columnStyles: { 0: { cellWidth: contentWidth } },
