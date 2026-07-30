@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { pdf } from '@react-pdf/renderer';
 import { employeePortalService } from '../../services/employeePortalService';
-import PayslipPDFTemplateNew from '../salary/PayslipPDFTemplateNew';
 
 const MyPayslips = () => {
   const [payslips, setPayslips] = useState([]);
@@ -73,80 +71,21 @@ const MyPayslips = () => {
 
   const handleDownloadPDF = async (rawPayslip) => {
     try {
-      // Transform snake_case to camelCase for PDF template compatibility
-      const payslip = {
-        ...rawPayslip,
-        payslipId: rawPayslip.payslip_id,
-        employeeId: rawPayslip.employee_id,
-        employeeName: `${rawPayslip.first_name || ''} ${rawPayslip.last_name || ''}`.trim(),
-        employeeCode: rawPayslip.employee_code,
-        month: String(rawPayslip.month || ''),
-        grossSalary: rawPayslip.gross_salary,
-        netSalary: rawPayslip.net_salary,
-        basicSalary: rawPayslip.basic_salary,
-        hra: rawPayslip.hra,
-        otherAllowances: rawPayslip.other_allowances,
-        overtimeAmount: rawPayslip.overtime_amount || 0,
-        pfDeduction: rawPayslip.pf_deduction,
-        esiDeduction: rawPayslip.esi_deduction || 0,
-        professionalTax: rawPayslip.professional_tax,
-        tds: rawPayslip.tds,
-        advanceDeduction: rawPayslip.advance_deduction || 0,
-        welfareDeduction: rawPayslip.welfare_deduction || 0,
-        healthInsurance: rawPayslip.mediclaim_deduction || rawPayslip.health_insurance || 0,
-        fixedBasic: parseFloat(rawPayslip.fixed_basic) || 0,
-        fixedHRA: parseFloat(rawPayslip.fixed_hra) || 0,
-        fixedIncentive: parseFloat(rawPayslip.fixed_incentive) || 0,
-        fixedGross: parseFloat(rawPayslip.fixed_gross) || 0,
-        fixedNet: parseFloat(rawPayslip.fixed_net) || 0,
-        ifscCode: rawPayslip.ifsc_code || '',
-        accountNumber: rawPayslip.account_number || '',
-        otherDeductions: rawPayslip.other_deductions || 0,
-        totalDeductions: rawPayslip.total_deductions,
-        daysPresent: rawPayslip.days_present,
-        daysAbsent: rawPayslip.days_absent,
-        totalWorkingDays: rawPayslip.total_working_days,
-        totalDaysInMonth: rawPayslip.total_days_in_month || 31,
-        overtime: rawPayslip.overtime || 0,
-        bonus: parseFloat(rawPayslip.bonus) || 0,
-        netPayableWithBonus: parseFloat(rawPayslip.net_payable_with_bonus) || 0,
-        paymentStatus: rawPayslip.payment_status,
-      };
-
-      // Extract employee data for PDF template
-      const employee = {
-        employee_id: rawPayslip.employee_id,
-        employee_code: rawPayslip.employee_code,
-        first_name: rawPayslip.first_name,
-        last_name: rawPayslip.last_name,
-        designation: rawPayslip.designation,
-        department: rawPayslip.department,
-        mobile: rawPayslip.mobile,
-        bank_name: rawPayslip.bank_name,
-        account_number: rawPayslip.account_number,
-        ifsc_code: rawPayslip.ifsc_code,
-        pan_no: rawPayslip.pan_no,
-        uan_no: rawPayslip.uan_no,
-        esi_no: rawPayslip.esi_no,
-        pf_no: rawPayslip.pf_no,
-        site_name: rawPayslip.site_name,
-        site_code: rawPayslip.site_code,
-        date_of_joining: rawPayslip.date_of_joining,
-      };
-
-      const blob = await pdf(<PayslipPDFTemplateNew payslip={payslip} employee={employee} />).toBlob();
+      // PDF is generated on the server from the payslip record; the browser
+      // just downloads it (no client-side rendering / field remapping).
+      const blob = await employeePortalService.downloadPayslip(rawPayslip.payslip_id);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Payslip_${payslip.month}_${payslip.employeeCode || 'employee'}.pdf`;
+      link.download = `Payslip_${String(rawPayslip.month || '')}_${rawPayslip.employee_code || 'employee'}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
       toast.success('Payslip downloaded successfully');
     } catch (error) {
-      console.error('PDF generation error:', error);
-      toast.error('Failed to generate PDF');
+      console.error('Payslip download error:', error);
+      toast.error('Failed to download payslip');
     }
   };
 

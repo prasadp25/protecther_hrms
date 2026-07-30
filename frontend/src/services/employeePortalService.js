@@ -139,6 +139,16 @@ export const employeePortalService = {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
+  },
+
+  // Download a payslip PDF (generated server-side) as a blob
+  downloadPayslip: async (payslipId) => {
+    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
+    const response = await api.get(`/employee-portal/payslips/${payslipId}/download`, {
+      responseType: 'blob',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
   }
 };
 

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { executeQuery } = require('../config/database');
 const { generateOTP, sendOTPEmail } = require('../utils/emailService');
+const { buildPayslipPdf } = require('../utils/payslipPdf');
 
 // OTP expiry time in minutes
 const OTP_EXPIRY_MINUTES = 10;
@@ -446,6 +447,45 @@ const getPayslipById = async (req, res) => {
 };
 
 // ==============================================
+// DOWNLOAD PAYSLIP PDF (generated server-side)
+// ==============================================
+const downloadPayslip = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const { id } = req.params;
+
+    // Same query as getPayslipById, scoped to the logged-in employee's own
+    // payslip so nobody can download someone else's.
+    const query = `
+      SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
+             e.department, e.mobile, e.account_number, e.ifsc_code, e.bank_name,
+             e.uan_no, e.esi_no, e.pf_no, e.pan_no, e.date_of_joining,
+             st.site_name, st.site_code
+      FROM payslips p
+      JOIN employees e ON p.employee_id = e.employee_id
+      LEFT JOIN sites st ON e.site_id = st.site_id
+      WHERE p.payslip_id = ? AND p.employee_id = ?
+    `;
+    const payslips = await executeQuery(query, [id, employee.employee_id]);
+
+    if (payslips.length === 0) {
+      return res.status(404).json({ success: false, message: 'Payslip not found' });
+    }
+
+    const row = payslips[0];
+    const pdf = buildPayslipPdf(row);
+    const fileName = `Payslip_${row.month}_${row.employee_code || 'employee'}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(pdf);
+  } catch (error) {
+    console.error('Download payslip error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate payslip PDF' });
+  }
+};
+
+// ==============================================
 // GET COMPANY NOTICES
 // ==============================================
 const getNotices = async (req, res) => {
@@ -602,6 +642,7 @@ module.exports = {
   getProfile,
   getPayslips,
   getPayslipById,
+  downloadPayslip,
   getNotices,
   getInsurance,
   getDocuments,

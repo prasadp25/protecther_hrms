@@ -7,6 +7,7 @@ const {
   getProfile,
   getPayslips,
   getPayslipById,
+  downloadPayslip,
   getNotices,
   getInsurance,
   getDocuments,
@@ -26,6 +27,7 @@ router.post('/verify-otp', otpVerifyLimiter, verifyOTP);
 router.get('/profile', authenticateEmployee, getProfile);
 router.get('/payslips', authenticateEmployee, getPayslips);
 router.get('/payslips/:id', authenticateEmployee, getPayslipById);
+router.get('/payslips/:id/download', authenticateEmployee, downloadPayslip);
 router.get('/notices', authenticateEmployee, getNotices);
 router.get('/insurance', authenticateEmployee, getInsurance);
 router.get('/documents', authenticateEmployee, getDocuments);
