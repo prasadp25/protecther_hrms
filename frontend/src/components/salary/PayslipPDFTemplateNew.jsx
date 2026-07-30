@@ -511,48 +511,35 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
 
           {/* Content Row */}
           <View style={styles.contentRow}>
-            {/* Earnings Section */}
+            {/* Earnings Section - Description + Amount only (mirrors Deductions;
+                the old Rate/Monthly/Arrear/Total repeated one number and left
+                Arrear always blank, which confused employees) */}
             <View style={styles.earningsSection}>
               {/* Earnings Sub-header */}
               <View style={styles.earningsSubHeader}>
-                <Text style={styles.earningsDescCol}>Description</Text>
-                <Text style={styles.earningsRateCol}>Rate</Text>
-                <Text style={styles.earningsMonthlyCol}>Monthly</Text>
-                <Text style={styles.earningsArrearCol}>Arrear</Text>
-                <Text style={styles.earningsTotalCol}>Total</Text>
+                <Text style={styles.deductionsDescCol}>Description</Text>
+                <Text style={styles.deductionsAmountCol}>Amount</Text>
               </View>
 
               {/* Earnings Data Rows */}
-              <View style={styles.earningsDataRow}>
-                <Text style={styles.earningsDataDesc}>BASIC SAL</Text>
-                <Text style={styles.earningsDataRate}>{formatCurrency(basicSalary)}</Text>
-                <Text style={styles.earningsDataMonthly}>{formatCurrency(basicSalary)}</Text>
-                <Text style={styles.earningsDataArrear}></Text>
-                <Text style={styles.earningsDataTotal}>{formatCurrency(basicSalary)}</Text>
+              <View style={styles.deductionsDataRow}>
+                <Text style={styles.deductionsDataDesc}>BASIC SAL</Text>
+                <Text style={styles.deductionsDataAmount}>{formatCurrency(basicSalary)}</Text>
               </View>
 
-              <View style={styles.earningsDataRow}>
-                <Text style={styles.earningsDataDesc}>HRA</Text>
-                <Text style={styles.earningsDataRate}>{formatCurrency(hra)}</Text>
-                <Text style={styles.earningsDataMonthly}>{formatCurrency(hra)}</Text>
-                <Text style={styles.earningsDataArrear}></Text>
-                <Text style={styles.earningsDataTotal}>{formatCurrency(hra)}</Text>
+              <View style={styles.deductionsDataRow}>
+                <Text style={styles.deductionsDataDesc}>HRA</Text>
+                <Text style={styles.deductionsDataAmount}>{formatCurrency(hra)}</Text>
               </View>
 
-              <View style={styles.earningsDataRow}>
-                <Text style={styles.earningsDataDesc}>ALLOWANCE</Text>
-                <Text style={styles.earningsDataRate}>{formatCurrency(allowance)}</Text>
-                <Text style={styles.earningsDataMonthly}>{formatCurrency(allowance)}</Text>
-                <Text style={styles.earningsDataArrear}></Text>
-                <Text style={styles.earningsDataTotal}>{formatCurrency(allowance)}</Text>
+              <View style={styles.deductionsDataRow}>
+                <Text style={styles.deductionsDataDesc}>ALLOWANCE</Text>
+                <Text style={styles.deductionsDataAmount}>{formatCurrency(allowance)}</Text>
               </View>
 
-              <View style={styles.earningsDataRow}>
-                <Text style={styles.earningsDataDesc}>OTHER ALLOW</Text>
-                <Text style={styles.earningsDataRate}>{formatCurrency(otherAllowance)}</Text>
-                <Text style={styles.earningsDataMonthly}>{formatCurrency(otherAllowance)}</Text>
-                <Text style={styles.earningsDataArrear}></Text>
-                <Text style={styles.earningsDataTotal}>{formatCurrency(otherAllowance)}</Text>
+              <View style={styles.deductionsDataRow}>
+                <Text style={styles.deductionsDataDesc}>OTHER ALLOW</Text>
+                <Text style={styles.deductionsDataAmount}>{formatCurrency(otherAllowance)}</Text>
               </View>
             </View>
 

@@ -160,30 +160,28 @@ const buildPayslipPdf = (p) => {
   });
   const tablesTop = doc.lastAutoTable.finalY;
 
-  // Earnings (left half): Description, Rate, Monthly, Arrear, Total
+  // Earnings (left half): Description + Amount, mirroring the deductions side
+  // (the old Rate/Monthly/Arrear/Total repeated the same number and left
+  // Arrear always blank, which confused employees).
   const basic = n(p.basic_salary);
   const hra = n(p.hra);
   const allowance = 0; // old template's ALLOWANCE row was always 0 (unmapped field)
   const otherAllow = n(p.other_allowances);
-  const earnCol = half / 5;
   autoTable(doc, {
     startY: tablesTop,
-    head: [['Description', 'Rate', 'Monthly', 'Arrear', 'Total']],
+    head: [['Description', 'Amount']],
     body: [
-      ['BASIC SAL', formatCurrency(basic), formatCurrency(basic), '', formatCurrency(basic)],
-      ['HRA', formatCurrency(hra), formatCurrency(hra), '', formatCurrency(hra)],
-      ['ALLOWANCE', formatCurrency(allowance), formatCurrency(allowance), '', formatCurrency(allowance)],
-      ['OTHER ALLOW', formatCurrency(otherAllow), formatCurrency(otherAllow), '', formatCurrency(otherAllow)],
+      ['BASIC SAL', formatCurrency(basic)],
+      ['HRA', formatCurrency(hra)],
+      ['ALLOWANCE', formatCurrency(allowance)],
+      ['OTHER ALLOW', formatCurrency(otherAllow)],
     ],
     theme: 'grid',
     styles: { fontSize: 7, cellPadding: 3, lineColor: [200, 200, 200], lineWidth: 0.5, textColor: [0, 0, 0] },
     headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, halign: 'center' },
     columnStyles: {
-      0: { cellWidth: earnCol * 1.5 },
-      1: { cellWidth: earnCol * 0.875, halign: 'right' },
-      2: { cellWidth: earnCol * 0.875, halign: 'right' },
-      3: { cellWidth: earnCol * 0.875, halign: 'right' },
-      4: { cellWidth: earnCol * 0.875, halign: 'right' },
+      0: { cellWidth: half * 0.7 },
+      1: { cellWidth: half * 0.3, halign: 'right' },
     },
     margin: { left: margin, right: margin },
     tableWidth: half,
