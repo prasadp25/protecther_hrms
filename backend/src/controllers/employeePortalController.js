@@ -455,14 +455,18 @@ const downloadPayslip = async (req, res) => {
     const { id } = req.params;
 
     // Same query as getPayslipById, scoped to the logged-in employee's own
-    // payslip so nobody can download someone else's.
+    // payslip so nobody can download someone else's. Joins the employee's
+    // company so the header shows THEIR company, not a hardcoded one.
     const query = `
       SELECT p.*, e.employee_code, e.first_name, e.last_name, e.designation,
              e.department, e.mobile, e.account_number, e.ifsc_code, e.bank_name,
              e.uan_no, e.esi_no, e.pf_no, e.pan_no, e.date_of_joining,
-             st.site_name, st.site_code
+             st.site_name, st.site_code,
+             c.company_name, c.address AS company_address, c.city AS company_city,
+             c.state AS company_state, c.pincode AS company_pincode
       FROM payslips p
       JOIN employees e ON p.employee_id = e.employee_id
+      JOIN companies c ON e.company_id = c.company_id
       LEFT JOIN sites st ON e.site_id = st.site_id
       WHERE p.payslip_id = ? AND p.employee_id = ?
     `;

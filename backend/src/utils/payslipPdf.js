@@ -79,16 +79,28 @@ const buildPayslipPdf = (p) => {
     ? new Date(monthStr + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '-';
 
-  // ---- Company header (kept identical to the old template) ----
+  // ---- Company header (the employee's OWN company, from the DB) ----
+  const companyName = (p.company_name || 'Company').toUpperCase();
+  // Build the address line from whatever company address parts are stored;
+  // omit it entirely if none are set (rather than showing another company's).
+  const addressLine = [p.company_address, p.company_city, p.company_state, p.company_pincode]
+    .map((x) => (x == null ? '' : String(x).trim()))
+    .filter(Boolean)
+    .join(', ');
+
   let y = margin + 6;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('EHS STAFFING SOLUTIONS', pageWidth / 2, y, { align: 'center' });
+  doc.text(companyName, pageWidth / 2, y, { align: 'center' });
   y += 14;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text('Mega Center, F 507, Magarpatta, Hadapsar, Pune, Maharashtra 411028', pageWidth / 2, y, { align: 'center' });
-  y += 14;
+  if (addressLine) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(addressLine, pageWidth / 2, y, { align: 'center' });
+    y += 14;
+  } else {
+    y += 4;
+  }
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text(`Pay Slip for the month of ${monthYear}`, pageWidth / 2, y, { align: 'center' });
