@@ -384,6 +384,15 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
     year: 'numeric',
   }) : '-';
 
+  // Company address line built from the employee's company (parts filtered
+  // so a company with no stored address simply shows none).
+  const companyAddress = [
+    employee?.company_address,
+    employee?.company_city,
+    employee?.company_state,
+    employee?.company_pincode,
+  ].map((x) => (x == null ? '' : String(x).trim())).filter(Boolean).join(', ');
+
   // Calculate totals
   const grossPay = parseFloat(payslip.grossSalary) || 0;
   const totalDeductions =
@@ -406,12 +415,15 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Company Header */}
+        {/* Company Header - the employee's own company (falls back to EHS
+            only if no company data was passed, preserving old behaviour) */}
         <View style={styles.companyHeader}>
-          <Text style={styles.companyName}>EHS STAFFING SOLUTIONS</Text>
-          <Text style={styles.companyAddress}>
-            Mega Center, F 507, Magarpatta, Hadapsar, Pune, Maharashtra 411028
+          <Text style={styles.companyName}>
+            {(employee?.company_name || 'EHS STAFFING SOLUTIONS').toUpperCase()}
           </Text>
+          {companyAddress ? (
+            <Text style={styles.companyAddress}>{companyAddress}</Text>
+          ) : null}
           <Text style={styles.payslipTitle}>Pay Slip for the month of {monthYear}</Text>
         </View>
 

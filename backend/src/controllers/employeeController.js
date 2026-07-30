@@ -103,9 +103,12 @@ const getActiveEmployees = async (req, res) => {
   try {
     const companyId = getCompanyFilter(req);
     let query = `
-      SELECT e.*, s.site_name, s.site_code
+      SELECT e.*, s.site_name, s.site_code,
+             c.company_name, c.address AS company_address, c.city AS company_city,
+             c.state AS company_state, c.pincode AS company_pincode
       FROM employees e
       LEFT JOIN sites s ON e.site_id = s.site_id
+      LEFT JOIN companies c ON e.company_id = c.company_id
       WHERE e.status = 'ACTIVE'
     `;
     const params = [];
