@@ -602,25 +602,14 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
             <Text style={styles.netPayAmount}>{formatCurrency(netPay)}</Text>
           </View>
 
-          {/* Bonus Row - Only show if bonus > 0 */}
-          {bonus > 0 && (
-            <View style={styles.bonusRow}>
-              <Text style={styles.bonusLabel}>BONUS (8.33%)</Text>
-              <Text style={styles.bonusAmount}>+ {formatCurrency(bonus)}</Text>
-            </View>
-          )}
-
-          {/* Net Pay With Bonus Row */}
-          <View style={styles.netPayWithBonusRow}>
-            <Text style={styles.netPayWithBonusLabel}>NET PAY WITH BONUS</Text>
-            <Text style={styles.netPayWithBonusAmount}>{formatCurrency(netPayWithBonus)}</Text>
-          </View>
-
-          {/* Amount in Words Row - Attached to Net Pay */}
+          {/* Amount in Words Row - Attached to Net Pay.
+              Bonus rows removed: the statutory bonus is already inside gross/net
+              (carved out of the incentive), so a separate "+ bonus / net pay
+              with bonus" line was misleading and never changed the total. */}
           <View style={styles.amountInWordsRow}>
             <Text style={styles.amountInWordsContent}>
               <Text style={styles.amountLabel}>Amount in words: </Text>
-              {numberToWords(netPayWithBonus)}
+              {numberToWords(netPay)}
             </Text>
           </View>
         </View>

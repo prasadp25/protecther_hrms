@@ -1590,26 +1590,13 @@ const PayslipView = ({ onBack }) => {
             </div>
           </div>
 
-          {/* Net Salary Section */}
-          <div className="bg-gray-50 p-6 rounded-lg space-y-3">
+          {/* Net Salary Section - bonus is already included in net pay, so it
+              is not broken out separately (that was misleading). */}
+          <div className="bg-green-50 p-6 rounded-lg">
             <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-gray-700">Net Payable:</span>
-              <span className="text-2xl font-bold text-gray-800">
-                {formatCurrency(selectedPayslip.netSalary)}
-              </span>
-            </div>
-            {selectedPayslip.bonus > 0 && (
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-medium text-gray-700">Bonus (8.33%):</span>
-                <span className="text-2xl font-bold text-blue-600">
-                  + {formatCurrency(selectedPayslip.bonus)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between items-center border-t pt-3 bg-green-50 -mx-6 px-6 -mb-6 pb-6 rounded-b-lg">
-              <span className="text-xl font-semibold text-gray-700">Net Payable with Bonus:</span>
+              <span className="text-xl font-semibold text-gray-700">Net Payable:</span>
               <span className="text-4xl font-bold text-green-600">
-                {formatCurrency(selectedPayslip.netPayableWithBonus || (selectedPayslip.netSalary + (selectedPayslip.bonus || 0)))}
+                {formatCurrency(selectedPayslip.netSalary)}
               </span>
             </div>
           </div>

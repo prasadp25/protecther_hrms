@@ -145,12 +145,6 @@ const MyPayslips = () => {
                   <span className="text-gray-600">Other Allowances</span>
                   <span className="font-medium">{formatCurrency(selectedPayslip.other_allowances)}</span>
                 </div>
-                {selectedPayslip.bonus > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Bonus</span>
-                    <span className="font-medium">{formatCurrency(selectedPayslip.bonus)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between pt-2 border-t font-semibold text-green-700">
                   <span>Gross Salary</span>
                   <span>{formatCurrency(selectedPayslip.gross_salary)}</span>
