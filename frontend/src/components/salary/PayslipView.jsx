@@ -1564,12 +1564,6 @@ const PayslipView = ({ onBack }) => {
                     <span>{formatCurrency(selectedPayslip.advanceDeduction)}</span>
                   </div>
                 )}
-                {selectedPayslip.welfareDeduction > 0 && (
-                  <div className="flex justify-between">
-                    <span>Welfare</span>
-                    <span>{formatCurrency(selectedPayslip.welfareDeduction)}</span>
-                  </div>
-                )}
                 {selectedPayslip.healthInsurance > 0 && (
                   <div className="flex justify-between">
                     <span>Health Insurance</span>

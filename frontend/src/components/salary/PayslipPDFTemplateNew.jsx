@@ -400,8 +400,7 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
     (parseFloat(payslip.healthInsurance) || 0) +
     (parseFloat(payslip.esiDeduction) || 0) +
     (parseFloat(payslip.advanceDeduction) || 0) +
-    (parseFloat(payslip.professionalTax) || 0) +
-    (parseFloat(payslip.welfareDeduction) || 0);
+    (parseFloat(payslip.professionalTax) || 0);
   const netPay = parseFloat(payslip.netSalary) || 0;
   const bonus = parseFloat(payslip.bonus) || 0;
   const netPayWithBonus = parseFloat(payslip.netPayableWithBonus) || (netPay + bonus);
@@ -570,11 +569,6 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
               <View style={styles.deductionsDataRow}>
                 <Text style={styles.deductionsDataDesc}>SALARY ADVANCE</Text>
                 <Text style={styles.deductionsDataAmount}>{formatCurrency(payslip.advanceDeduction)}</Text>
-              </View>
-
-              <View style={styles.deductionsDataRow}>
-                <Text style={styles.deductionsDataDesc}>WELFARE FUND</Text>
-                <Text style={styles.deductionsDataAmount}>{formatCurrency(payslip.welfareDeduction)}</Text>
               </View>
             </View>
           </View>

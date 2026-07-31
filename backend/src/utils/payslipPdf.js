@@ -193,7 +193,6 @@ const buildPayslipPdf = (p) => {
   const pt = n(p.professional_tax);
   const mediclaim = n(p.mediclaim_deduction) || n(p.health_insurance);
   const advance = n(p.advance_deduction);
-  const welfare = n(p.welfare_deduction);
   const esi = n(p.esi_deduction);
   autoTable(doc, {
     startY: tablesTop,
@@ -203,7 +202,6 @@ const buildPayslipPdf = (p) => {
       ['PROF TAX', formatCurrency(pt)],
       ['MEDICLAIM', formatCurrency(mediclaim)],
       ['SALARY ADVANCE', formatCurrency(advance)],
-      ['WELFARE FUND', formatCurrency(welfare)],
     ],
     theme: 'grid',
     styles: { fontSize: 7, cellPadding: 3, lineColor: [200, 200, 200], lineWidth: 0.5, textColor: [0, 0, 0] },
@@ -220,7 +218,7 @@ const buildPayslipPdf = (p) => {
   // ---- Totals below the taller of the two tables ----
   const grossPay = n(p.gross_salary);
   // Match the old template's GROSS DEDUCTION formula exactly (recomputed, not stored total)
-  const totalDeductions = pf + mediclaim + esi + advance + pt + welfare;
+  const totalDeductions = pf + mediclaim + esi + advance + pt;
   const netPay = n(p.net_salary);
 
   // Bonus is not shown as a separate line: the statutory bonus is already
