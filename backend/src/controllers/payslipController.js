@@ -1,6 +1,7 @@
-const { executeQuery } = require('../config/database');
+const { executeQuery, withTransaction } = require('../config/database');
 const { calculatePayslip } = require('../utils/payslipCalculator');
 const { getCompanyFilter } = require('../middleware/auth');
+const { computeRecoveries, recordRecoveries } = require('../utils/advanceRecovery');
 
 // ==============================================
 // GET ALL PAYSLIPS
@@ -220,13 +221,8 @@ const generatePayslip = async (req, res) => {
     // Calculate working days for the month (Calendar days)
     const daysInMonth = attendanceData.total_days_in_month;
     const actualDaysPresent = attendanceData.days_present;
-    const advanceDeduction = parseFloat(advance_deduction || 0);
 
-    // Use shared calculation helper
-    const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
-
-    // Insert payslip with both fixed and prorated values
-    const query = `
+    const insertQuery = `
       INSERT INTO payslips (
         employee_id, salary_id, month,
         total_working_days, total_days_in_month, days_present, days_absent,
@@ -238,47 +234,38 @@ const generatePayslip = async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const params = [
-      employee_id,
-      salaryData.salary_id,
-      monthStr,
-      calc.totalWorkingDays,
-      daysInMonth,
-      actualDaysPresent,
-      calc.daysAbsent,
-      calc.actualBasic,
-      calc.actualHra,
-      calc.actualAllowance + calc.actualIncentive,
-      calc.bonus,
-      calc.gratuity,
-      calc.actualGross,
-      calc.fixedBasic,
-      calc.fixedHra,
-      calc.fixedAllowance + calc.fixedIncentive,
-      calc.fixedGross,
-      calc.fixedNetSalary,
-      calc.pfDeduction,
-      calc.esiDeduction,
-      calc.professionalTax,
-      calc.mediclaimDeduction,
-      calc.advanceDeduction,
-      calc.otherDeductions,
-      calc.totalDeductions,
-      calc.netSalary,
-      calc.netPayableWithBonus,
-      'PENDING',
-      remarks || null
-    ];
+    // Advance recovery, payslip insert, and the recovery ledger are done in one
+    // transaction so a partial failure can't half-recover. The SALARY ADVANCE
+    // deduction is now driven by tracked advances (auto-recovery), not a manual
+    // field.
+    const { payslipId, calc } = await withTransaction(async (conn) => {
+      const { recoveries, total: advanceDeduction } = await computeRecoveries(conn, employee_id);
+      const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
-    const result = await executeQuery(query, params);
+      const [result] = await conn.query(insertQuery, [
+        employee_id, salaryData.salary_id, monthStr,
+        calc.totalWorkingDays, daysInMonth, actualDaysPresent, calc.daysAbsent,
+        calc.actualBasic, calc.actualHra, calc.actualAllowance + calc.actualIncentive,
+        calc.bonus, calc.gratuity, calc.actualGross,
+        calc.fixedBasic, calc.fixedHra, calc.fixedAllowance + calc.fixedIncentive,
+        calc.fixedGross, calc.fixedNetSalary,
+        calc.pfDeduction, calc.esiDeduction, calc.professionalTax, calc.mediclaimDeduction,
+        calc.advanceDeduction, calc.otherDeductions, calc.totalDeductions,
+        calc.netSalary, calc.netPayableWithBonus, 'PENDING', remarks || null
+      ]);
+      const payslipId = result.insertId;
+      await recordRecoveries(conn, payslipId, monthStr, recoveries);
+      return { payslipId, calc };
+    });
 
     res.status(201).json({
       success: true,
       message: 'Payslip generated successfully',
       data: {
-        payslip_id: result.insertId,
+        payslip_id: payslipId,
         gross_salary: calc.actualGross,
-        net_salary: calc.netSalary
+        net_salary: calc.netSalary,
+        advance_recovered: calc.advanceDeduction
       }
     });
   } catch (error) {
@@ -394,31 +381,36 @@ const bulkGeneratePayslips = async (req, res) => {
         }
 
         const salaryData = salary[0];
-        const advanceDeduction = parseFloat(salaryData.advance_deduction || 0);
 
-        // Use shared calculation helper
-        const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
+        // Auto-recover tracked advances + insert payslip + recovery ledger,
+        // atomically per employee (same as the single-generate path).
+        const calc = await withTransaction(async (conn) => {
+          const { recoveries, total: advanceDeduction } = await computeRecoveries(conn, emp.employee_id);
+          const c = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
-        await executeQuery(
-          `INSERT INTO payslips (
-            employee_id, salary_id, month,
-            total_working_days, total_days_in_month, days_present, days_absent,
-            basic_salary, hra, other_allowances, bonus, gratuity, gross_salary,
-            fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
-            pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
-            advance_deduction, other_deductions, total_deductions,
-            net_salary, net_payable_with_bonus, payment_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            emp.employee_id, salaryData.salary_id, monthStr,
-            calc.totalWorkingDays, daysInMonth, actualDaysPresent, calc.daysAbsent,
-            calc.actualBasic, calc.actualHra, calc.actualAllowance + calc.actualIncentive, calc.bonus, calc.gratuity, calc.actualGross,
-            calc.fixedBasic, calc.fixedHra, calc.fixedAllowance + calc.fixedIncentive, calc.fixedGross, calc.fixedNetSalary,
-            calc.pfDeduction, calc.esiDeduction, calc.professionalTax, calc.mediclaimDeduction,
-            calc.advanceDeduction, calc.otherDeductions, calc.totalDeductions,
-            calc.netSalary, calc.netPayableWithBonus, 'PENDING'
-          ]
-        );
+          const [ins] = await conn.query(
+            `INSERT INTO payslips (
+              employee_id, salary_id, month,
+              total_working_days, total_days_in_month, days_present, days_absent,
+              basic_salary, hra, other_allowances, bonus, gratuity, gross_salary,
+              fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
+              pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
+              advance_deduction, other_deductions, total_deductions,
+              net_salary, net_payable_with_bonus, payment_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              emp.employee_id, salaryData.salary_id, monthStr,
+              c.totalWorkingDays, daysInMonth, actualDaysPresent, c.daysAbsent,
+              c.actualBasic, c.actualHra, c.actualAllowance + c.actualIncentive, c.bonus, c.gratuity, c.actualGross,
+              c.fixedBasic, c.fixedHra, c.fixedAllowance + c.fixedIncentive, c.fixedGross, c.fixedNetSalary,
+              c.pfDeduction, c.esiDeduction, c.professionalTax, c.mediclaimDeduction,
+              c.advanceDeduction, c.otherDeductions, c.totalDeductions,
+              c.netSalary, c.netPayableWithBonus, 'PENDING'
+            ]
+          );
+          await recordRecoveries(conn, ins.insertId, monthStr, recoveries);
+          return c;
+        });
 
         results.success++;
         results.details.push(`${emp.employee_code} (${emp.first_name}): ₹${calc.netSalary}`);

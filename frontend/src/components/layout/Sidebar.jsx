@@ -8,6 +8,7 @@ const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout, collaps
     { id: 'sites', label: 'Sites', icon: BuildingIcon },
     { id: 'attendance', label: 'Attendance', icon: CalendarIcon },
     { id: 'salary', label: 'Payroll', icon: WalletIcon },
+    { id: 'advances', label: 'Advances', icon: WalletIcon, roles: ['SUPER_ADMIN', 'ADMIN', 'HR'] },
     { id: 'reports', label: 'Reports', icon: ChartIcon },
     { id: 'notices', label: 'Notices', icon: NoticeIcon, roles: ['SUPER_ADMIN', 'ADMIN', 'HR'] },
     { id: 'settings', label: 'Settings', icon: SettingsIcon, roles: ['SUPER_ADMIN', 'ADMIN'] },

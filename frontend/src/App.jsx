@@ -22,6 +22,7 @@ const SiteForm = lazy(() => import('./components/site/SiteForm'));
 const SalaryList = lazy(() => import('./components/salary/SalaryList'));
 const SalaryForm = lazy(() => import('./components/salary/SalaryForm'));
 const PayslipView = lazy(() => import('./components/salary/PayslipView'));
+const Advances = lazy(() => import('./components/salary/Advances'));
 const AttendanceManagement = lazy(() => import('./components/attendance/AttendanceManagement'));
 const Reports = lazy(() => import('./components/reports/Reports'));
 const CompanyList = lazy(() => import('./components/company/CompanyList'));
@@ -282,6 +283,7 @@ const MainApp = () => {
                     {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
                     {module === 'attendance' && 'Attendance Management'}
                     {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
+                    {module === 'advances' && 'Salary Advances'}
                     {module === 'reports' && 'Reports'}
                     {module === 'companies' && (view === 'form' ? (selectedCompanyId ? 'Edit Company' : 'Add Company') : 'Companies')}
                     {module === 'audit' && 'Audit Logs'}
@@ -420,6 +422,8 @@ const MainApp = () => {
               ) : null}
             </>
           )}
+
+          {module === 'advances' && <Advances />}
 
           {module === 'reports' && <Reports />}
 
