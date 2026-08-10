@@ -16,7 +16,8 @@ const getAdvances = async (req, res) => {
       SELECT a.advance_id, a.company_id, a.employee_id, a.amount, a.monthly_recovery,
              a.reason, a.advance_date, a.status, a.created_at,
              ${BALANCE_EXPR} AS balance,
-             e.employee_code, TRIM(CONCAT(e.first_name, ' ', COALESCE(e.last_name, ''))) AS employee_name
+             e.employee_code, TRIM(CONCAT(e.first_name, ' ', COALESCE(e.last_name, ''))) AS employee_name,
+             e.status AS employee_status
       FROM salary_advances a
       JOIN employees e ON e.employee_id = a.employee_id
       WHERE 1=1

@@ -96,7 +96,18 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
       try {
         const response = await employeeService.deleteEmployee(id);
         if (response.success) {
-          alert(response.message);
+          const owed = response.outstanding_advance;
+          if (owed && owed.total_balance > 0) {
+            const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(owed.total_balance);
+            // No more payslips will generate, so this can't auto-recover.
+            window.alert(
+              `${name} marked as resigned.\n\n⚠ Outstanding advance not yet recovered: ${fmt}.\n` +
+              `No further payslips will be generated, so this will NOT auto-recover. ` +
+              `Please collect it in the final settlement or cancel the advance to write it off (Advances screen).`
+            );
+          } else {
+            alert(response.message);
+          }
           loadEmployees();
         }
       } catch (error) {

@@ -94,6 +94,13 @@ const Advances = () => {
 
   const inputClass = 'w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500';
 
+  // Advances still owed by employees who have left (inactive/resigned) — these
+  // will never auto-recover, so HR needs to collect or write them off.
+  const exEmployeeOwed = advances.filter(
+    (a) => a.status === 'ACTIVE' && Number(a.balance) > 0 && a.employee_status && a.employee_status !== 'ACTIVE' && a.employee_status !== 'ON_LEAVE'
+  );
+  const exEmployeeOwedTotal = exEmployeeOwed.reduce((s, a) => s + Number(a.balance), 0);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -105,6 +112,13 @@ const Advances = () => {
           {showForm ? 'Close' : '+ Record Advance'}
         </button>
       </div>
+
+      {exEmployeeOwed.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+          <span className="font-semibold">⚠ {exEmployeeOwed.length} advance{exEmployeeOwed.length === 1 ? '' : 's'} owed by employees who have left</span>
+          {' '}— total {formatCurrency(exEmployeeOwedTotal)} that will not auto-recover (no more payslips). Collect in final settlement or cancel to write off.
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -167,7 +181,12 @@ const Advances = () => {
                   return (
                     <tr key={adv.advance_id} className="border-t border-slate-100">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-800">{adv.employee_name}</div>
+                        <div className="font-medium text-slate-800">
+                          {adv.employee_name}
+                          {adv.employee_status && adv.employee_status !== 'ACTIVE' && adv.employee_status !== 'ON_LEAVE' && Number(adv.balance) > 0 && (
+                            <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">Left — still owes</span>
+                          )}
+                        </div>
                         <div className="text-xs text-slate-400">{adv.employee_code}</div>
                       </td>
                       <td className="px-4 py-3 text-slate-600">{adv.advance_date ? String(adv.advance_date).split('T')[0] : '-'}</td>

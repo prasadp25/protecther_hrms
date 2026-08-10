@@ -672,9 +672,25 @@ const deleteEmployee = async (req, res) => {
     // Log audit trail
     await logEmployeeDelete(id, employeeData, req);
 
+    // Flag any advance still owed: once inactive, no more payslips are
+    // generated, so nothing will auto-recover the remaining balance. Surface
+    // it so HR can collect it in the final settlement or write it off.
+    const outstanding = await executeQuery(
+      `SELECT a.advance_id,
+              a.amount - COALESCE((SELECT SUM(r.amount) FROM salary_advance_recoveries r WHERE r.advance_id = a.advance_id), 0) AS balance
+       FROM salary_advances a
+       WHERE a.employee_id = ? AND a.status = 'ACTIVE'
+       HAVING balance > 0`,
+      [id]
+    );
+    const outstandingTotal = outstanding.reduce((sum, a) => sum + Number(a.balance), 0);
+
     res.status(200).json({
       success: true,
-      message: 'Employee deactivated successfully'
+      message: 'Employee deactivated successfully',
+      outstanding_advance: outstanding.length > 0
+        ? { count: outstanding.length, total_balance: outstandingTotal }
+        : null
     });
   } catch (error) {
     console.error('Delete employee error:', error);
