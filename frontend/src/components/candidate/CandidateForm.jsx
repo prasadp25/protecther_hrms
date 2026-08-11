@@ -59,7 +59,7 @@ const CandidateForm = ({ candidate, onSuccess, onCancel }) => {
 
   // Auto-calculator state
   const [ctcAmount, setCtcAmount] = useState(0);
-  const [splitType, setSplitType] = useState('40-40');
+  const [splitType, setSplitType] = useState('50-40'); // default 50% basic
   const [ptState, setPtState] = useState('maharashtra');
   const [isComponentsEdited, setIsComponentsEdited] = useState(false);
 
@@ -69,7 +69,7 @@ const CandidateForm = ({ candidate, onSuccess, onCancel }) => {
     designation: '', department: '', site_id: '', expected_joining_date: '',
     reporting_manager: '', basic_salary: '', hra: '', conveyance_allowance: '',
     other_allowances: '', bonus: '', gratuity: '', pf_deduction: '1800', pt_deduction: '200',
-    mediclaim_deduction: '', probation_period: '6', notice_period: '15', remarks: '',
+    mediclaim_deduction: '370', probation_period: '6', notice_period: '15', remarks: '',
     status: 'PENDING'
   });
 
