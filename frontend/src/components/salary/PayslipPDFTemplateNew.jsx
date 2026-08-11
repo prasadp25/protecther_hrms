@@ -409,7 +409,12 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
   const basicSalary = parseFloat(payslip.basicSalary) || 0;
   const hra = parseFloat(payslip.hra) || 0;
   const allowance = parseFloat(payslip.allowance) || 0;
-  const otherAllowance = parseFloat(payslip.otherAllowances) || 0;
+  // Statutory bonus and gratuity are carved out of the incentive during
+  // calculation (for the internal salary register). Fold them back into the
+  // displayed ALLOWANCE so BASIC + HRA + ALLOWANCE reconciles to GROSS on the
+  // payslip (otherwise the line reads short by bonus + gratuity).
+  const gratuity = parseFloat(payslip.gratuity) || 0;
+  const otherAllowance = (parseFloat(payslip.otherAllowances) || 0) + bonus + gratuity;
 
   return (
     <Document>

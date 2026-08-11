@@ -165,7 +165,12 @@ const buildPayslipPdf = (p) => {
   // Arrear always blank, which confused employees).
   const basic = n(p.basic_salary);
   const hra = n(p.hra);
-  const allowance = n(p.other_allowances); // the single real allowance line
+  // The statutory bonus and gratuity are carved OUT of the incentive during
+  // calculation (for the internal salary register). On the employee's payslip
+  // that would leave BASIC + HRA + ALLOWANCE short of GROSS by exactly
+  // bonus + gratuity, which reads as a "wrong allowance". Fold them back into
+  // the single ALLOWANCE line so the earnings reconcile to gross.
+  const allowance = n(p.other_allowances) + n(p.bonus) + n(p.gratuity);
   autoTable(doc, {
     startY: tablesTop,
     head: [['Description', 'Amount']],
