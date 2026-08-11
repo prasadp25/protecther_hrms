@@ -239,7 +239,10 @@ const generatePayslip = async (req, res) => {
     // deduction is now driven by tracked advances (auto-recovery), not a manual
     // field.
     const { payslipId, calc } = await withTransaction(async (conn) => {
-      const { recoveries, total: advanceDeduction } = await computeRecoveries(conn, employee_id);
+      // No pay this month (fully absent) → don't recover advances from zero pay.
+      const { recoveries, total: advanceDeduction } = actualDaysPresent > 0
+        ? await computeRecoveries(conn, employee_id)
+        : { recoveries: [], total: 0 };
       const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
       const [result] = await conn.query(insertQuery, [
@@ -385,7 +388,10 @@ const bulkGeneratePayslips = async (req, res) => {
         // Auto-recover tracked advances + insert payslip + recovery ledger,
         // atomically per employee (same as the single-generate path).
         const calc = await withTransaction(async (conn) => {
-          const { recoveries, total: advanceDeduction } = await computeRecoveries(conn, emp.employee_id);
+          // No pay this month (fully absent) → don't recover advances from zero pay.
+          const { recoveries, total: advanceDeduction } = actualDaysPresent > 0
+            ? await computeRecoveries(conn, emp.employee_id)
+            : { recoveries: [], total: 0 };
           const c = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
           const [ins] = await conn.query(

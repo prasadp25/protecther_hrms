@@ -503,7 +503,7 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
             </View>
             <View style={styles.payableDaysRow}>
               <Text style={styles.payableDaysLabel}>Payable Days:</Text>
-              <Text>{payslip.daysPresent || 0}</Text>
+              <Text>{payslip.daysPresent || 0}{(payslip.totalDaysInMonth ?? payslip.totalWorkingDays) != null ? '/' + (payslip.totalDaysInMonth ?? payslip.totalWorkingDays) : ''}</Text>
             </View>
           </View>
         </View>

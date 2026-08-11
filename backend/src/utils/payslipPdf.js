@@ -131,8 +131,9 @@ const buildPayslipPdf = (p) => {
     const rr = rightRows[i] || ['', ''];
     return [lr[0], lr[1], rr[0], rr[1]];
   });
-  // Payable days on its own trailing right-aligned row
-  detailBody.push(['', '', 'Payable Days:', String(p.days_present ?? 0)]);
+  // Payable days on its own trailing right-aligned row, shown as present/total
+  const totalDays = p.total_days_in_month ?? p.total_working_days;
+  detailBody.push(['', '', 'Payable Days:', `${p.days_present ?? 0}${totalDays != null ? '/' + totalDays : ''}`]);
 
   autoTable(doc, {
     startY: y,

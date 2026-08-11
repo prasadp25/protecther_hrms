@@ -70,9 +70,14 @@ const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDed
   // Fixed Deductions (constant - not attendance based)
   // PT is a flat monthly slab (not prorated for partial attendance), but is
   // waived entirely for a joining-month stub period when the caller opts in.
-  const professionalTax = waiveProfessionalTax ? 0 : parseFloat(salaryData.professional_tax || 0);
-  const mediclaimDeduction = parseFloat(salaryData.mediclaim_deduction || 0);
-  const otherDeductions = parseFloat(salaryData.other_deductions || 0);
+  // When the employee earned nothing this month (fully absent, gross = 0),
+  // there is no pay to deduct from, so the flat deductions (PT, mediclaim,
+  // other) are waived rather than pushing net pay negative. PF/ESI already
+  // scale to 0 with earned pay.
+  const hasEarnings = actualDaysPresent > 0;
+  const professionalTax = (waiveProfessionalTax || !hasEarnings) ? 0 : parseFloat(salaryData.professional_tax || 0);
+  const mediclaimDeduction = hasEarnings ? parseFloat(salaryData.mediclaim_deduction || 0) : 0;
+  const otherDeductions = hasEarnings ? parseFloat(salaryData.other_deductions || 0) : 0;
 
   const totalDeductions = pfDeduction + esiDeduction + professionalTax + mediclaimDeduction + advanceDeduction + otherDeductions;
 
