@@ -531,13 +531,10 @@ const PayslipPDFTemplateNew = ({ payslip, employee }) => {
                 <Text style={styles.deductionsDataAmount}>{formatCurrency(hra)}</Text>
               </View>
 
+              {/* Single ALLOWANCE line (the old empty ALLOWANCE row was
+                  always 0 and has been removed) */}
               <View style={styles.deductionsDataRow}>
                 <Text style={styles.deductionsDataDesc}>ALLOWANCE</Text>
-                <Text style={styles.deductionsDataAmount}>{formatCurrency(allowance)}</Text>
-              </View>
-
-              <View style={styles.deductionsDataRow}>
-                <Text style={styles.deductionsDataDesc}>OTHER ALLOW</Text>
                 <Text style={styles.deductionsDataAmount}>{formatCurrency(otherAllowance)}</Text>
               </View>
             </View>

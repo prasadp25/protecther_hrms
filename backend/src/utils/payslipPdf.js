@@ -165,8 +165,7 @@ const buildPayslipPdf = (p) => {
   // Arrear always blank, which confused employees).
   const basic = n(p.basic_salary);
   const hra = n(p.hra);
-  const allowance = 0; // old template's ALLOWANCE row was always 0 (unmapped field)
-  const otherAllow = n(p.other_allowances);
+  const allowance = n(p.other_allowances); // the single real allowance line
   autoTable(doc, {
     startY: tablesTop,
     head: [['Description', 'Amount']],
@@ -174,7 +173,6 @@ const buildPayslipPdf = (p) => {
       ['BASIC SAL', formatCurrency(basic)],
       ['HRA', formatCurrency(hra)],
       ['ALLOWANCE', formatCurrency(allowance)],
-      ['OTHER ALLOW', formatCurrency(otherAllow)],
     ],
     theme: 'grid',
     styles: { fontSize: 7, cellPadding: 3, lineColor: [200, 200, 200], lineWidth: 0.5, textColor: [0, 0, 0] },
