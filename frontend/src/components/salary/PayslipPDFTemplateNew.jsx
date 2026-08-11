@@ -356,6 +356,9 @@ const numberToWords = (num) => {
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 
   if (num === 0) return 'Zero Rupees Only';
+  // Negative net pay (e.g. a zero-days-present month with only fixed
+  // deductions) would otherwise make convertLakhs return undefined and crash.
+  if (num < 0) return 'Minus ' + numberToWords(-num);
 
   const convertHundreds = (n) => {
     if (n === 0) return '';

@@ -35,6 +35,10 @@ const numberToWords = (num) => {
   const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
   if (num === 0) return 'Zero Rupees Only';
+  // Guard against negative net pay (e.g. a zero-days-present month where only
+  // fixed deductions like PT/mediclaim apply): convertHundreds/convertLakhs
+  // only handle non-negatives and would otherwise return undefined and crash.
+  if (num < 0) return 'Minus ' + numberToWords(-num);
   const convertHundreds = (n) => {
     if (n === 0) return '';
     if (n < 10) return ones[n];
