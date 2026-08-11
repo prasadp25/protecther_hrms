@@ -142,8 +142,10 @@ const MyPayslips = () => {
                   <span className="font-medium">{formatCurrency(selectedPayslip.hra)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Other Allowances</span>
-                  <span className="font-medium">{formatCurrency(selectedPayslip.other_allowances)}</span>
+                  <span className="text-gray-600">Allowance</span>
+                  {/* Fold carved-out bonus + gratuity back in so Basic + HRA +
+                      Allowance = Gross on screen, matching the payslip PDF. */}
+                  <span className="font-medium">{formatCurrency((parseFloat(selectedPayslip.other_allowances) || 0) + (parseFloat(selectedPayslip.bonus) || 0) + (parseFloat(selectedPayslip.gratuity) || 0))}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t font-semibold text-green-700">
                   <span>Gross Salary</span>

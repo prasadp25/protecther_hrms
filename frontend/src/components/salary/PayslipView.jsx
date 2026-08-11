@@ -1510,8 +1510,10 @@ const PayslipView = ({ onBack }) => {
                   <span>{formatCurrency(selectedPayslip.hra)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Other Allowances</span>
-                  <span>{formatCurrency(selectedPayslip.otherAllowances)}</span>
+                  <span>Allowance</span>
+                  {/* Fold the carved-out bonus + gratuity back in so
+                      Basic + HRA + Allowance = Gross on screen, matching the PDF. */}
+                  <span>{formatCurrency((parseFloat(selectedPayslip.otherAllowances) || 0) + (parseFloat(selectedPayslip.bonus) || 0) + (parseFloat(selectedPayslip.gratuity) || 0))}</span>
                 </div>
                 {selectedPayslip.overtimeAmount > 0 && (
                   <div className="flex justify-between">
