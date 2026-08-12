@@ -15,6 +15,24 @@ const SPLIT_OPTIONS = {
   '50-40': { basic: 50, hraOfBasic: 40, label: '50% Basic, HRA 40% of Basic' },
 };
 
+// Split type is NOT stored in the DB, so when editing an existing structure we
+// infer it from the numbers: split = Basic as a % of Gross (Basic+HRA+Incentive).
+// Returns the nearest preset key, the actual % and whether it matches a preset
+// closely (within ~1%). Used so the dropdown reflects the real structure instead
+// of the hardcoded default, and to show HR the true split.
+const detectSplitType = (basic, hra, incentive) => {
+  const gross = (parseFloat(basic) || 0) + (parseFloat(hra) || 0) + (parseFloat(incentive) || 0);
+  if (gross <= 0) return { key: '40-40', pct: 0, exact: false };
+  const basicPct = (parseFloat(basic) || 0) / gross * 100;
+  let key = '40-40';
+  let bestDiff = Infinity;
+  for (const [k, cfg] of Object.entries(SPLIT_OPTIONS)) {
+    const diff = Math.abs(cfg.basic - basicPct);
+    if (diff < bestDiff) { bestDiff = diff; key = k; }
+  }
+  return { key, pct: basicPct, exact: bestDiff <= 1 };
+};
+
 // State-wise Professional Tax rules (monthly)
 const PT_RULES = {
   maharashtra: { name: 'Maharashtra', calculate: (gross) => gross > 10000 ? 200 : gross > 7500 ? 175 : 0 },
@@ -148,6 +166,11 @@ const SalaryForm = ({ salaryId, preSelectedEmployeeId, onSuccess, onCancel }) =>
 
         // Set CTC amount from existing gross salary for recalculation
         setCtcAmount(grossSalary);
+
+        // Reflect the structure's real split in the dropdown (it isn't stored,
+        // so infer it from Basic/Gross). setSplitType alone does not recalculate,
+        // so the loaded components stay untouched.
+        setSplitType(detectSplitType(basic, hra, incentive).key);
 
         setSelectedEmployee({
           employee_id: data.employee_id,
@@ -521,6 +544,16 @@ const SalaryForm = ({ salaryId, preSelectedEmployeeId, onSuccess, onCancel }) =>
                   <option key={key} value={key}>{config.label}</option>
                 ))}
               </select>
+              {(() => {
+                const d = detectSplitType(formData.basicSalary, formData.hra, formData.incentiveAllowance);
+                if (!(d.pct > 0)) return null;
+                return (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Current: Basic is <span className="font-semibold">{d.pct.toFixed(1)}%</span> of Gross
+                    {d.exact ? ` — ${d.key} split` : ' — custom (no preset matches)'}
+                  </p>
+                );
+              })()}
             </div>
 
             <div>
