@@ -533,13 +533,26 @@ const convertToEmployee = asyncHandler(async (req, res) => {
     const [employeeResult] = await conn.query(employeeQuery, employeeParams);
     const employeeId = employeeResult.insertId;
 
-    // Create salary structure
-    const salaryQuery = 'INSERT INTO salaries (company_id, employee_id, basic_salary, hra, conveyance_allowance, incentive_allowance, gross_salary, pf_deduction, professional_tax, total_deductions, net_salary, effective_from, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    // Create salary structure.
+    // The offer/candidate model ADDS bonus + gratuity on top of the allowances to
+    // reach gross, but the payslip calculator CARVES bonus + gratuity OUT of the
+    // incentive. So the incentive stored here must INCLUDE the bonus + gratuity
+    // (and conveyance) — otherwise the payslip subtracts them and the employee's
+    // gross ends up short by exactly bonus + gratuity. Mediclaim was also being
+    // dropped (not in the column list), defaulting to 0.
+    const incentiveWithStatutory =
+      (parseFloat(candidate.conveyance_allowance) || 0) +
+      (parseFloat(candidate.other_allowances) || 0) +
+      (parseFloat(candidate.bonus) || 0) +
+      (parseFloat(candidate.gratuity) || 0);
+
+    const salaryQuery = 'INSERT INTO salaries (company_id, employee_id, basic_salary, hra, conveyance_allowance, incentive_allowance, gross_salary, pf_deduction, professional_tax, mediclaim_deduction, total_deductions, net_salary, effective_from, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     const salaryParams = [
       candidate.company_id, employeeId, candidate.basic_salary, candidate.hra,
-      candidate.conveyance_allowance, candidate.other_allowances || 0, candidate.gross_salary,
-      candidate.pf_deduction, candidate.pt_deduction, candidate.total_deductions, candidate.net_salary,
+      0, incentiveWithStatutory, candidate.gross_salary,
+      candidate.pf_deduction, candidate.pt_deduction, candidate.mediclaim_deduction || 0,
+      candidate.total_deductions, candidate.net_salary,
       additionalData.date_of_joining, 'ACTIVE'
     ];
 
