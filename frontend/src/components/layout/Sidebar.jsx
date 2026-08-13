@@ -10,6 +10,7 @@ const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout, collaps
     { id: 'salary', label: 'Payroll', icon: WalletIcon },
     { id: 'advances', label: 'Advances', icon: WalletIcon, roles: ['SUPER_ADMIN', 'ADMIN', 'HR'] },
     { id: 'reports', label: 'Reports', icon: ChartIcon },
+    { id: 'compliance', label: 'Compliance', icon: ShieldIcon, roles: ['SUPER_ADMIN', 'ADMIN', 'HR'] },
     { id: 'notices', label: 'Notices', icon: NoticeIcon, roles: ['SUPER_ADMIN', 'ADMIN', 'HR'] },
     { id: 'settings', label: 'Settings', icon: SettingsIcon, roles: ['SUPER_ADMIN', 'ADMIN'] },
   ];

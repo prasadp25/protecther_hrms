@@ -25,6 +25,7 @@ const PayslipView = lazy(() => import('./components/salary/PayslipView'));
 const Advances = lazy(() => import('./components/salary/Advances'));
 const AttendanceManagement = lazy(() => import('./components/attendance/AttendanceManagement'));
 const Reports = lazy(() => import('./components/reports/Reports'));
+const Compliance = lazy(() => import('./components/compliance/Compliance'));
 const CompanyList = lazy(() => import('./components/company/CompanyList'));
 const CompanyForm = lazy(() => import('./components/company/CompanyForm'));
 const AuditLogs = lazy(() => import('./components/audit/AuditLogs'));
@@ -285,6 +286,7 @@ const MainApp = () => {
                     {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
                     {module === 'advances' && 'Salary Advances'}
                     {module === 'reports' && 'Reports'}
+                    {module === 'compliance' && 'Statutory & Compliance'}
                     {module === 'companies' && (view === 'form' ? (selectedCompanyId ? 'Edit Company' : 'Add Company') : 'Companies')}
                     {module === 'audit' && 'Audit Logs'}
                     {module === 'notices' && 'Notices Management'}
@@ -426,6 +428,8 @@ const MainApp = () => {
           {module === 'advances' && <Advances />}
 
           {module === 'reports' && <Reports />}
+
+          {module === 'compliance' && <Compliance />}
 
           {module === 'companies' && isSuperAdmin && (
             <>
