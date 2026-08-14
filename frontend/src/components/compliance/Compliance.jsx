@@ -187,6 +187,108 @@ const Compliance = () => {
     XLSX.writeFile(wb, `Form_C_Bonus_FY_${yearLabel}.xlsx`);
   };
 
+  // Statutory Form D (Payment of Bonus Rules 1975, Rule 5) — the annual return
+  // filed after bonus is paid. Single-page aggregate summary for the FY.
+  const generateFormD = async () => {
+    let res;
+    try { res = await complianceService.getBonusFormC({ fy }); }
+    catch (e) { toast.error(e.response?.data?.message || 'Failed to build Form D'); return; }
+    if (!res.success) return;
+    const rows = res.data || [];
+    const yearLabel = res.summary.fy_label;
+    if (!rows.length) { toast.info(`No bonus records for FY ${yearLabel}`); return; }
+    const totalBonus = rows.reduce((s, r) => s + Number(r.total_bonus || 0), 0);
+    const aoa = [
+      ['FORM D'],
+      ['ANNUAL RETURN — BONUS PAID TO EMPLOYEES'],
+      [`For the accounting year ending 31st March ${fy + 1}  (FY ${yearLabel})`],
+      [],
+      ['1. Name of the establishment & complete postal address', res.summary.company || ''],
+      ['2. Nature of industry', ''],
+      ['3. Name of the employer', ''],
+      ['4. Total number of employees', ''],
+      ['5. Number of employees benefited by bonus payments', rows.length],
+      ['6. Total amount payable as bonus under section 10 or 11', totalBonus],
+      ['7. Settlement, if any, reached under sec. 18(1)/12(3) of the I.D. Act 1947 with date', ''],
+      ['8. Percentage of bonus declared to be paid', '8.33%'],
+      ['9. Total amount of bonus actually paid', ''],
+      ['10. Date on which payment made', ''],
+      ['11. Whether bonus paid to all employees; if not, reasons', ''],
+      ['12. Remarks', ''],
+      [],
+      ['Signature of the employer / authorised officer', ''],
+      ['Date & Place', ''],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } },
+    ];
+    ws['!cols'] = [{ wch: 62 }, { wch: 34 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Form D');
+    XLSX.writeFile(wb, `Form_D_Bonus_FY_${yearLabel}.xlsx`);
+  };
+
+  // Maharashtra Professional Tax return — Form III-B (PTRC). Slab-wise summary
+  // for the selected month, from the payslip PT amounts.
+  const generateFormIIIB = async () => {
+    let res;
+    try { res = await complianceService.getPTRegister({ month }); }
+    catch (e) { toast.error(e.response?.data?.message || 'Failed to build Form III-B'); return; }
+    if (!res.success) return;
+    const ptRows = res.data || [];
+    if (!ptRows.length) { toast.info(`No PT records for ${month}`); return; }
+    // Maharashtra monthly slabs, keyed by the PT amount deducted.
+    const slabLabel = (amt) => amt === 0 ? 'Up to 7,500 (men) / 25,000 (women) — Nil'
+      : amt === 175 ? '7,501 – 10,000'
+      : amt === 200 ? 'Above 10,000'
+      : amt === 300 ? 'Above 10,000 (February)'
+      : `PT ₹${amt}`;
+    const groups = {};
+    for (const r of ptRows) {
+      const amt = Math.round(Number(r.professional_tax) || 0);
+      if (!groups[amt]) groups[amt] = { count: 0, total: 0 };
+      groups[amt].count += 1;
+      groups[amt].total += amt;
+    }
+    const [y, mm] = month.split('-');
+    const monthName = new Date(`${month}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const aoa = [
+      ['FORM III-B'],
+      ['Return of Tax Payable by Employer — Maharashtra Professional Tax (PTRC)'],
+      ['(Maharashtra State Tax on Professions, Trades, Callings & Employments Act, 1975)'],
+      [],
+      ['PTRC / TIN No.', '', '', ''],
+      ['Return for the period', monthName, '', ''],
+      [],
+      ['Salary slab (monthly)', 'No. of employees', 'Rate of tax (₹)', 'Amount of tax (₹)'],
+    ];
+    const amounts = Object.keys(groups).map(Number).sort((a, b) => a - b);
+    let gTotalCount = 0, gTotalTax = 0;
+    for (const amt of amounts) {
+      aoa.push([slabLabel(amt), groups[amt].count, amt, groups[amt].total]);
+      gTotalCount += groups[amt].count;
+      gTotalTax += groups[amt].total;
+    }
+    aoa.push(['Total', gTotalCount, '', gTotalTax]);
+    aoa.push([]);
+    aoa.push(['Amount of tax payable', gTotalTax, '', '']);
+    aoa.push(['Amount actually paid (challan)', '', '', '']);
+    aoa.push(['Signature of employer / authorised officer', '', '', '']);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 3 } },
+    ];
+    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 14 }, { wch: 18 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Form III-B');
+    XLSX.writeFile(wb, `Form_III-B_PT_${y}-${mm}.xlsx`);
+  };
+
   const downloadECR = () => {
     // Reuse the existing PF ECR endpoint (opens the text file download)
     const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1');
@@ -240,11 +342,19 @@ const Compliance = () => {
               <button onClick={generateFormC} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium whitespace-nowrap">
                 Download Form C
               </button>
+              <button onClick={generateFormD} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 text-sm font-medium whitespace-nowrap">
+                Form D (return)
+              </button>
             </div>
           )}
           {tab.key === 'pf' && (
             <button onClick={downloadECR} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm font-medium">
               Download PF ECR
+            </button>
+          )}
+          {tab.key === 'pt' && (
+            <button onClick={generateFormIIIB} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm font-medium whitespace-nowrap">
+              Form III-B (Maharashtra)
             </button>
           )}
           <button onClick={exportExcel} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
