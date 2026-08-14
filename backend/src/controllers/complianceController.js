@@ -17,8 +17,7 @@ const nameExpr = `TRIM(CONCAT(e.first_name, ' ', COALESCE(e.last_name, '')))`;
 const EPF_WAGES_CAP = 15000;
 const EPS_RATE = 0.0833;      // employer pension
 const EPF_EMPLOYER_DIFF = 0.0367; // employer EPF after EPS
-// ESI statutory rates
-const ESI_EMPLOYEE_RATE = 0.0075;
+// ESI statutory rate (employer share; employee 0.75% comes straight from the payslip)
 const ESI_EMPLOYER_RATE = 0.0325;
 
 const requireMonth = (month, res) => {
@@ -74,10 +73,12 @@ const getBonusRegister = asyncHandler(async (req, res) => {
 // Cumulative accrued provision + estimated payable-on-exit. NOT a monthly payout.
 const getGratuityLiability = asyncHandler(async (req, res) => {
   const cf = buildCompanyFilter('e', req);
+  // MAX() on the joined columns (each is single-valued per employee) so the
+  // GROUP BY e.employee_id satisfies ONLY_FULL_GROUP_BY.
   const query = `
     SELECT e.employee_code, ${nameExpr} AS employee_name, e.designation,
-           e.date_of_joining, e.status, c.company_name, st.site_name,
-           s.basic_salary AS current_basic,
+           e.date_of_joining, e.status, MAX(c.company_name) AS company_name, MAX(st.site_name) AS site_name,
+           MAX(s.basic_salary) AS current_basic,
            SUM(p.gratuity) AS accrued_gratuity, COUNT(p.payslip_id) AS months_accrued
     FROM employees e
     LEFT JOIN payslips p ON p.employee_id = e.employee_id
