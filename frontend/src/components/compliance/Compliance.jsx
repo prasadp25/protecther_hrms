@@ -14,6 +14,16 @@ const prevMonth = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
+// Financial year (accounting year) that a date falls in: Jan–Mar belong to the
+// FY that started the previous April. Returns the start year (FY start-Apr).
+const fyOf = (date) => (date.getMonth() + 1 >= 4 ? date.getFullYear() : date.getFullYear() - 1);
+const fyLabel = (startYear) => `${startYear}-${String(startYear + 1).slice(-2)}`;
+// Last 5 financial years, newest first, for the Form C dropdown.
+const FY_OPTIONS = (() => {
+  const cur = fyOf(new Date());
+  return Array.from({ length: 5 }, (_, i) => cur - i);
+})();
+
 // Column spec per register. fmt: money | date | bool | text
 const TABS = [
   {
@@ -95,6 +105,7 @@ const cell = (row, col) => {
 const Compliance = () => {
   const [activeKey, setActiveKey] = useState('bonus');
   const [month, setMonth] = useState(prevMonth());
+  const [fy, setFy] = useState(fyOf(new Date())); // Form C accounting year (start year)
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -136,25 +147,23 @@ const Compliance = () => {
     XLSX.writeFile(wb, `${tab.key.toUpperCase()}_Register${suffix}.xlsx`);
   };
 
-  // Statutory Form C (Payment of Bonus Rules 1975, Rule 4(c)) for the accounting
-  // year (Apr–Mar) derived from the selected month. Blank deduction/payment/
-  // signature columns are for the employer to fill.
+  // Statutory Form C (Payment of Bonus Rules 1975, Rule 4(c)) for the selected
+  // accounting year (Apr–Mar). Blank deduction/payment/signature columns are for
+  // the employer to fill.
   const generateFormC = async () => {
-    const [y, mm] = month.split('-').map(Number);
-    const fy = mm >= 4 ? y : y - 1;
     let res;
     try { res = await complianceService.getBonusFormC({ fy }); }
     catch (e) { toast.error(e.response?.data?.message || 'Failed to build Form C'); return; }
     if (!res.success) return;
     const rows = res.data || [];
-    const fyLabel = res.summary.fy_label;
-    if (!rows.length) { toast.info(`No bonus records for FY ${fyLabel}`); return; }
+    const yearLabel = res.summary.fy_label;
+    if (!rows.length) { toast.info(`No bonus records for FY ${yearLabel}`); return; }
     const N = 15;
     const pad = (a) => { const x = a.slice(); while (x.length < N) x.push(''); return x; };
     const title = [
       pad(['FORM C']),
       pad([`Bonus Register — ${res.summary.company || ''}`]),
-      pad([`Register showing bonus due, deductions (sec. 17 & 18) and amount disbursed — Accounting Year ${fyLabel}`]),
+      pad([`Register showing bonus due, deductions (sec. 17 & 18) and amount disbursed — Accounting Year ${yearLabel}`]),
       pad([]),
     ];
     const headTop = ['Sl. No.', 'Name of the employee', 'Whether completed 15 yrs of age at beginning of accounting year', 'Designation', 'No. of days worked in the year', 'Total salary or wage (Basic)', 'Amount of bonus payable under sec. 10/11', 'Deductions', '', '', '', 'Net amount payable (7−8)', 'Amount actually paid', 'Date on which paid', 'Signature / thumb-impression'];
@@ -175,7 +184,7 @@ const Compliance = () => {
     ws['!cols'] = [6, 26, 16, 18, 10, 15, 15, 15, 15, 13, 16, 15, 15, 13, 18].map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Form C');
-    XLSX.writeFile(wb, `Form_C_Bonus_FY_${fyLabel}.xlsx`);
+    XLSX.writeFile(wb, `Form_C_Bonus_FY_${yearLabel}.xlsx`);
   };
 
   const downloadECR = () => {
@@ -218,9 +227,20 @@ const Compliance = () => {
         {!tab.usesMonth && <span className="text-sm text-slate-500">Cumulative across all payslips to date.</span>}
         <div className="ml-auto flex gap-2">
           {tab.key === 'bonus' && (
-            <button onClick={generateFormC} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
-              Download Form C
-            </button>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-slate-600 flex items-center gap-1.5">
+                <span className="hidden sm:inline">Form C year:</span>
+                <select value={fy} onChange={(e) => setFy(Number(e.target.value))}
+                  className="px-2.5 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                  {FY_OPTIONS.map((y) => (
+                    <option key={y} value={y}>FY {fyLabel(y)}</option>
+                  ))}
+                </select>
+              </label>
+              <button onClick={generateFormC} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium whitespace-nowrap">
+                Download Form C
+              </button>
+            </div>
           )}
           {tab.key === 'pf' && (
             <button onClick={downloadECR} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm font-medium">
