@@ -40,6 +40,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
     bankName: '',
     uanNo: '',
     pfNo: '',
+    epsApplicable: true, // EPS pension-scheme member (default yes)
     qualification: '',
     dob: '',
     gender: '',
@@ -117,6 +118,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           bankName: employee.bank_name || '',
           uanNo: employee.uan_no || '',
           pfNo: employee.pf_no || '',
+          epsApplicable: employee.eps_applicable !== 0,
           qualification: employee.qualification || '',
           dob: employee.dob ? employee.dob.split('T')[0] : '',
           gender: employee.gender || '',
@@ -346,6 +348,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       formDataToSend.append('pan_no', formData.panNo);
       if (formData.uanNo) formDataToSend.append('uan_no', formData.uanNo);
       if (formData.pfNo) formDataToSend.append('pf_no', formData.pfNo);
+      formDataToSend.append('eps_applicable', formData.epsApplicable ? '1' : '0');
       formDataToSend.append('account_number', formData.accountNo);
       formDataToSend.append('ifsc_code', formData.ifscCode);
       formDataToSend.append('bank_name', formData.bankName);
@@ -664,6 +667,26 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               onChange={handleChange}
               className={inputClasses}
             />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                name="epsApplicable"
+                checked={formData.epsApplicable}
+                onChange={(e) => setFormData((prev) => ({ ...prev, epsApplicable: e.target.checked }))}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-slate-700">
+                <span className="font-medium">EPS pension-scheme member</span>
+                <span className="block text-xs text-slate-500">
+                  Leave checked for normal members. Uncheck only if EPFO flags this employee as
+                  not in the pension scheme (e.g. first joined EPF after Sep-2014 on wages above
+                  ₹15,000, or over 58) — the PF ECR will then show EPS as zero.
+                </span>
+              </span>
+            </label>
           </div>
         </div>
       </div>

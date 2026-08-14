@@ -347,13 +347,13 @@ const createEmployee = async (req, res) => {
       INSERT INTO employees (
         company_id, employee_code, first_name, last_name, mobile, alternate_mobile, email,
         photo_url, dob, gender, marital_status, qualification, address, city, state, pincode,
-        aadhaar_no, aadhaar_card_url, pan_no, pan_card_url, uan_no, pf_no, esi_no,
+        aadhaar_no, aadhaar_card_url, pan_no, pan_card_url, uan_no, pf_no, eps_applicable, esi_no,
         account_number, ifsc_code, bank_name, branch_name,
         designation, department, date_of_joining, date_of_leaving,
         offer_letter_issue_date, offer_letter_url, status, site_id,
         emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship,
         wp_policy, hospital_insurance_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -379,6 +379,7 @@ const createEmployee = async (req, res) => {
       employeeData.pan_card_url || null,
       employeeData.uan_no || null,
       employeeData.pf_no || null,
+      employeeData.eps_applicable === '0' || employeeData.eps_applicable === 0 ? 0 : 1,
       employeeData.esi_no || null,
       employeeData.account_number || null,
       employeeData.ifsc_code || null,
