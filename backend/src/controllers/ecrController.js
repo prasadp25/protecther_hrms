@@ -6,7 +6,8 @@ const { executeQuery } = require('../config/database');
 const EPF_WAGES_CAP = 15000; // EPF wages capped at ₹15,000
 const EPF_EMPLOYEE_RATE = 0.12; // 12% employee contribution
 const EPS_RATE = 0.0833; // 8.33% employer pension contribution
-const EPF_EMPLOYER_DIFF_RATE = 0.0367; // 3.67% employer EPF (after EPS)
+// Employer EPF share is derived as EPF(12%) − EPS(8.33%), not a flat 3.67%, so
+// it reconciles exactly with EPFO's ECR validation (RFE-37).
 
 // ==============================================
 // VALIDATE UAN FORMAT (12 digits)
@@ -39,7 +40,7 @@ const generateECR = async (req, res) => {
         p.payslip_id, p.month, p.basic_salary, p.gross_salary,
         p.pf_deduction, p.days_absent,
         e.employee_id, e.employee_code, e.first_name, e.last_name,
-        e.uan_no, e.company_id,
+        e.uan_no, e.eps_applicable, e.company_id,
         c.company_code, c.company_name
       FROM payslips p
       JOIN employees e ON p.employee_id = e.employee_id
@@ -87,13 +88,18 @@ const generateECR = async (req, res) => {
 
       // Calculate EPF wages (capped at 15000)
       const epfWages = Math.min(parseFloat(payslip.basic_salary) || 0, EPF_WAGES_CAP);
-      const epsWages = epfWages; // Same as EPF wages
       const edliWages = epfWages; // Same as EPF wages
+      // EPS wages are 0 for members not in the pension scheme (EPFO-flagged);
+      // otherwise same as EPF wages.
+      const epsMember = payslip.eps_applicable !== 0;
+      const epsWages = epsMember ? epfWages : 0;
 
-      // Calculate contributions
+      // Contributions. Employer EPF (ER diff) MUST equal Employee EPF (12%) minus
+      // EPS (8.33%) exactly — EPFO validates this (RFE-37). A separate 3.67% calc
+      // rounds independently and mismatches by ±1, so derive it from the two.
       const epfEE = payslip.pf_deduction || Math.round(epfWages * EPF_EMPLOYEE_RATE);
       const eps = Math.round(epsWages * EPS_RATE);
-      const epfERDiff = Math.round(epfWages * EPF_EMPLOYER_DIFF_RATE);
+      const epfERDiff = epfEE - eps;
       const ncpDays = payslip.days_absent || 0;
       const refund = 0;
 
@@ -173,7 +179,7 @@ const previewECR = async (req, res) => {
         p.payslip_id, p.month, p.basic_salary, p.gross_salary,
         p.pf_deduction, p.days_absent,
         e.employee_id, e.employee_code, e.first_name, e.last_name,
-        e.uan_no, e.company_id,
+        e.uan_no, e.eps_applicable, e.company_id,
         c.company_code, c.company_name
       FROM payslips p
       JOIN employees e ON p.employee_id = e.employee_id
@@ -216,13 +222,14 @@ const previewECR = async (req, res) => {
 
       // Calculate EPF wages (capped at 15000)
       const epfWages = Math.min(parseFloat(payslip.basic_salary) || 0, EPF_WAGES_CAP);
-      const epsWages = epfWages;
       const edliWages = epfWages;
+      const epsMember = payslip.eps_applicable !== 0;
+      const epsWages = epsMember ? epfWages : 0;
 
-      // Calculate contributions
+      // Employer EPF = Employee EPF (12%) − EPS (8.33%), exactly (see generateECR).
       const epfEE = payslip.pf_deduction || Math.round(epfWages * EPF_EMPLOYEE_RATE);
       const eps = Math.round(epsWages * EPS_RATE);
-      const epfERDiff = Math.round(epfWages * EPF_EMPLOYER_DIFF_RATE);
+      const epfERDiff = epfEE - eps;
       const ncpDays = payslip.days_absent || 0;
 
       const record = {
