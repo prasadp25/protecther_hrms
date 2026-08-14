@@ -136,6 +136,48 @@ const Compliance = () => {
     XLSX.writeFile(wb, `${tab.key.toUpperCase()}_Register${suffix}.xlsx`);
   };
 
+  // Statutory Form C (Payment of Bonus Rules 1975, Rule 4(c)) for the accounting
+  // year (Apr–Mar) derived from the selected month. Blank deduction/payment/
+  // signature columns are for the employer to fill.
+  const generateFormC = async () => {
+    const [y, mm] = month.split('-').map(Number);
+    const fy = mm >= 4 ? y : y - 1;
+    let res;
+    try { res = await complianceService.getBonusFormC({ fy }); }
+    catch (e) { toast.error(e.response?.data?.message || 'Failed to build Form C'); return; }
+    if (!res.success) return;
+    const rows = res.data || [];
+    const fyLabel = res.summary.fy_label;
+    if (!rows.length) { toast.info(`No bonus records for FY ${fyLabel}`); return; }
+    const N = 15;
+    const pad = (a) => { const x = a.slice(); while (x.length < N) x.push(''); return x; };
+    const title = [
+      pad(['FORM C']),
+      pad([`Bonus Register — ${res.summary.company || ''}`]),
+      pad([`Register showing bonus due, deductions (sec. 17 & 18) and amount disbursed — Accounting Year ${fyLabel}`]),
+      pad([]),
+    ];
+    const headTop = ['Sl. No.', 'Name of the employee', 'Whether completed 15 yrs of age at beginning of accounting year', 'Designation', 'No. of days worked in the year', 'Total salary or wage (Basic)', 'Amount of bonus payable under sec. 10/11', 'Deductions', '', '', '', 'Net amount payable (7−8)', 'Amount actually paid', 'Date on which paid', 'Signature / thumb-impression'];
+    const headSub = ['', '', '', '', '', '', '', 'Puja/customary bonus (sec.17)', 'Interim bonus / advance (sec.17)', 'Income-tax deducted', 'Financial loss by misconduct (sec.18)', '', '', '', ''];
+    const body = rows.map((r, i) => [i + 1, r.employee_name, r.completed_15, r.designation || '', Number(r.days_worked || 0), Number(r.total_wages || 0), Number(r.total_bonus || 0), '', '', '', '', Number(r.total_bonus || 0), '', '', '']);
+    const total = rows.reduce((s, r) => s + Number(r.total_bonus || 0), 0);
+    const totalRow = ['', `Total — ${rows.length} employees`, '', '', '', '', total, '', '', '', '', total, '', '', ''];
+    const aoa = [...title, headTop, headSub, ...body, totalRow];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const hTop = 4, hSub = 5;
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: N - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: N - 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: N - 1 } },
+      { s: { r: hTop, c: 7 }, e: { r: hTop, c: 10 } },
+      ...[0, 1, 2, 3, 4, 5, 6, 11, 12, 13, 14].map((c) => ({ s: { r: hTop, c }, e: { r: hSub, c } })),
+    ];
+    ws['!cols'] = [6, 26, 16, 18, 10, 15, 15, 15, 15, 13, 16, 15, 15, 13, 18].map((w) => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Form C');
+    XLSX.writeFile(wb, `Form_C_Bonus_FY_${fyLabel}.xlsx`);
+  };
+
   const downloadECR = () => {
     // Reuse the existing PF ECR endpoint (opens the text file download)
     const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1');
@@ -175,6 +217,11 @@ const Compliance = () => {
         )}
         {!tab.usesMonth && <span className="text-sm text-slate-500">Cumulative across all payslips to date.</span>}
         <div className="ml-auto flex gap-2">
+          {tab.key === 'bonus' && (
+            <button onClick={generateFormC} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
+              Download Form C
+            </button>
+          )}
           {tab.key === 'pf' && (
             <button onClick={downloadECR} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm font-medium">
               Download PF ECR

@@ -69,6 +69,46 @@ const getBonusRegister = asyncHandler(async (req, res) => {
   res.json({ success: true, data, summary: { scope: 'month', month, employees: data.length, total_bonus: total } });
 });
 
+// ---- Form C : Bonus Register (Payment of Bonus Rules 1975, Rule 4(c)) ----
+// Aggregates bonus over an accounting year (Apr <fy> -> Mar <fy+1>) with the
+// fields the statutory Form C needs. Deduction/payment/signature columns are
+// left for the employer to fill and are added by the frontend export.
+const getBonusFormC = asyncHandler(async (req, res) => {
+  const fy = parseInt(req.query.fy, 10);
+  if (!fy || fy < 2000 || fy > 2100) {
+    return res.status(400).json({ success: false, message: 'Invalid fy. Use the accounting-year start, e.g. fy=2026 for Apr 2026 - Mar 2027.' });
+  }
+  const from = `${fy}-04`;
+  const to = `${fy + 1}-03`;
+  const cf = buildCompanyFilter('e', req);
+  const query = `
+    SELECT e.employee_code, ${nameExpr} AS employee_name, e.designation, e.dob,
+           SUM(p.days_present) AS days_worked,
+           ROUND(SUM(p.basic_salary)) AS total_wages,
+           ROUND(SUM(p.bonus)) AS total_bonus,
+           MAX(c.company_name) AS company_name
+    FROM payslips p
+    JOIN employees e ON e.employee_id = p.employee_id
+    LEFT JOIN companies c ON c.company_id = e.company_id
+    WHERE p.month >= ? AND p.month <= ? AND p.bonus > 0 ${cf.clause}
+    GROUP BY e.employee_id
+    HAVING total_bonus > 0
+    ORDER BY e.employee_code`;
+  const rows = await executeQuery(query, [from, to, ...cf.params]);
+  const startOfYear = new Date(`${fy}-04-01`).getTime();
+  const data = rows.map((r) => {
+    const dob = r.dob ? new Date(r.dob).getTime() : null;
+    const age = dob != null ? (startOfYear - dob) / (365.25 * 24 * 3600 * 1000) : null;
+    return { ...r, completed_15: age == null ? '' : (age >= 15 ? 'Yes' : 'No') };
+  });
+  const total = data.reduce((s, r) => s + Number(r.total_bonus || 0), 0);
+  res.json({
+    success: true,
+    data,
+    summary: { fy_label: `${fy}-${String(fy + 1).slice(-2)}`, from, to, employees: data.length, total_bonus: total, company: data[0]?.company_name || '' },
+  });
+});
+
 // ---- Gratuity Liability (Payment of Gratuity Act) ----
 // Cumulative accrued provision + estimated payable-on-exit. NOT a monthly payout.
 const getGratuityLiability = asyncHandler(async (req, res) => {
@@ -175,4 +215,4 @@ const getPTRegister = asyncHandler(async (req, res) => {
   res.json({ success: true, data, summary: { month, employees: data.length, total_pt: total } });
 });
 
-module.exports = { getBonusRegister, getGratuityLiability, getPFRegister, getESIRegister, getPTRegister };
+module.exports = { getBonusRegister, getBonusFormC, getGratuityLiability, getPFRegister, getESIRegister, getPTRegister };

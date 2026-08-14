@@ -6,6 +6,7 @@ const BASE = '/compliance';
 // interceptor; ADMIN/HR are scoped to their own company by the backend.
 export const complianceService = {
   getBonusRegister: async (params = {}) => (await api.get(`${BASE}/bonus`, { params })).data,
+  getBonusFormC: async (params = {}) => (await api.get(`${BASE}/bonus/form-c`, { params })).data,
   getGratuityLiability: async (params = {}) => (await api.get(`${BASE}/gratuity`, { params })).data,
   getPFRegister: async (params = {}) => (await api.get(`${BASE}/pf`, { params })).data,
   getESIRegister: async (params = {}) => (await api.get(`${BASE}/esi`, { params })).data,
