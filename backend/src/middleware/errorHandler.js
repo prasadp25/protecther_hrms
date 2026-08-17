@@ -3,6 +3,7 @@
 // ===================================
 
 const { AppError, parseMySQLError } = require('../utils/errors');
+const { alertError } = require('../utils/errorAlerter');
 
 /**
  * Log Error Details
@@ -162,6 +163,9 @@ const errorHandler = (error, req, res, next) => {
   // Log error details
   logError(err, req);
 
+  // Email an admin on server (5xx) errors — throttled, best-effort, never blocks.
+  alertError(err, { method: req.method, path: req.path, userId: req.user?.user_id });
+
   // Send error response to client
   sendErrorResponse(err, req, res);
 };
@@ -185,11 +189,16 @@ const unhandledRejectionHandler = () => {
     console.error('❌ UNHANDLED REJECTION:', reason);
     console.error('Promise:', promise);
 
-    // In production, might want to gracefully shutdown
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    err.statusCode = 500;
+    err.name = err.name || 'UnhandledRejection';
+    alertError(err, { path: 'process/unhandledRejection' });
+
+    // In production, gracefully shut down (PM2 restarts). Small delay so the
+    // alert email has a chance to flush before exit.
     if (process.env.NODE_ENV === 'production') {
-      // Log to monitoring service
       console.error('Shutting down due to unhandled rejection...');
-      process.exit(1);
+      setTimeout(() => process.exit(1), 1500);
     }
   });
 };
@@ -201,8 +210,11 @@ const unhandledRejectionHandler = () => {
 const uncaughtExceptionHandler = () => {
   process.on('uncaughtException', (error) => {
     console.error('❌ UNCAUGHT EXCEPTION:', error);
+    if (error) error.statusCode = 500;
+    alertError(error, { path: 'process/uncaughtException' });
     console.error('Shutting down...');
-    process.exit(1);
+    // Small delay so the alert email can flush before exit.
+    setTimeout(() => process.exit(1), 1500);
   });
 };
 
