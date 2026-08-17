@@ -103,8 +103,8 @@ const generateECR = async (req, res) => {
       const ncpDays = payslip.days_absent || 0;
       const refund = 0;
 
-      // Build ECR row (pipe-delimited)
-      // Format: UAN|MEMBER NAME|GROSS WAGES|EPF WAGES|EPS WAGES|EDLI WAGES|EPF (EE)|EPS|EPF (ER Diff)|NCP DAYS|REFUND
+      // Build ECR row. EPFO's ECR text format uses "#~#" as the field delimiter.
+      // Format: UAN#~#MEMBER NAME#~#GROSS WAGES#~#EPF WAGES#~#EPS WAGES#~#EDLI WAGES#~#EPF(EE)#~#EPS#~#EPF(ER Diff)#~#NCP DAYS#~#REFUND
       const ecrRow = [
         String(payslip.uan_no).trim(),
         `${payslip.first_name} ${payslip.last_name}`.toUpperCase().trim(),
@@ -117,7 +117,7 @@ const generateECR = async (req, res) => {
         Math.round(epfERDiff),
         Math.round(ncpDays),
         Math.round(refund)
-      ].join('|');
+      ].join('#~#');
 
       ecrLines.push(ecrRow);
       totalEPFContribution += epfEE;
