@@ -2,6 +2,12 @@
  * Payslip Calculation Helper
  * Centralizes all payslip calculation logic to avoid code duplication
  */
+const {
+  PF_EMPLOYEE_RATE, PF_MAX_CONTRIBUTION,
+  ESI_EMPLOYEE_RATE, ESI_GROSS_CEILING,
+  BONUS_RATE, BONUS_WAGE_CAP, BONUS_ELIGIBILITY_BASIC,
+  GRATUITY_RATE,
+} = require('../config/statutory');
 
 /**
  * Calculate payslip amounts for an employee based on salary structure and attendance
@@ -21,14 +27,14 @@ const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDed
 
   // Fixed bonus: 8.33% of min(basic, 7000) if basic <= 21000
   // Bonus is CARVED OUT from Other Allowances (not added on top)
-  const fixedBonusEligible = fixedBasic <= 21000;
-  const fixedBonusBase = Math.min(fixedBasic, 7000);
-  const fixedBonus = fixedBonusEligible ? Math.round(fixedBonusBase * 0.0833) : 0;
+  const fixedBonusEligible = fixedBasic <= BONUS_ELIGIBILITY_BASIC;
+  const fixedBonusBase = Math.min(fixedBasic, BONUS_WAGE_CAP);
+  const fixedBonus = fixedBonusEligible ? Math.round(fixedBonusBase * BONUS_RATE) : 0;
 
   // Fixed gratuity: 4.81% of Basic (Payment of Gratuity Act 1972)
   // Formula: (Basic × 15) / 26 / 12 = Basic × 0.0481
   // Gratuity is CARVED OUT from Other Allowances (not added on top)
-  const fixedGratuity = Math.round(fixedBasic * 0.0481);
+  const fixedGratuity = Math.round(fixedBasic * GRATUITY_RATE);
 
   // Deduct bonus and gratuity from incentive/other allowances so total stays same as CTC
   const fixedIncentive = Math.max(0, fixedIncentiveRaw - fixedBonus - fixedGratuity);
@@ -43,13 +49,13 @@ const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDed
 
   // Bonus: Payment of Bonus Act 1965 - 8.33% of min(earned basic, 7000)
   // Bonus is CARVED OUT from Other Allowances (part of CTC, not extra)
-  const bonusEligible = fixedBasic <= 21000;
-  const bonusBase = Math.min(actualBasic, 7000);
-  const bonus = bonusEligible ? Math.round(bonusBase * 0.0833) : 0;
+  const bonusEligible = fixedBasic <= BONUS_ELIGIBILITY_BASIC;
+  const bonusBase = Math.min(actualBasic, BONUS_WAGE_CAP);
+  const bonus = bonusEligible ? Math.round(bonusBase * BONUS_RATE) : 0;
 
   // Gratuity: 4.81% of Earned Basic (Payment of Gratuity Act 1972)
   // Gratuity is CARVED OUT from Other Allowances (part of CTC, not extra)
-  const gratuity = Math.round(actualBasic * 0.0481);
+  const gratuity = Math.round(actualBasic * GRATUITY_RATE);
 
   // Deduct bonus and gratuity from incentive so total gross stays same as prorated CTC
   const actualIncentiveRaw = Math.round((fixedIncentiveRaw / daysInMonth) * actualDaysPresent);
@@ -61,11 +67,11 @@ const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDed
   // PF Calculation: 12% of Earned Basic (as per EPFO rules)
   // Wage ceiling: ₹15,000 basic = max PF ₹1,800
   const pfApplicable = salaryData.pf_deduction > 0;
-  const pfDeduction = pfApplicable ? Math.min(Math.round(actualBasic * 0.12), 1800) : 0;
+  const pfDeduction = pfApplicable ? Math.min(Math.round(actualBasic * PF_EMPLOYEE_RATE), PF_MAX_CONTRIBUTION) : 0;
 
   // ESI Calculation: 0.75% of Earned Gross (applicable if monthly gross ≤ ₹21,000)
-  const esiApplicable = salaryData.esi_deduction > 0 && fixedGross <= 21000;
-  const esiDeduction = esiApplicable ? Math.round(actualGross * 0.0075) : 0;
+  const esiApplicable = salaryData.esi_deduction > 0 && fixedGross <= ESI_GROSS_CEILING;
+  const esiDeduction = esiApplicable ? Math.round(actualGross * ESI_EMPLOYEE_RATE) : 0;
 
   // Fixed Deductions (constant - not attendance based)
   // PT is a flat monthly slab (not prorated for partial attendance), but is
@@ -87,8 +93,8 @@ const calculatePayslip = (salaryData, actualDaysPresent, daysInMonth, advanceDed
   const netPayableWithBonus = netSalary;
 
   // Calculate fixed values for reference (full month without absence)
-  const fixedPF = pfApplicable ? Math.min(Math.round(fixedBasic * 0.12), 1800) : 0;
-  const fixedESI = (salaryData.esi_deduction > 0 && fixedGross <= 21000) ? Math.round(fixedGross * 0.0075) : 0;
+  const fixedPF = pfApplicable ? Math.min(Math.round(fixedBasic * PF_EMPLOYEE_RATE), PF_MAX_CONTRIBUTION) : 0;
+  const fixedESI = (salaryData.esi_deduction > 0 && fixedGross <= ESI_GROSS_CEILING) ? Math.round(fixedGross * ESI_EMPLOYEE_RATE) : 0;
   const fixedTotalDeductions = fixedPF + fixedESI + professionalTax + mediclaimDeduction + otherDeductions;
   const fixedNetSalary = fixedGross - fixedTotalDeductions;
 

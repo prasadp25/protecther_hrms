@@ -1,13 +1,12 @@
 const { executeQuery } = require('../config/database');
-
-// ==============================================
-// ECR CALCULATION CONSTANTS
-// ==============================================
-const EPF_WAGES_CAP = 15000; // EPF wages capped at ₹15,000
-const EPF_EMPLOYEE_RATE = 0.12; // 12% employee contribution
-const EPS_RATE = 0.0833; // 8.33% employer pension contribution
-// Employer EPF share is derived as EPF(12%) − EPS(8.33%), not a flat 3.67%, so
-// it reconciles exactly with EPFO's ECR validation (RFE-37).
+// Statutory rates come from the single source of truth. Employer EPF share is
+// derived as EPF(12%) − EPS(8.33%), not a flat 3.67%, so it reconciles exactly
+// with EPFO's ECR validation (RFE-37).
+const {
+  EPF_WAGES_CAP,
+  PF_EMPLOYEE_RATE: EPF_EMPLOYEE_RATE,
+  EPS_RATE,
+} = require('../config/statutory');
 
 // ==============================================
 // VALIDATE UAN FORMAT (12 digits)

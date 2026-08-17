@@ -2,6 +2,10 @@ const path = require('path');
 const fs = require('fs');
 const { executeQuery, withTransaction } = require('../config/database');
 const {
+  BONUS_RATE, BONUS_WAGE_CAP, BONUS_ELIGIBILITY_BASIC, GRATUITY_RATE,
+  DEFAULT_PF_DEDUCTION, DEFAULT_PT_DEDUCTION,
+} = require('../config/statutory');
+const {
   parsePaginationParams,
   parseSortParams,
   parseSearchParams,
@@ -153,19 +157,19 @@ const createCandidate = asyncHandler(async (req, res) => {
 
   // Bonus calculation: 8.33% of min(basic, 7000) if basic <= 21000
   // Bonus is INCLUDED in CTC, not added on top
-  const bonusEligible = basicSalary <= 21000;
-  const bonusBase = Math.min(basicSalary, 7000);
-  const bonus = bonusEligible ? Math.round(bonusBase * 0.0833) : 0;
+  const bonusEligible = basicSalary <= BONUS_ELIGIBILITY_BASIC;
+  const bonusBase = Math.min(basicSalary, BONUS_WAGE_CAP);
+  const bonus = bonusEligible ? Math.round(bonusBase * BONUS_RATE) : 0;
 
   // Gratuity calculation: 4.81% of Basic (Payment of Gratuity Act 1972)
   // Gratuity is INCLUDED in CTC, not added on top
-  const gratuity = Math.round(basicSalary * 0.0481);
+  const gratuity = Math.round(basicSalary * GRATUITY_RATE);
 
   // Gross includes bonus and gratuity (both are part of CTC)
   const grossSalary = basicSalary + hra + conveyance + otherAllowances + bonus + gratuity;
 
-  const pfDeduction = parseFloat(candidateData.pf_deduction) || 1800;
-  const ptDeduction = parseFloat(candidateData.pt_deduction) || 200;
+  const pfDeduction = parseFloat(candidateData.pf_deduction) || DEFAULT_PF_DEDUCTION;
+  const ptDeduction = parseFloat(candidateData.pt_deduction) || DEFAULT_PT_DEDUCTION;
   const mediclaim = parseFloat(candidateData.mediclaim_deduction) || 0;
   const totalDeductions = pfDeduction + ptDeduction + mediclaim;
   const netSalary = grossSalary - totalDeductions;
@@ -223,13 +227,13 @@ const updateCandidate = asyncHandler(async (req, res) => {
 
   // Bonus calculation: 8.33% of min(basic, 7000) if basic <= 21000
   // Bonus is INCLUDED in CTC, not added on top
-  const bonusEligible = basicSalary <= 21000;
-  const bonusBase = Math.min(basicSalary, 7000);
-  const bonus = bonusEligible ? Math.round(bonusBase * 0.0833) : 0;
+  const bonusEligible = basicSalary <= BONUS_ELIGIBILITY_BASIC;
+  const bonusBase = Math.min(basicSalary, BONUS_WAGE_CAP);
+  const bonus = bonusEligible ? Math.round(bonusBase * BONUS_RATE) : 0;
 
   // Gratuity calculation: 4.81% of Basic (Payment of Gratuity Act 1972)
   // Gratuity is INCLUDED in CTC, not added on top
-  const gratuity = Math.round(basicSalary * 0.0481);
+  const gratuity = Math.round(basicSalary * GRATUITY_RATE);
 
   // Gross includes bonus and gratuity (both are part of CTC)
   const grossSalary = basicSalary + hra + conveyance + otherAllowances + bonus + gratuity;

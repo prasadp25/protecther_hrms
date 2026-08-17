@@ -138,12 +138,13 @@ describe('calculatePayslip - toggles and edge cases', () => {
     assert.equal(r.professionalTax, 200);
   });
 
-  test('zero days present gives zero gross', () => {
+  test('zero days present gives zero gross and zero net', () => {
     const r = calculatePayslip(structure20k, 0, 30);
     assert.equal(r.actualGross, 0);
     assert.equal(r.pfDeduction, 0);
-    // fixed deductions still apply, so net goes negative - current known behavior
-    assert.equal(r.netSalary, -200);
+    // No pay earned this month, so flat deductions (PT/mediclaim) are waived
+    // rather than pushing net negative — net floors at 0.
+    assert.equal(r.netSalary, 0);
   });
 
   test('31-day month prorates against 31', () => {

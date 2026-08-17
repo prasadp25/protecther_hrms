@@ -13,12 +13,14 @@ const { buildCompanyFilter, getCompanyFilter } = require('../middleware/auth');
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const nameExpr = `TRIM(CONCAT(e.first_name, ' ', COALESCE(e.last_name, '')))`;
 
-// EPF constants (mirror ecrController.js)
-const EPF_WAGES_CAP = 15000;
-const EPS_RATE = 0.0833;      // employer pension
-const EPF_EMPLOYER_DIFF = 0.0367; // employer EPF after EPS
-// ESI statutory rate (employer share; employee 0.75% comes straight from the payslip)
-const ESI_EMPLOYER_RATE = 0.0325;
+// Statutory rates from the single source of truth. (ESI employee 0.75% comes
+// straight from the payslip; only the employer share is applied here.)
+const {
+  EPF_WAGES_CAP,
+  EPS_RATE,
+  EPF_EMPLOYER_DIFF_RATE: EPF_EMPLOYER_DIFF,
+  ESI_EMPLOYER_RATE,
+} = require('../config/statutory');
 
 const requireMonth = (month, res) => {
   if (!month || !MONTH_RE.test(month)) {
