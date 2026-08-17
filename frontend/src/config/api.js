@@ -126,7 +126,19 @@ api.interceptors.response.use(
 
     // Handle specific error responses
     if (error.response) {
-      const { status, data } = error.response;
+      const { status } = error.response;
+      let data = error.response.data;
+
+      // File-download calls use responseType:'blob', so a JSON error body
+      // arrives as a Blob — parse it so the real message shows, not a generic toast.
+      if (data instanceof Blob) {
+        try {
+          data = JSON.parse(await data.text());
+        } catch {
+          data = {};
+        }
+      }
+      data = data || {};
 
       // 401 Unauthorized - Redirect to appropriate login
       if (status === 401) {
@@ -240,6 +252,11 @@ export const showInfo = (message) => {
 // Warning toast helper
 export const showWarning = (message) => {
   toast.warning(message);
+};
+
+// Error toast helper
+export const showError = (message) => {
+  toast.error(message);
 };
 
 export default api;

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import reportService from '../../services/reportService';
-import { showSuccess } from '../../config/api';
+import { showSuccess, showError } from '../../config/api';
 
 const Reports = () => {
   const [activeReport, setActiveReport] = useState(null);
@@ -112,6 +112,9 @@ const Reports = () => {
       showSuccess('Report generated successfully!');
     } catch (error) {
       console.error('Error generating report:', error);
+      setReportData(null);
+      setReportSummary(null);
+      showError(error.response?.data?.message || 'Failed to generate report. Please try again.');
     } finally {
       setLoading(false);
     }

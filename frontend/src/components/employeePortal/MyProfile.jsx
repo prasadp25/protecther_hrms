@@ -57,7 +57,8 @@ const MyProfile = () => {
     );
   }
 
-  const { employee, site, salary_structure } = profile;
+  // Default to empty objects so a payload missing a section can't crash the page.
+  const { employee = {}, site = {}, salary_structure = {} } = profile;
 
   const tabs = [
     { id: 'personal', label: 'Personal Details' },

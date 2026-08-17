@@ -198,7 +198,7 @@ const NoticeList = () => {
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{notice.title}</div>
                       <div className="text-sm text-gray-500 truncate max-w-xs">
-                        {notice.content.substring(0, 100)}...
+                        {(notice.content || '').substring(0, 100)}...
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

@@ -177,7 +177,17 @@ const Dashboard = () => {
     );
   }
 
-  const { employees, salary, payslips, attendance, sites, recentActivities, upcomingBirthdays } = dashboardData;
+  // Normalize the API shape with safe defaults so a partial/malformed success
+  // response can't crash the render (nested arrays/objects are always present).
+  const d = dashboardData || {};
+  const employees = { total: 0, active: 0, statusDistribution: [], ...(d.employees || {}) };
+  const salary = d.salary || {};
+  const payslips = { trend: [], recent: [], ...(d.payslips || {}) };
+  payslips.currentMonth = { total: 0, ...(payslips.currentMonth || {}) };
+  const attendance = d.attendance || {};
+  const sites = { total: 0, active: 0, employeesPerSite: [], ...(d.sites || {}) };
+  const recentActivities = d.recentActivities || [];
+  const upcomingBirthdays = d.upcomingBirthdays || [];
 
   return (
     <div className="space-y-6">

@@ -160,7 +160,7 @@ const Notices = () => {
                   {selectedNotice?.notice_id === notice.notice_id && (
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <div className="prose prose-sm max-w-none text-gray-600">
-                        {notice.content.split('\n').map((paragraph, index) => (
+                        {(notice.content || '').split('\n').map((paragraph, index) => (
                           <p key={index} className="mb-2">{paragraph}</p>
                         ))}
                       </div>

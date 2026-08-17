@@ -24,7 +24,7 @@ const Advances = () => {
     try {
       setLoading(true);
       const res = await advanceService.getAdvances();
-      if (res.success) setAdvances(res.data);
+      if (res.success) setAdvances(res.data || []);
     } catch {
       toast.error('Failed to load advances');
     } finally {

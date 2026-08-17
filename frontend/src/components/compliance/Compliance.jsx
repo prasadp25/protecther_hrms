@@ -161,13 +161,13 @@ const Compliance = () => {
     catch (e) { toast.error(e.response?.data?.message || 'Failed to build Form C'); return; }
     if (!res.success) return;
     const rows = res.data || [];
-    const yearLabel = res.summary.fy_label;
+    const yearLabel = res.summary?.fy_label || fyLabel(fy);
     if (!rows.length) { toast.info(`No bonus records for FY ${yearLabel}`); return; }
     const N = 15;
     const pad = (a) => { const x = a.slice(); while (x.length < N) x.push(''); return x; };
     const title = [
       pad(['FORM C']),
-      pad([`Bonus Register — ${res.summary.company || ''}`]),
+      pad([`Bonus Register — ${res.summary?.company || ''}`]),
       pad([`Register showing bonus due, deductions (sec. 17 & 18) and amount disbursed — Accounting Year ${yearLabel}`]),
       pad([]),
     ];
@@ -200,7 +200,7 @@ const Compliance = () => {
     catch (e) { toast.error(e.response?.data?.message || 'Failed to build Form D'); return; }
     if (!res.success) return;
     const rows = res.data || [];
-    const yearLabel = res.summary.fy_label;
+    const yearLabel = res.summary?.fy_label || fyLabel(fy);
     if (!rows.length) { toast.info(`No bonus records for FY ${yearLabel}`); return; }
     const totalBonus = rows.reduce((s, r) => s + Number(r.total_bonus || 0), 0);
     const aoa = [
@@ -208,7 +208,7 @@ const Compliance = () => {
       ['ANNUAL RETURN — BONUS PAID TO EMPLOYEES'],
       [`For the accounting year ending 31st March ${fy + 1}  (FY ${yearLabel})`],
       [],
-      ['1. Name of the establishment & complete postal address', res.summary.company || ''],
+      ['1. Name of the establishment & complete postal address', res.summary?.company || ''],
       ['2. Nature of industry', ''],
       ['3. Name of the employer', ''],
       ['4. Total number of employees', ''],

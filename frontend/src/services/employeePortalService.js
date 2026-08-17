@@ -30,10 +30,15 @@ export const employeePortalService = {
     }
   },
 
-  // Get stored employee data
+  // Get stored employee data. Guard JSON.parse so a corrupt/tampered
+  // localStorage entry can't throw during render and white-screen the portal.
   getStoredEmployee: () => {
-    const data = localStorage.getItem(EMPLOYEE_DATA_KEY);
-    return data ? JSON.parse(data) : null;
+    try {
+      const data = localStorage.getItem(EMPLOYEE_DATA_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
   },
 
   // Get employee token

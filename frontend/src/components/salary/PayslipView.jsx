@@ -672,7 +672,9 @@ const PayslipView = ({ onBack }) => {
       setEcrPreview(null);
       const response = await ecrService.previewECR(selectedMonth);
       if (response.success) {
-        setEcrPreview(response.data);
+        // Normalize so the modal can't crash if the response omits summary/employees.
+        const d = response.data || {};
+        setEcrPreview({ ...d, summary: d.summary || {}, employees: d.employees || [], warnings: d.warnings || [] });
         setShowECRModal(true);
       }
     } catch (error) {

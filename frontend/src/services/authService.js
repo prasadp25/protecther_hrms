@@ -75,10 +75,15 @@ const authService = {
     return !!localStorage.getItem('user');
   },
 
-  // Get stored user data
+  // Get stored user data. Guard JSON.parse so a corrupt localStorage entry
+  // can't throw during render.
   getUser: () => {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
   },
 };
 

@@ -90,6 +90,10 @@ export const reportService = {
 
   printReport: (reportElement) => {
     const printWindow = window.open('', '', 'height=600,width=800');
+    if (!printWindow) {
+      alert('Unable to open the print window. Please allow pop-ups for this site and try again.');
+      return;
+    }
     printWindow.document.write('<html><head><title>Print Report</title>');
     printWindow.document.write('<style>');
     printWindow.document.write(`

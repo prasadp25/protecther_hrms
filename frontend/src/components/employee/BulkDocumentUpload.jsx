@@ -183,12 +183,12 @@ const BulkDocumentUpload = ({ onBack }) => {
       {results && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <h3 className="font-semibold text-slate-700 mb-3">
-            Result: {results.summary.uploaded} attached, {results.summary.skipped} skipped
+            Result: {results.summary?.uploaded ?? 0} attached, {results.summary?.skipped ?? 0} skipped
           </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <tbody>
-                {results.results.map((r, i) => (
+                {(results.results || []).map((r, i) => (
                   <tr key={i} className="border-b last:border-0">
                     <td className="py-2 pr-4 text-slate-700 break-all">{r.file}</td>
                     <td className="py-2 pr-4 text-slate-600">{r.employee || r.code || '—'}</td>
