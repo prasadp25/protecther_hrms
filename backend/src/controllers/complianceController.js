@@ -1,6 +1,6 @@
 const { executeQuery } = require('../config/database');
 const { asyncHandler } = require('../utils/errors');
-const { buildCompanyFilter } = require('../middleware/auth');
+const { buildCompanyFilter, getCompanyFilter } = require('../middleware/auth');
 
 // ==============================================
 // Statutory / Compliance registers.
@@ -215,4 +215,59 @@ const getPTRegister = asyncHandler(async (req, res) => {
   res.json({ success: true, data, summary: { month, employees: data.length, total_pt: total } });
 });
 
-module.exports = { getBonusRegister, getBonusFormC, getGratuityLiability, getPFRegister, getESIRegister, getPTRegister };
+// ---- EPS-exempt management (for the recurring EPFO RFE-21 error) ----
+// List employees currently flagged as NOT in the pension scheme.
+const getEpsExempt = asyncHandler(async (req, res) => {
+  const cf = buildCompanyFilter('e', req);
+  const rows = await executeQuery(
+    `SELECT e.employee_code, TRIM(CONCAT(e.first_name,' ',COALESCE(e.last_name,''))) AS name,
+            e.uan_no, e.status
+     FROM employees e WHERE e.eps_applicable = 0 ${cf.clause}
+     ORDER BY e.employee_code`,
+    cf.params
+  );
+  res.json({ success: true, data: rows, summary: { count: rows.length } });
+});
+
+// Bulk set/clear the EPS-exempt flag by pasting UANs and/or employee codes.
+// Body: { identifiers: string[] | string, exempt: boolean }
+const setEpsExempt = asyncHandler(async (req, res) => {
+  let { identifiers, exempt = true } = req.body;
+  if (typeof identifiers === 'string') identifiers = identifiers.split(/[\s,;]+/);
+  if (!Array.isArray(identifiers)) identifiers = [];
+  const tokens = [...new Set(identifiers.map((x) => String(x).trim()).filter(Boolean))];
+  if (tokens.length === 0) {
+    return res.status(400).json({ success: false, message: 'Provide at least one UAN or employee code.' });
+  }
+
+  const ph = tokens.map(() => '?').join(',');
+  const params = [...tokens, ...tokens];
+  let findQ = `SELECT employee_id, employee_code, uan_no,
+                      TRIM(CONCAT(first_name,' ',COALESCE(last_name,''))) AS name
+               FROM employees WHERE (uan_no IN (${ph}) OR employee_code IN (${ph}))`;
+  const companyId = getCompanyFilter(req);
+  if (companyId) { findQ += ' AND company_id = ?'; params.push(companyId); }
+  const matched = await executeQuery(findQ, params);
+
+  const seen = new Set();
+  matched.forEach((m) => { if (m.uan_no) seen.add(String(m.uan_no)); seen.add(String(m.employee_code)); });
+  const unmatched = tokens.filter((t) => !seen.has(t));
+
+  if (matched.length) {
+    const ids = matched.map((m) => m.employee_id);
+    await executeQuery(
+      `UPDATE employees SET eps_applicable = ? WHERE employee_id IN (${ids.map(() => '?').join(',')})`,
+      [exempt ? 0 : 1, ...ids]
+    );
+  }
+
+  res.json({
+    success: true,
+    exempt: !!exempt,
+    updated: matched.length,
+    employees: matched.map((m) => ({ employee_code: m.employee_code, name: m.name, uan_no: m.uan_no })),
+    unmatched,
+  });
+});
+
+module.exports = { getBonusRegister, getBonusFormC, getGratuityLiability, getPFRegister, getESIRegister, getPTRegister, getEpsExempt, setEpsExempt };

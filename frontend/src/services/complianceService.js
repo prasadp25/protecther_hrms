@@ -11,6 +11,8 @@ export const complianceService = {
   getPFRegister: async (params = {}) => (await api.get(`${BASE}/pf`, { params })).data,
   getESIRegister: async (params = {}) => (await api.get(`${BASE}/esi`, { params })).data,
   getPTRegister: async (params = {}) => (await api.get(`${BASE}/pt`, { params })).data,
+  getEpsExempt: async () => (await api.get(`${BASE}/eps-exempt`)).data,
+  setEpsExempt: async (identifiers, exempt) => (await api.post(`${BASE}/eps-exempt`, { identifiers, exempt })).data,
 };
 
 export default complianceService;

@@ -106,6 +106,11 @@ const Compliance = () => {
   const [activeKey, setActiveKey] = useState('bonus');
   const [month, setMonth] = useState(prevMonth());
   const [fy, setFy] = useState(fyOf(new Date())); // Form C accounting year (start year)
+  const [epsOpen, setEpsOpen] = useState(false);
+  const [epsInput, setEpsInput] = useState('');
+  const [epsList, setEpsList] = useState([]);
+  const [epsResult, setEpsResult] = useState(null);
+  const [epsBusy, setEpsBusy] = useState(false);
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -295,6 +300,39 @@ const Compliance = () => {
     window.open(`${base}/ecr/generate/${month}`, '_blank');
   };
 
+  // EPS-exempt management (fixes recurring EPFO RFE-21 rejections in bulk).
+  const loadEpsList = useCallback(async () => {
+    try {
+      const res = await complianceService.getEpsExempt();
+      if (res.success) setEpsList(res.data || []);
+    } catch { /* non-fatal */ }
+  }, []);
+
+  const toggleEpsPanel = () => {
+    const next = !epsOpen;
+    setEpsOpen(next);
+    if (next) { setEpsResult(null); loadEpsList(); }
+  };
+
+  const applyEpsExempt = async (exempt) => {
+    const ids = epsInput.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+    if (!ids.length) { toast.info('Paste at least one UAN or employee code'); return; }
+    setEpsBusy(true);
+    try {
+      const res = await complianceService.setEpsExempt(ids, exempt);
+      if (res.success) {
+        setEpsResult(res);
+        toast.success(`${res.updated} employee(s) ${exempt ? 'marked EPS-exempt' : 'restored to EPS'}`);
+        setEpsInput('');
+        loadEpsList();
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to update');
+    } finally {
+      setEpsBusy(false);
+    }
+  };
+
   const totalFor = (k) => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
 
   return (
@@ -348,9 +386,14 @@ const Compliance = () => {
             </div>
           )}
           {tab.key === 'pf' && (
-            <button onClick={downloadECR} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm font-medium">
-              Download PF ECR
-            </button>
+            <>
+              <button onClick={toggleEpsPanel} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium whitespace-nowrap">
+                {epsOpen ? 'Close EPS-exempt' : 'Manage EPS-exempt'}
+              </button>
+              <button onClick={downloadECR} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm font-medium">
+                Download PF ECR
+              </button>
+            </>
           )}
           {tab.key === 'pt' && (
             <button onClick={generateFormIIIB} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm font-medium whitespace-nowrap">
@@ -366,6 +409,71 @@ const Compliance = () => {
       {tab.note && (
         <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
           ⚠ {tab.note} These are internal registers — confirm exact filing formats with your CA before submission.
+        </div>
+      )}
+
+      {tab.key === 'pf' && epsOpen && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-4">
+          <div>
+            <h3 className="font-semibold text-slate-800">EPS-exempt members</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              For members EPFO rejects as “not a member of pension scheme” (error RFE-21). Paste the
+              UANs (or employee codes) — one per line, or separated by spaces/commas — from the EPFO
+              rejection or member list. Marking them exempt zeroes their EPS in the ECR. This applies
+              to every month, so you only do it once per member.
+            </p>
+          </div>
+
+          <textarea
+            value={epsInput}
+            onChange={(e) => setEpsInput(e.target.value)}
+            rows={4}
+            placeholder={'101978516765\n102205772105\nP0081'}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => applyEpsExempt(true)} disabled={epsBusy}
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 text-sm font-medium">
+              {epsBusy ? 'Working…' : 'Mark as EPS-exempt'}
+            </button>
+            <button onClick={() => applyEpsExempt(false)} disabled={epsBusy}
+              className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 text-sm font-medium">
+              Restore to EPS member
+            </button>
+          </div>
+
+          {epsResult && (
+            <div className="text-sm bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="font-medium text-slate-700">
+                {epsResult.updated} employee(s) {epsResult.exempt ? 'marked EPS-exempt' : 'restored to EPS'}.
+              </div>
+              {epsResult.employees?.length > 0 && (
+                <div className="mt-1 text-slate-600">
+                  {epsResult.employees.map((e) => `${e.employee_code} ${e.name} (${e.uan_no || 'no UAN'})`).join(', ')}
+                </div>
+              )}
+              {epsResult.unmatched?.length > 0 && (
+                <div className="mt-1 text-red-600">Not found: {epsResult.unmatched.join(', ')}</div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <div className="text-xs font-medium text-slate-500 mb-1">
+              Currently EPS-exempt ({epsList.length})
+            </div>
+            {epsList.length === 0 ? (
+              <div className="text-xs text-slate-400">None yet.</div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {epsList.map((e) => (
+                  <span key={e.employee_code} className="inline-block px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">
+                    {e.employee_code} · {e.name} · {e.uan_no || 'no UAN'}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
