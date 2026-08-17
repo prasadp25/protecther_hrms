@@ -1,19 +1,12 @@
 import { useState, useEffect } from 'react';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
+import { SPLIT_OPTIONS, PT_RULES } from '../../config/payrollConstants';
 import authService from '../../services/authService';
 import { getSelectedCompany } from '../../config/api';
 
 // Company codes that use MANUAL salary entry (no auto-calculation)
 const MANUAL_ENTRY_COMPANIES = ['SNS', 'S&S']; // Add S&S company codes here
-
-// Percentage split configurations
-// HRA is calculated as percentage of Basic, not Gross
-const SPLIT_OPTIONS = {
-  'high-basic': { basic: 87.11, hraOfBasic: 5, label: 'High Basic (87.11%) - Best for PF' },
-  '40-40': { basic: 40, hraOfBasic: 40, label: '40% Basic, HRA 40% of Basic' },
-  '50-40': { basic: 50, hraOfBasic: 40, label: '50% Basic, HRA 40% of Basic' },
-};
 
 // Split type is NOT stored in the DB, so when editing an existing structure we
 // infer it from the numbers: split = Basic as a % of Gross (Basic+HRA+Incentive).
@@ -31,16 +24,6 @@ const detectSplitType = (basic, hra, incentive) => {
     if (diff < bestDiff) { bestDiff = diff; key = k; }
   }
   return { key, pct: basicPct, exact: bestDiff <= 1 };
-};
-
-// State-wise Professional Tax rules (monthly)
-const PT_RULES = {
-  maharashtra: { name: 'Maharashtra', calculate: (gross) => gross > 10000 ? 200 : gross > 7500 ? 175 : 0 },
-  karnataka: { name: 'Karnataka', calculate: (gross) => gross > 15000 ? 200 : gross > 10000 ? 150 : 0 },
-  gujarat: { name: 'Gujarat', calculate: (gross) => gross > 12000 ? 200 : gross > 9000 ? 150 : 0 },
-  tamilnadu: { name: 'Tamil Nadu', calculate: (gross) => gross > 21000 ? 208 : gross > 15000 ? 180 : 0 },
-  westbengal: { name: 'West Bengal', calculate: (gross) => gross > 10000 ? 200 : gross > 6000 ? 150 : 0 },
-  custom: { name: 'Custom (Manual Entry)', calculate: () => 0 },
 };
 
 const SalaryForm = ({ salaryId, preSelectedEmployeeId, onSuccess, onCancel }) => {
