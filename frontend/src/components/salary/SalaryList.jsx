@@ -538,7 +538,7 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
                         {formatCurrency(salary.net_salary)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(salary.effective_from).toLocaleDateString()}
+                        {salary.effective_from ? new Date(salary.effective_from).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button

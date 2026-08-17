@@ -141,7 +141,7 @@ const CompanyForm = ({ companyId, onSuccess, onBack }) => {
             <input
               type="text"
               name="company_name"
-              value={formData.company_name}
+              value={formData.company_name || ''}
               onChange={handleChange}
               className={`w-full rounded-md border ${errors.company_name ? 'border-red-500' : 'border-gray-300'} shadow-sm px-3 py-2`}
             />

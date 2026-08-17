@@ -428,7 +428,7 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
                       {employee.address || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(employee.date_of_joining).toLocaleDateString()}
+                      {employee.date_of_joining ? new Date(employee.date_of_joining).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {employee.date_of_leaving ? new Date(employee.date_of_leaving).toLocaleDateString() : '-'}

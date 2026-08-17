@@ -1314,7 +1314,7 @@ const PayslipView = ({ onBack }) => {
                       <div>
                         <span className="text-gray-600">Attendance %:</span>
                         <div className="text-xl font-bold text-blue-600">
-                          {Math.round((attendanceData.days_present / attendanceData.total_days_in_month) * 100)}%
+                          {attendanceData.total_days_in_month ? Math.round((attendanceData.days_present / attendanceData.total_days_in_month) * 100) : 0}%
                         </div>
                       </div>
                     </div>

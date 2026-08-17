@@ -768,12 +768,12 @@ const Dashboard = () => {
                         <div
                           className="bg-blue-600 h-1.5 rounded-full transition-all"
                           style={{
-                            width: `${Math.min((site.employeeCount / employees.active) * 100, 100)}%`,
+                            width: `${employees.active ? Math.min((site.employeeCount / employees.active) * 100, 100) : 0}%`,
                           }}
                         ></div>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        {((site.employeeCount / employees.active) * 100).toFixed(1)}% of total
+                        {(employees.active ? (site.employeeCount / employees.active) * 100 : 0).toFixed(1)}% of total
                       </p>
                     </div>
 
@@ -848,10 +848,10 @@ const Dashboard = () => {
               <div className="text-center">
                 <p className="text-xs text-gray-600">Average per Site</p>
                 <p className="text-lg font-bold text-green-600">
-                  {(employees.active / sites.active).toFixed(1)} employees
+                  {(sites.active ? employees.active / sites.active : 0).toFixed(1)} employees
                 </p>
                 <p className="text-sm text-gray-500">
-                  {formatCurrency(sites.employeesPerSite.reduce((sum, s) => sum + s.totalNet, 0) / sites.active)}
+                  {formatCurrency(sites.active ? sites.employeesPerSite.reduce((sum, s) => sum + s.totalNet, 0) / sites.active : 0)}
                 </p>
               </div>
               <div className="text-center">
@@ -885,7 +885,7 @@ const Dashboard = () => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
+                label={({ name, percentage }) => `${name}: ${(percentage || 0).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -899,7 +899,7 @@ const Dashboard = () => {
                   return <Cell key={`cell-${index}`} fill={colors[entry.status] || '#6b7280'} />;
                 })}
               </Pie>
-              <Tooltip formatter={(value, name, props) => [`${value} employees (${props.payload.percentage.toFixed(1)}%)`, name]} />
+              <Tooltip formatter={(value, name, props) => [`${value} employees (${(props.payload?.percentage || 0).toFixed(1)}%)`, name]} />
             </PieChart>
           </ResponsiveContainer>
 
@@ -1066,7 +1066,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm text-gray-600">Average per Month</p>
                 <p className="text-xl font-bold text-blue-600 mt-1">
-                  {formatCurrency(payslips.trend.reduce((sum, m) => sum + m.total, 0) / payslips.trend.length)}
+                  {formatCurrency(payslips.trend.length ? payslips.trend.reduce((sum, m) => sum + m.total, 0) / payslips.trend.length : 0)}
                 </p>
               </div>
               <div className="text-right">
