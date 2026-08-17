@@ -71,10 +71,11 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    // Don't leak internal error text (incl. DB messages) to the client.
+    console.error('Authentication error:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Authentication failed',
-      error: error.message
+      message: 'Authentication failed'
     });
   }
 };

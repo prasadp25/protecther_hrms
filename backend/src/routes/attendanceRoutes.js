@@ -14,10 +14,10 @@ const { authenticate, authorize } = require('../middleware/auth');
 // All routes require authentication
 router.use(authenticate);
 
-// GET routes - All authenticated users can view
-router.get('/month/:month', getAttendanceByMonth);  // GET /api/v1/attendance/month/2025-01
-router.get('/employee/:employeeId', getEmployeeAttendance);  // GET /api/v1/attendance/employee/1
-router.get('/summary/:month', getAttendanceSummary);  // GET /api/v1/attendance/summary/2025-01
+// GET routes - staff only (ADMIN/HR/MANAGER)
+router.get('/month/:month', authorize('ADMIN', 'HR', 'MANAGER'), getAttendanceByMonth);
+router.get('/employee/:employeeId', authorize('ADMIN', 'HR', 'MANAGER'), getEmployeeAttendance);
+router.get('/summary/:month', authorize('ADMIN', 'HR', 'MANAGER'), getAttendanceSummary);
 
 // POST routes - Admin/HR only
 router.post('/save', authorize('ADMIN', 'HR'), saveAttendance);  // POST /api/v1/attendance/save

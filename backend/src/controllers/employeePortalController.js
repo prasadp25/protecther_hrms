@@ -112,8 +112,7 @@ const sendOTP = async (req, res) => {
     console.error('Send OTP error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to send OTP',
-      error: error.message
+      message: 'Failed to send OTP'
     });
   }
 };
@@ -221,8 +220,7 @@ const verifyOTP = async (req, res) => {
     console.error('Verify OTP error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to verify OTP',
-      error: error.message
+      message: 'Failed to verify OTP'
     });
   }
 };
@@ -291,8 +289,7 @@ const authenticateEmployee = async (req, res, next) => {
     }
     return res.status(500).json({
       success: false,
-      message: 'Authentication failed',
-      error: error.message
+      message: 'Authentication failed'
     });
   }
 };
@@ -355,8 +352,7 @@ const getProfile = async (req, res) => {
     console.error('Get profile error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch profile',
-      error: error.message
+      message: 'Failed to fetch profile'
     });
   }
 };
@@ -398,8 +394,7 @@ const getPayslips = async (req, res) => {
     console.error('Get payslips error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch payslips',
-      error: error.message
+      message: 'Failed to fetch payslips'
     });
   }
 };
@@ -440,8 +435,7 @@ const getPayslipById = async (req, res) => {
     console.error('Get payslip error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch payslip',
-      error: error.message
+      message: 'Failed to fetch payslip'
     });
   }
 };
@@ -518,8 +512,7 @@ const getNotices = async (req, res) => {
     console.error('Get notices error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch notices',
-      error: error.message
+      message: 'Failed to fetch notices'
     });
   }
 };
@@ -556,8 +549,7 @@ const getInsurance = async (req, res) => {
     console.error('Get insurance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch insurance info',
-      error: error.message
+      message: 'Failed to fetch insurance info'
     });
   }
 };
@@ -582,8 +574,7 @@ const getDocuments = async (req, res) => {
     console.error('Get documents error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch documents',
-      error: error.message
+      message: 'Failed to fetch documents'
     });
   }
 };

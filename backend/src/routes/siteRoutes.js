@@ -14,11 +14,11 @@ const { authenticate, authorize } = require('../middleware/auth');
 // All routes require authentication
 router.use(authenticate);
 
-// GET routes
-router.get('/', getAllSites);
-router.get('/active', getActiveSites);
-router.get('/:id', getSiteById);
-router.get('/:id/stats', getSiteStats);
+// GET routes - staff only (ADMIN/HR/MANAGER)
+router.get('/', authorize('ADMIN', 'HR', 'MANAGER'), getAllSites);
+router.get('/active', authorize('ADMIN', 'HR', 'MANAGER'), getActiveSites);
+router.get('/:id', authorize('ADMIN', 'HR', 'MANAGER'), getSiteById);
+router.get('/:id/stats', authorize('ADMIN', 'HR', 'MANAGER'), getSiteStats);
 
 // POST routes - Admin/HR only
 router.post('/', authorize('ADMIN', 'HR'), createSite);
