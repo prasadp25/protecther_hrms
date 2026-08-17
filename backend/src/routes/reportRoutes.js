@@ -10,12 +10,14 @@ const {
   getDesignationReport,
   getCustomDateRangeReport
 } = require('../controllers/reportController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { apiLimiter } = require('../middleware/rateLimiter');
 
-// Apply authentication and rate limiting to all routes
+// Apply authentication and rate limiting to all routes.
+// Reports expose payroll/salary aggregates — restrict to ADMIN/HR.
 router.use(authenticate);
 router.use(apiLimiter);
+router.use(authorize('ADMIN', 'HR'));
 
 // ===================================
 // EMPLOYEE REPORTS

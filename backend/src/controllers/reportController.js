@@ -1,5 +1,6 @@
 const { executeQuery } = require('../config/database');
 const { asyncHandler } = require('../utils/errors');
+const { getCompanyFilter } = require('../middleware/auth');
 
 // ===================================
 // EMPLOYEE REPORTS
@@ -10,7 +11,8 @@ const { asyncHandler } = require('../utils/errors');
  * Shows attendance summary for employees in a date range
  */
 const getEmployeeAttendanceReport = asyncHandler(async (req, res) => {
-  const { month, year, site_id, employee_id, company_id } = req.query;
+  const { month, year, site_id, employee_id } = req.query;
+  const company_id = getCompanyFilter(req); // trusted: caller's company (SUPER_ADMIN may pass ?company_id)
 
   let whereConditions = [];
   let params = [];
@@ -84,7 +86,8 @@ const getEmployeeAttendanceReport = asyncHandler(async (req, res) => {
  * Shows actual payroll details for employees based on payslips
  */
 const getEmployeeSalaryReport = asyncHandler(async (req, res) => {
-  const { site_id, month, year, status, company_id } = req.query;
+  const { site_id, month, year, status } = req.query;
+  const company_id = getCompanyFilter(req);
 
   let whereConditions = [];
   let params = [];
@@ -177,7 +180,8 @@ const getEmployeeSalaryReport = asyncHandler(async (req, res) => {
  * Get Site-wise Employee Distribution Report
  */
 const getSiteEmployeeReport = asyncHandler(async (req, res) => {
-  const { status, company_id } = req.query;
+  const { status } = req.query;
+  const company_id = getCompanyFilter(req);
 
   let whereConditions = [];
   const params = [];
@@ -241,7 +245,8 @@ const getSiteEmployeeReport = asyncHandler(async (req, res) => {
  * Shows actual payroll costs per site based on payslips for the selected month
  */
 const getSiteSalaryCostReport = asyncHandler(async (req, res) => {
-  const { month, year, site_id, company_id } = req.query;
+  const { month, year, site_id } = req.query;
+  const company_id = getCompanyFilter(req);
 
   let whereConditions = [];
   let params = [];
@@ -322,7 +327,8 @@ const getSiteSalaryCostReport = asyncHandler(async (req, res) => {
  * Uses p.month column (format: 'YYYY-MM') for accurate monthly filtering
  */
 const getMonthlyPayrollReport = asyncHandler(async (req, res) => {
-  const { month, year, company_id } = req.query;
+  const { month, year } = req.query;
+  const company_id = getCompanyFilter(req);
 
   if (!month || !year) {
     return res.status(400).json({
@@ -405,7 +411,8 @@ const getMonthlyPayrollReport = asyncHandler(async (req, res) => {
  * Get Attendance Summary Report
  */
 const getAttendanceSummaryReport = asyncHandler(async (req, res) => {
-  const { month, year, site_id, company_id } = req.query;
+  const { month, year, site_id } = req.query;
+  const company_id = getCompanyFilter(req);
 
   let whereConditions = ['a.attendance_month IS NOT NULL'];
   let params = [];
@@ -472,7 +479,7 @@ const getAttendanceSummaryReport = asyncHandler(async (req, res) => {
  * Get Designation-wise Report
  */
 const getDesignationReport = asyncHandler(async (req, res) => {
-  const { company_id } = req.query;
+  const company_id = getCompanyFilter(req);
 
   let whereClause = '';
   let params = [];

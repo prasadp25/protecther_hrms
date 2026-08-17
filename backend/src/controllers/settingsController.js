@@ -5,7 +5,11 @@ const { executeQuery } = require('../config/database');
 // ==============================================
 const getInsuranceSettings = async (req, res) => {
   try {
-    const company_id = req.query.company_id || req.user.company_id;
+    // Only SUPER_ADMIN may target another company; everyone else is locked to
+    // their own, ignoring any client-supplied company_id (tenant isolation).
+    const company_id = req.user.role === 'SUPER_ADMIN'
+      ? (req.query.company_id || req.user.company_id)
+      : req.user.company_id;
 
     if (!company_id) {
       return res.status(400).json({
@@ -54,7 +58,11 @@ const getInsuranceSettings = async (req, res) => {
 const updateInsuranceSettings = async (req, res) => {
   try {
     const { insurance_provider, hospital_list_url, contact_person, contact_phone, support_email } = req.body;
-    const company_id = req.body.company_id || req.user.company_id;
+    // Only SUPER_ADMIN may write another company's settings; everyone else is
+    // locked to their own, ignoring any client-supplied company_id.
+    const company_id = req.user.role === 'SUPER_ADMIN'
+      ? (req.body.company_id || req.user.company_id)
+      : req.user.company_id;
 
     if (!company_id) {
       return res.status(400).json({
