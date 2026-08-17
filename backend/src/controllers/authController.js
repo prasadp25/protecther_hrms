@@ -128,9 +128,19 @@ const register = asyncHandler(async (req, res) => {
     throw new ValidationError('Username, email, and password are required');
   }
 
-  // For non-SUPER_ADMIN roles, company_id is required
   const targetRole = role || 'EMPLOYEE';
-  if (targetRole !== 'SUPER_ADMIN' && !company_id) {
+
+  // Defense in depth: the route is SUPER_ADMIN-only, but don't blindly trust the
+  // body in case the route is ever loosened. Only a SUPER_ADMIN may mint
+  // SUPER_ADMIN/ADMIN accounts, and a non-SUPER_ADMIN creator is locked to their
+  // own company rather than any company_id they pass.
+  if (req.user?.role !== 'SUPER_ADMIN' && (targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN')) {
+    throw new AuthorizationError('You are not allowed to create an account with that role');
+  }
+  const effectiveCompanyId = req.user?.role === 'SUPER_ADMIN' ? company_id : req.user?.company_id;
+
+  // For non-SUPER_ADMIN roles, company_id is required
+  if (targetRole !== 'SUPER_ADMIN' && !effectiveCompanyId) {
     throw new ValidationError('Company ID is required for non-SUPER_ADMIN users');
   }
 
@@ -168,7 +178,7 @@ const register = asyncHandler(async (req, res) => {
     passwordHash,
     targetRole,
     employee_id || null,
-    targetRole === 'SUPER_ADMIN' ? null : company_id
+    targetRole === 'SUPER_ADMIN' ? null : effectiveCompanyId
   ]);
 
   res.status(201).json({
