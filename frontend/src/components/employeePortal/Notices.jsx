@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { formatDate } from '../../utils/format';
 import { employeePortalService } from '../../services/employeePortalService';
 
 const Notices = () => {
@@ -66,15 +67,6 @@ const Notices = () => {
     }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   const filteredNotices = filter === 'ALL'
     ? notices

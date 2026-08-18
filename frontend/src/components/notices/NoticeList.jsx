@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { formatDate } from '../../utils/format';
 import { noticeService } from '../../services/noticeService';
 import NoticeForm from './NoticeForm';
 
@@ -86,14 +87,6 @@ const NoticeList = () => {
     return colors[category] || colors.GENERAL;
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   if (showForm) {
     return (

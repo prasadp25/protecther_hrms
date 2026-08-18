@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDate } from '../../utils/format';
 import { toast } from 'react-toastify';
 import { employeePortalService } from '../../services/employeePortalService';
 
@@ -25,14 +25,6 @@ const MyProfile = () => {
   }, []);
 
 
-  const formatDate = (date) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   if (loading) {
     return (

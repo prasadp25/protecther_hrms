@@ -22,3 +22,21 @@ export const formatCurrency = (amount) => {
     maximumFractionDigits: 0,
   }).format(n);
 };
+
+// Short date, e.g. "05 Sep 2026". Empty/invalid values render as "-".
+export const formatDate = (date) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+// Date + time, e.g. "05 Sep 2026, 02:30 pm". For audit logs / timestamps.
+export const formatDateTime = (date) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+};
