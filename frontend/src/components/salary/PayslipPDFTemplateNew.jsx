@@ -1,5 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { numberToWords } from '../../utils/numberToWords';
 
 // Create styles for the new format
 const styles = StyleSheet.create({
@@ -347,35 +348,6 @@ const formatCurrency = (amount) => {
   }
 
   return `Rs.${result}`;
-};
-
-// Helper function to convert number to words (Indian format)
-const numberToWords = (num) => {
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-
-  if (num === 0) return 'Zero Rupees Only';
-  // Negative net pay (e.g. a zero-days-present month with only fixed
-  // deductions) would otherwise make convertLakhs return undefined and crash.
-  if (num < 0) return 'Minus ' + numberToWords(-num);
-
-  const convertHundreds = (n) => {
-    if (n === 0) return '';
-    if (n < 10) return ones[n];
-    if (n < 20) return teens[n - 10];
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
-    return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertHundreds(n % 100) : '');
-  };
-
-  const convertLakhs = (n) => {
-    if (n < 1000) return convertHundreds(n);
-    if (n < 100000) return convertHundreds(Math.floor(n / 1000)) + ' Thousand ' + convertLakhs(n % 1000);
-    if (n < 10000000) return convertHundreds(Math.floor(n / 100000)) + ' Lakh ' + convertLakhs(n % 100000);
-    return convertHundreds(Math.floor(n / 10000000)) + ' Crore ' + convertLakhs(n % 10000000);
-  };
-
-  return convertLakhs(Math.floor(num)).trim() + ' Rupees Only';
 };
 
 // Main PDF Document Component
