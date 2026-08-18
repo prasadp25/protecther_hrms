@@ -486,7 +486,9 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF, onExitDocs, onCle
                       >
                         <option value="ACTIVE">ACTIVE</option>
                         <option value="ON_LEAVE">ON_LEAVE</option>
-                        <option value="RESIGNED">RESIGNED</option>
+                        {/* Resignations go through the Resignations workflow, not a casual flip.
+                            Kept (disabled) so already-resigned rows still display correctly. */}
+                        <option value="RESIGNED" disabled>RESIGNED (via Resignations)</option>
                         <option value="TERMINATED">TERMINATED</option>
                       </select>
                     </td>

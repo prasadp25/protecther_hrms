@@ -5,6 +5,7 @@ const Sidebar = ({ module, onModuleChange, user, isSuperAdmin, onLogout, collaps
     { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
     { id: 'candidates', label: 'Candidates', icon: CandidateIcon },
     { id: 'employees', label: 'Employees', icon: UsersIcon },
+    { id: 'resignations', label: 'Resignations', icon: ExitIcon, roles: ['SUPER_ADMIN', 'ADMIN', 'HR'] },
     { id: 'sites', label: 'Sites', icon: BuildingIcon },
     { id: 'attendance', label: 'Attendance', icon: CalendarIcon },
     { id: 'salary', label: 'Payroll', icon: WalletIcon },
@@ -198,6 +199,12 @@ const CompanyIcon = ({ className }) => (
 const ShieldIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+);
+
+const ExitIcon = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
   </svg>
 );
 

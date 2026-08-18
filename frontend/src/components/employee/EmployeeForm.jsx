@@ -918,7 +918,9 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
               className={inputClasses}
             >
               <option value="ACTIVE">Active</option>
-              <option value="RESIGNED">Resigned</option>
+              {/* Resignations run through the Resignations workflow. SUPER_ADMIN keeps
+                  a direct override; others see it disabled (display only). */}
+              <option value="RESIGNED" disabled={!isSuperAdmin}>Resigned{isSuperAdmin ? '' : ' (via Resignations)'}</option>
               <option value="TERMINATED">Terminated</option>
               <option value="ON_LEAVE">On Leave</option>
             </select>

@@ -123,6 +123,7 @@ const advanceRoutes = require('./routes/advanceRoutes');
 const complianceRoutes = require('./routes/complianceRoutes');
 const fnfRoutes = require('./routes/fnfRoutes');
 const clearanceRoutes = require('./routes/clearanceRoutes');
+const resignationRoutes = require('./routes/resignationRoutes');
 
 // Mount routes
 app.use(`${apiPrefix}/auth`, authRoutes);
@@ -143,6 +144,7 @@ app.use(`${apiPrefix}/advances`, advanceRoutes);
 app.use(`${apiPrefix}/compliance`, complianceRoutes);
 app.use(`${apiPrefix}/fnf`, fnfRoutes);
 app.use(`${apiPrefix}/clearances`, clearanceRoutes);
+app.use(`${apiPrefix}/resignations`, resignationRoutes);
 
 // ==============================================
 // Static Files (must be after API routes)

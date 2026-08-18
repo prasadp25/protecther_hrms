@@ -20,6 +20,7 @@ const BulkDocumentUpload = lazy(() => import('./components/employee/BulkDocument
 const FnFSettlement = lazy(() => import('./components/fnf/FnFSettlement'));
 const ExitDocuments = lazy(() => import('./components/fnf/ExitDocuments'));
 const Clearance = lazy(() => import('./components/fnf/Clearance'));
+const ResignationList = lazy(() => import('./components/fnf/ResignationList'));
 const SiteList = lazy(() => import('./components/site/SiteList'));
 const SiteForm = lazy(() => import('./components/site/SiteForm'));
 const SalaryList = lazy(() => import('./components/salary/SalaryList'));
@@ -285,6 +286,7 @@ const MainApp = () => {
                     {module === 'candidates' && (view === 'form' ? (selectedCandidate ? 'Edit Candidate' : 'Add Candidate') : view === 'offer-letter' ? 'Generate Offer Letter' : view === 'convert' ? 'Convert to Employee' : 'Candidates')}
                     {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : view === 'bulk-upload' ? 'Bulk Document Upload' : view === 'fnf' ? 'Full & Final Settlement' : view === 'exit-docs' ? 'Exit Documents' : view === 'clearance' ? 'No-dues Clearance' : 'Employees')}
                     {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
+                    {module === 'resignations' && 'Resignations'}
                     {module === 'attendance' && 'Attendance Management'}
                     {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
                     {module === 'advances' && 'Salary Advances'}
@@ -416,6 +418,8 @@ const MainApp = () => {
               )}
             </>
           )}
+
+          {module === 'resignations' && <ResignationList />}
 
           {module === 'attendance' && <AttendanceManagement />}
 
