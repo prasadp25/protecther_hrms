@@ -653,11 +653,14 @@ const deleteEmployee = async (req, res) => {
     const employeeData = existing[0];
 
     // Soft delete employee and deactivate salaries atomically — a failure
-    // between the two must not leave an inactive employee with active salary
+    // between the two must not leave a resigned employee with active salary.
+    // The employee is marked RESIGNED (what the "mark as resigned" action tells
+    // the user, and what the dashboard/reports count); the salary row uses
+    // INACTIVE, the correct terminal value for the salaries enum.
     await withTransaction(async (conn) => {
       await conn.query(
         'UPDATE employees SET status = ?, date_of_leaving = NOW() WHERE employee_id = ?',
-        ['INACTIVE', id]
+        ['RESIGNED', id]
       );
       await conn.query(
         'UPDATE salaries SET status = ? WHERE employee_id = ?',
@@ -683,7 +686,7 @@ const deleteEmployee = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Employee deactivated successfully',
+      message: 'Employee marked as resigned',
       outstanding_advance: outstanding.length > 0
         ? { count: outstanding.length, total_balance: outstandingTotal }
         : null
