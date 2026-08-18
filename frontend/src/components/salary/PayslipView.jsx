@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { formatCurrency } from '../../utils/format';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
@@ -358,13 +359,6 @@ const PayslipView = ({ onBack }) => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const getStatusBadge = (status) => {
     const baseClasses = 'px-3 py-1 rounded-full text-xs font-semibold';

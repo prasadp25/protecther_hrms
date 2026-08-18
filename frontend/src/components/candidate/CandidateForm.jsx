@@ -3,6 +3,7 @@ import { candidateService } from '../../services/candidateService';
 import { siteService } from '../../services/siteService';
 import { employeeService } from '../../services/employeeService';
 import { SPLIT_OPTIONS, PT_RULES } from '../../config/payrollConstants';
+import { formatCurrency } from '../../utils/format';
 
 // Predefined departments (always available)
 const DEFAULT_DEPARTMENTS = [
@@ -283,7 +284,6 @@ const CandidateForm = ({ candidate, onSuccess, onCancel }) => {
     finally { setLoading(false); }
   };
 
-  const formatCurrency = (amount) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
   const { gross, totalDeductions, net, bonus, gratuity, ctc } = calculateSalary();
   const inputClass = 'w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500';
 

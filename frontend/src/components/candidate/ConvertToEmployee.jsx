@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { candidateService } from '../../services/candidateService';
+import { formatCurrency } from '../../utils/format';
 
 const ConvertToEmployee = ({ candidate, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,6 @@ const ConvertToEmployee = ({ candidate, onSuccess, onCancel }) => {
     }
   };
 
-  const formatCurrency = (amount) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
   const inputClass = 'w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500';
   const errorInputClass = 'w-full px-3 py-2 border border-red-500 rounded-lg focus:ring-2 focus:ring-red-500';
 

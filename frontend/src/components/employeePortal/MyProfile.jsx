@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '../../utils/format';
 import { toast } from 'react-toastify';
 import { employeePortalService } from '../../services/employeePortalService';
 
@@ -23,14 +24,6 @@ const MyProfile = () => {
     fetchProfile();
   }, []);
 
-  const formatCurrency = (amount) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
 
   const formatDate = (date) => {
     if (!date) return '-';

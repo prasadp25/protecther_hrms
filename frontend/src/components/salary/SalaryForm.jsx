@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '../../utils/format';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
 import { SPLIT_OPTIONS, PT_RULES } from '../../config/payrollConstants';
@@ -429,13 +430,6 @@ const SalaryForm = ({ salaryId, preSelectedEmployeeId, onSuccess, onCancel }) =>
   const sectionClasses = "bg-slate-50 rounded-xl p-5 border border-slate-100";
   const sectionTitleClasses = "text-lg font-semibold text-slate-800 mb-4 flex items-center";
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-slate-100">

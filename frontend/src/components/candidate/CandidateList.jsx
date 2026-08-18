@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '../../utils/format';
 import { candidateService } from '../../services/candidateService';
 import { siteService } from '../../services/siteService';
 import usePagination from '../../hooks/usePagination';
@@ -72,10 +73,6 @@ const CandidateList = ({ onEdit, onAddNew, onGenerateOfferLetter, onConvertToEmp
     return base + ' ' + (colors[status] || '');
   };
 
-  const formatCurrency = (amount) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-  };
 
   return (
     <div className="space-y-6">

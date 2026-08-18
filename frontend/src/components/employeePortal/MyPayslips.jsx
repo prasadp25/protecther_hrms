@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '../../utils/format';
 import { toast } from 'react-toastify';
 import { employeePortalService } from '../../services/employeePortalService';
 
@@ -42,14 +43,6 @@ const MyPayslips = () => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined) return '-';
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
 
   const formatMonth = (monthStr) => {
     if (!monthStr) return '-';

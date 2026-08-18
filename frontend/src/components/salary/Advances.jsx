@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { advanceService } from '../../services/advanceService';
 import { employeeService } from '../../services/employeeService';
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
+import { formatCurrency } from '../../utils/format';
 
 const Advances = () => {
   const [advances, setAdvances] = useState([]);

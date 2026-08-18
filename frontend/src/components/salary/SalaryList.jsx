@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '../../utils/format';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
@@ -128,13 +129,6 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const exportToExcel = () => {
     if (filteredSalaries.length === 0) {

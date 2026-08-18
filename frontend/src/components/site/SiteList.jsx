@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '../../utils/format';
 import { siteService } from '../../services/siteService';
 
 const SiteList = ({ onEdit, onAddNew }) => {
@@ -84,14 +85,6 @@ const SiteList = ({ onEdit, onAddNew }) => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <div className="space-y-6">
