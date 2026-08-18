@@ -121,6 +121,7 @@ const settingsRoutes = require('./routes/settingsRoutes');
 const ecrRoutes = require('./routes/ecrRoutes');
 const advanceRoutes = require('./routes/advanceRoutes');
 const complianceRoutes = require('./routes/complianceRoutes');
+const fnfRoutes = require('./routes/fnfRoutes');
 
 // Mount routes
 app.use(`${apiPrefix}/auth`, authRoutes);
@@ -139,6 +140,7 @@ app.use(`${apiPrefix}/settings`, settingsRoutes);
 app.use(`${apiPrefix}/ecr`, ecrRoutes);
 app.use(`${apiPrefix}/advances`, advanceRoutes);
 app.use(`${apiPrefix}/compliance`, complianceRoutes);
+app.use(`${apiPrefix}/fnf`, fnfRoutes);
 
 // ==============================================
 // Static Files (must be after API routes)

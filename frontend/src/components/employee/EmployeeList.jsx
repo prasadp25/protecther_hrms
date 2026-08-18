@@ -6,7 +6,7 @@ import { siteService } from '../../services/siteService';
 import usePagination from '../../hooks/usePagination';
 import Pagination from '../common/Pagination';
 
-const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
+const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF }) => {
   const [employees, setEmployees] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -500,6 +500,17 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
                           <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                         </svg>
                       </button>
+                      {onFnF && ['RESIGNED', 'TERMINATED'].includes(employee.status) && (
+                        <button
+                          onClick={() => onFnF(employee.employee_id)}
+                          className="text-emerald-700 hover:text-emerald-900 p-1"
+                          title="Full & Final settlement"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.94 6.94a.75.75 0 11-1.06-1.06 5.5 5.5 0 018.02 7.5.75.75 0 01-1.3-.75 4 4 0 00-5.66-5.69zM3.36 9.37a.75.75 0 01.93.51 4 4 0 005.66 5.69.75.75 0 111.06 1.06 5.5 5.5 0 01-8.02-7.5.75.75 0 01.37-.77z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
                       <button
                         onClick={() =>
                           handleDelete(
