@@ -347,71 +347,41 @@ const AttendanceManagement = () => {
     await handleSaveOnly();
   };
 
-  // NEW: Enhanced payslip generation with progress tracking and regenerate option
+  // Payslip generation via the single bulk endpoint (was ~N sequential POSTs,
+  // one per employee — 30-60s and fragile). The backend deletes existing rows
+  // when regenerate is set and scopes to the selected site, so no manual delete.
   const generateBulkPayslips = async () => {
     try {
       const [year, month] = selectedMonth.split('-');
 
-      // NEW: Delete existing payslips if regenerate is checked
-      if (regeneratePayslips) {
-        try {
-          await salaryService.deletePayslipsByMonth(selectedMonth);
-        } catch (error) {
-          console.log('No existing payslips to delete or delete failed');
-        }
+      // Indeterminate progress — the bulk call is one request, so there is no
+      // per-employee tick; the button's saving state covers the wait.
+      setProgressStatus({ current: 0, total: 0, employee: '' });
+
+      const response = await salaryService.bulkGeneratePayslips({
+        month: parseInt(month),
+        year: parseInt(year),
+        regenerate: regeneratePayslips,
+        ...(selectedSite !== 'ALL' ? { site_id: selectedSite } : {})
+      });
+
+      const r = response.data || {};
+      const generated = (r.success || 0) + (r.regenerated || 0);
+      const failed = r.failed || 0;
+      const skipped = r.skipped || 0;
+
+      if (generated > 0) {
+        await exportPayslipsToExcel();
       }
 
-      let successCount = 0;
-      let errorCount = 0;
-      const failedEmployees = [];
-
-      const total = filteredAttendance.length;
-
-      for (let i = 0; i < filteredAttendance.length; i++) {
-        const att = filteredAttendance[i];
-
-        // NEW: Update progress status
-        setProgressStatus({
-          current: i + 1,
-          total: total,
-          employee: `${att.employee_name} (${att.employee_code})`
-        });
-
-        try {
-          const payslipData = {
-            employee_id: att.employee_id,
-            month: parseInt(month),
-            year: parseInt(year),
-            advance_deduction: 0,
-            remarks: att.remarks || ''
-          };
-
-          const response = await salaryService.generatePayslip(payslipData);
-          if (response.success) {
-            successCount++;
-          }
-        } catch (error) {
-          errorCount++;
-          const errorMsg = error.response?.data?.message || 'Failed';
-          failedEmployees.push({
-            employee_code: att.employee_code,
-            employee_name: att.employee_name,
-            error: errorMsg
-          });
-        }
-      }
-
-      if (successCount > 0) {
-        await exportPayslipsToExcel(failedEmployees);
-      }
-
-      if (errorCount > 0) {
-        const failedList = failedEmployees.map(e => `• ${e.employee_name} (${e.employee_code}): ${e.error}`).join('\n');
+      if (failed > 0) {
+        const failedList = (r.errors || []).map(e => `• ${e}`).join('\n');
         const shouldGoToSalary = window.confirm(
-          `✅ Success! Generated ${successCount}/${filteredAttendance.length} payslips\n` +
-          `⚠️ Failed: ${errorCount} employees\n\n` +
-          `Failed Employees:\n${failedList}\n\n` +
-          `📥 Excel downloaded with ${successCount} payslips\n\n` +
+          `✅ Generated ${generated} payslips` +
+          (skipped > 0 ? ` (${skipped} skipped)` : '') + `\n` +
+          `⚠️ Failed: ${failed} employees\n\n` +
+          (failedList ? `Failed:\n${failedList}\n\n` : '') +
+          (generated > 0 ? `📥 Excel downloaded with ${generated} payslips\n\n` : '') +
           `Click OK to go to Salary Management to set up salary structures for failed employees.`
         );
 
@@ -420,7 +390,8 @@ const AttendanceManagement = () => {
         }
       } else {
         toast.success(
-          `✅ Success! Generated ${successCount} payslips\n\n` +
+          `✅ Success! Generated ${generated} payslips` +
+          (skipped > 0 ? ` (${skipped} skipped)` : '') + `\n\n` +
           `📥 Excel downloaded successfully!`
         );
       }
@@ -428,7 +399,7 @@ const AttendanceManagement = () => {
       loadAttendance();
     } catch (error) {
       console.error('Bulk payslip generation error:', error);
-      toast.error('❌ Failed to generate payslips');
+      toast.error(error.response?.data?.message || '❌ Failed to generate payslips');
     }
   };
 

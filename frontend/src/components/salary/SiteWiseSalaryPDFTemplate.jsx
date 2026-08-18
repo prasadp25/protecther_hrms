@@ -174,7 +174,7 @@ const SiteWiseSalaryPDFTemplate = ({ payslips, siteName, siteCode, month, employ
       <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Image src="/company-logo.png" style={styles.logo} />
+          <Image src="/protecther-logo.png" style={styles.logo} />
           <View style={styles.headerText}>
             <Text style={styles.companyName}>EHS STAFFING SOLUTIONS</Text>
             <Text style={styles.headerTitle}>Site-wise Salary Sheet</Text>
