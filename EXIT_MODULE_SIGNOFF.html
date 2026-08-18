@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exit Module Sign-Off</title>
+<style>
+  :root {
+    --paper: #eef1f5;
+    --surface: #ffffff;
+    --surface-2: #f5f8fb;
+    --ink: #14263d;
+    --ink-2: #4c5d72;
+    --ink-3: #7688a0;
+    --line: #d9e0e9;
+    --line-strong: #c3cdd9;
+    --navy: #1c3a5e;
+    --green: #43792c;
+    --green-chip-bg: #e7f0de;
+    --green-chip-ink: #396624;
+    --amber: #8f6410;
+    --amber-chip-bg: #fbeecb;
+    --amber-chip-ink: #7c560d;
+    --amber-edge: #e6c377;
+
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0d151f;
+      --surface: #16212f;
+      --surface-2: #1b2836;
+      --ink: #e7edf4;
+      --ink-2: #a6b6c8;
+      --ink-3: #7688a0;
+      --line: #2a3a4d;
+      --line-strong: #35485d;
+      --navy: #7ab0e0;
+      --green: #8ec469;
+      --green-chip-bg: #1f3018;
+      --green-chip-ink: #a6d488;
+      --amber: #dcac54;
+      --amber-chip-bg: #33280f;
+      --amber-chip-ink: #e6c377;
+      --amber-edge: #6a5220;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0d151f;
+    --surface: #16212f;
+    --surface-2: #1b2836;
+    --ink: #e7edf4;
+    --ink-2: #a6b6c8;
+    --ink-3: #7688a0;
+    --line: #2a3a4d;
+    --line-strong: #35485d;
+    --navy: #7ab0e0;
+    --green: #8ec469;
+    --green-chip-bg: #1f3018;
+    --green-chip-ink: #a6d488;
+    --amber: #dcac54;
+    --amber-chip-bg: #33280f;
+    --amber-chip-ink: #e6c377;
+    --amber-edge: #6a5220;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 56px 28px 80px; }
+
+  /* ---------- Header ---------- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(34px, 6vw, 52px);
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+  .lede {
+    font-size: 17px;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0 0 30px;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--line);
+    font-size: 13.5px;
+    color: var(--ink-2);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Stat strip ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 30px 0 8px;
+  }
+  .stat { background: var(--surface); padding: 20px 22px; }
+  .stat .n {
+    font-family: var(--serif);
+    font-size: 34px;
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat.block .n { color: var(--amber); }
+  .stat.def .n { color: var(--green); }
+  .stat .k {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-top: 8px;
+  }
+
+  .howto {
+    font-size: 14px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 22px 0 8px;
+  }
+  .howto b { color: var(--ink); }
+
+  /* ---------- Section ---------- */
+  .section { margin-top: 52px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 26px;
+  }
+  .section-letter {
+    font-family: var(--serif);
+    font-size: 30px;
+    line-height: 1;
+    color: var(--navy);
+    font-weight: 600;
+  }
+  .section-head h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 24px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .section-head .count {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+
+  /* ---------- Decision card ---------- */
+  .cards { display: flex; flex-direction: column; gap: 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px 26px 22px;
+  }
+  .card.blocking { border-color: var(--amber-edge); }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .id {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--ink-3);
+  }
+  .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .pill.default { background: var(--green-chip-bg); color: var(--green-chip-ink); }
+  .pill.block { background: var(--amber-chip-bg); color: var(--amber-chip-ink); }
+
+  .q {
+    font-family: var(--serif);
+    font-size: 20px;
+    line-height: 1.28;
+    font-weight: 600;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  .rows { display: flex; flex-direction: column; gap: 12px; }
+  .row {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .row .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding-top: 3px;
+  }
+  .row.live .label { color: var(--green); }
+  .row.alt .label { color: var(--ink-3); }
+  .row .val { font-size: 15px; color: var(--ink); }
+  .row.alt .val { color: var(--ink-2); }
+  .row .val code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+
+  .decide {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 26px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line-strong);
+  }
+  .opt { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--ink-2); }
+  .box {
+    width: 15px; height: 15px;
+    border: 1.5px solid var(--ink-3);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .opt.change { flex: 1; min-width: 220px; }
+  .opt.change .fill {
+    flex: 1;
+    border-bottom: 1px solid var(--line-strong);
+    min-width: 80px;
+    align-self: flex-end;
+    height: 18px;
+  }
+
+  /* ---------- Sign-off ---------- */
+  .signoff {
+    margin-top: 56px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 28px 26px;
+  }
+  .signoff h3 {
+    font-family: var(--serif);
+    font-size: 20px;
+    margin: 0 0 6px;
+  }
+  .signoff p { color: var(--ink-2); font-size: 14.5px; margin: 0 0 24px; }
+  .siglines { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 30px; }
+  .sigline .rule { border-bottom: 1.5px solid var(--line-strong); height: 30px; }
+  .sigline .cap {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-top: 8px;
+  }
+
+  footer {
+    margin-top: 34px;
+    font-size: 12.5px;
+    color: var(--ink-3);
+    text-align: center;
+  }
+
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr; gap: 4px; }
+    .siglines { grid-template-columns: 1fr; }
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { padding: 0; max-width: 100%; }
+    .card, .signoff { break-inside: avoid; }
+    .howto { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">ProtectHer HRMS · Employee Exit Module</p>
+    <h1>Exit Module Sign-Off Sheet</h1>
+    <p class="lede">
+      The full exit module is <strong>built and live</strong> — Full &amp; Final settlement,
+      relieving &amp; experience letters, no-dues clearance, and the resignation approval
+      workflow. It runs on <strong>sensible defaults</strong> today. Ten choices remain that are
+      yours to make. Please <strong>confirm each default or mark a change</strong>. Two are
+      marked <em>blocking</em> — they change how money and payroll behave, so we&rsquo;d like your
+      answer before they&rsquo;re relied on.
+    </p>
+    <div class="meta">
+      <span>Prepared for <b>ProtectHer LLP</b></span>
+      <span>Date <b>18 Aug 2026</b></span>
+      <span>Modules <b>F&amp;F · Letters · Clearance · Resignation</b></span>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="n">10</div><div class="k">Decisions to confirm</div></div>
+    <div class="stat block"><div class="n">2</div><div class="k">Blocking · answer first</div></div>
+    <div class="stat def"><div class="n">8</div><div class="k">Safe defaults already live</div></div>
+  </div>
+
+  <div class="howto">
+    <b>How to use this sheet.</b> Each card shows what the system does <b>right now</b> and the
+    <b>alternative</b> if you&rsquo;d prefer something else. Tick <b>Confirm</b> to keep it as-is,
+    or <b>Change</b> and note what you want. Nothing needs to change for the module to work —
+    this is about matching it to your policy.
+  </div>
+
+  <!-- ============ SECTION A ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-letter">A</span>
+      <h2>Full &amp; Final Settlement</h2>
+      <span class="count">5 decisions</span>
+    </div>
+    <div class="cards">
+
+      <article class="card blocking">
+        <div class="card-top">
+          <span class="id">A1</span>
+          <span class="pill block">Blocking</span>
+        </div>
+        <p class="q">Should a leaver&rsquo;s final settlement pay a lump-sum gratuity or bonus?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val"><b>No lump sum.</b> Your salary structure already pays gratuity
+              (4.81%) and statutory bonus (8.33%) <b>every month</b> inside CTC, so the settlement
+              does not pay them again at exit — it shows the statutory figures for reference only.
+              An override lets HR add gratuity for anyone who was <em>not</em> on the monthly model.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">If some staff are on a classic held-back gratuity model, tell us who,
+              and we&rsquo;ll flag them for a lump-sum payout at exit by default.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — gratuity/bonus paid monthly, none at exit</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">A2</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">Do you pay out unused leave at exit, and at what rate?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val">HR enters leave encashment <b>manually</b> as a line on the settlement.
+              The system does not track leave balances, so there is no automatic calculation.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">For an automatic amount we&rsquo;d need the rate — e.g.
+              <code>Basic ÷ 26</code> or <code>Gross ÷ 30</code> per day — and a source of leave balances.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — manual entry is fine</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">A3</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">When someone leaves on short notice, do you recover pay in lieu?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val">HR adds a <b>manual recovery line</b> for the shortfall when needed.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">Auto-calculate the shortfall from the notice period. This depends on
+              decision <b>B4</b> (a fixed notice-period policy).</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — manual line for now</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">A4</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">Who can approve and mark-paid a settlement?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val"><b>Admin</b> (and Super Admin). HR can prepare drafts but cannot approve or mark paid.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">Also allow <b>HR</b> to approve and mark paid.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — Admin approves</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">A5</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">How should the amounts round?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val"><b>Each line</b> rounds to the nearest rupee — matching how payslips already round.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">Keep line amounts exact and round <b>only the final total</b>.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — round each line</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ SECTION B ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-letter">B</span>
+      <h2>Resignation Approval Workflow</h2>
+      <span class="count">5 decisions</span>
+    </div>
+    <div class="cards">
+
+      <article class="card blocking">
+        <div class="card-top">
+          <span class="id">B1</span>
+          <span class="pill block">Blocking</span>
+        </div>
+        <p class="q">When a resignation is approved, does the employee stay on payroll until their last day?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val"><b>Yes.</b> They stay active — drawing salary and keeping portal access —
+              through the notice period. A manual <b>&ldquo;Relieve&rdquo;</b> on or after the last
+              working day marks them Resigned and ends payroll. This is the standard, correct behaviour.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val"><em>(not recommended)</em> Mark them Resigned immediately at approval —
+              which would cut off salary and portal access during the notice period.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — active until last day, then relieve</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">B2</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">Who can approve or reject a resignation?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val"><b>HR and Admin.</b> Cancelling an approved request is Admin-only.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">Restrict approval to <b>Admin only</b>.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — HR &amp; Admin approve</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">B3</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">Can employees submit their own resignation through the portal?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val"><b>HR raises it on the employee&rsquo;s behalf.</b> The employee portal is
+              view-only today; self-service submission is planned for the next phase.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">Prioritise <b>employee self-service</b> (submit &amp; withdraw from the portal) now.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — HR raises it for now</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">B4</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">What is your standard notice period — and is it the same for every company?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val">HR sets the last working day on each request. There is <b>no fixed policy value</b> yet.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">Give us a standard (e.g. <b>30 days</b>), per-company if it differs. This enables
+              date validation on submission and the notice-shortfall recovery in <b>A3</b>.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — HR sets it per case</span>
+          <span class="opt change"><span class="box"></span>Standard days:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <span class="id">B5</span>
+          <span class="pill default">Default set</span>
+        </div>
+        <p class="q">Retire the old one-click &ldquo;set status to Resigned&rdquo;?</p>
+        <div class="rows">
+          <div class="row live">
+            <span class="label">Live now</span>
+            <span class="val"><b>Removed</b> from the casual status dropdown so resignations flow through the
+              new workflow. <b>Super Admin</b> keeps a direct override for data corrections.</span>
+          </div>
+          <div class="row alt">
+            <span class="label">Alternative</span>
+            <span class="val">Keep the old one-click &ldquo;mark as resigned&rdquo; available to HR too, alongside the workflow.</span>
+          </div>
+        </div>
+        <div class="decide">
+          <span class="opt"><span class="box"></span>Confirm — workflow only (Super Admin override kept)</span>
+          <span class="opt change"><span class="box"></span>Change:&nbsp;<span class="fill"></span></span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ SIGN-OFF ============ -->
+  <div class="signoff">
+    <h3>Sign-off</h3>
+    <p>By signing, you confirm the decisions marked above. Anything left un-marked keeps the current
+      default. Return this sheet, or simply reply with the decision codes (e.g. &ldquo;A1 confirm,
+      B4 change to 30 days&rdquo;).</p>
+    <div class="siglines">
+      <div class="sigline"><div class="rule"></div><div class="cap">Name</div></div>
+      <div class="sigline"><div class="rule"></div><div class="cap">Role</div></div>
+      <div class="sigline"><div class="rule"></div><div class="cap">Signature</div></div>
+      <div class="sigline"><div class="rule"></div><div class="cap">Date</div></div>
+    </div>
+  </div>
+
+  <footer>ProtectHer HRMS — Exit Module · This sheet reflects the system as deployed on 18 Aug 2026.</footer>
+</div>
+
+</body>
+</html>
