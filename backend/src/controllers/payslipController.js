@@ -103,8 +103,7 @@ const getAllPayslips = async (req, res) => {
     console.error('Get payslips error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch payslips',
-      error: error.message
+      message: 'Failed to fetch payslips'
     });
   }
 };
@@ -157,8 +156,7 @@ const getPayslipById = async (req, res) => {
     console.error('Get payslip error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch payslip',
-      error: error.message
+      message: 'Failed to fetch payslip'
     });
   }
 };
@@ -286,8 +284,7 @@ const generatePayslip = async (req, res) => {
     console.error('Generate payslip error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to generate payslip',
-      error: error.message
+      message: 'Failed to generate payslip'
     });
   }
 };
@@ -431,8 +428,7 @@ const bulkGeneratePayslips = async (req, res) => {
     console.error('Bulk generate payslips error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to bulk generate payslips',
-      error: error.message
+      message: 'Failed to bulk generate payslips'
     });
   }
 };
@@ -483,8 +479,7 @@ const updatePaymentStatus = async (req, res) => {
     console.error('Update payment status error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update payment status',
-      error: error.message
+      message: 'Failed to update payment status'
     });
   }
 };
@@ -543,8 +538,7 @@ const getPayslipSummary = async (req, res) => {
     console.error('Get payslip summary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch payslip summary',
-      error: error.message
+      message: 'Failed to fetch payslip summary'
     });
   }
 };
@@ -586,8 +580,7 @@ const getPayslipsByMonth = async (req, res) => {
     console.error('Get payslips by month error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch payslips by month',
-      error: error.message
+      message: 'Failed to fetch payslips by month'
     });
   }
 };
@@ -631,8 +624,7 @@ const deletePayslipsByMonth = async (req, res) => {
     console.error('Delete payslips by month error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete payslips',
-      error: error.message
+      message: 'Failed to delete payslips'
     });
   }
 };

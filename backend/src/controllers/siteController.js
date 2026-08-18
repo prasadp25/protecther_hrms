@@ -87,8 +87,7 @@ const getActiveSites = async (req, res) => {
     console.error('Get active sites error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch active sites',
-      error: error.message
+      message: 'Failed to fetch active sites'
     });
   }
 };
@@ -121,8 +120,7 @@ const getSiteById = async (req, res) => {
     console.error('Get site error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch site',
-      error: error.message
+      message: 'Failed to fetch site'
     });
   }
 };
@@ -220,8 +218,7 @@ const createSite = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: 'Failed to create site',
-      error: error.message
+      message: 'Failed to create site'
     });
   }
 };
@@ -304,8 +301,7 @@ const updateSite = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: 'Failed to update site',
-      error: error.message
+      message: 'Failed to update site'
     });
   }
 };
@@ -357,8 +353,7 @@ const deleteSite = async (req, res) => {
     console.error('Delete site error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete site',
-      error: error.message
+      message: 'Failed to delete site'
     });
   }
 };
@@ -408,8 +403,7 @@ const getSiteStats = async (req, res) => {
     console.error('Get site stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch site statistics',
-      error: error.message
+      message: 'Failed to fetch site statistics'
     });
   }
 };

@@ -147,8 +147,7 @@ const generateECR = async (req, res) => {
     console.error('Generate ECR error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to generate ECR file',
-      error: error.message
+      message: 'Failed to generate ECR file'
     });
   }
 };
@@ -259,8 +258,7 @@ const previewECR = async (req, res) => {
     console.error('Preview ECR error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to preview ECR data',
-      error: error.message
+      message: 'Failed to preview ECR data'
     });
   }
 };

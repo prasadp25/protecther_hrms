@@ -46,8 +46,7 @@ const getInsuranceSettings = async (req, res) => {
     console.error('Get insurance settings error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch insurance settings',
-      error: error.message
+      message: 'Failed to fetch insurance settings'
     });
   }
 };
@@ -134,8 +133,7 @@ const updateInsuranceSettings = async (req, res) => {
     console.error('Update insurance settings error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update insurance settings',
-      error: error.message
+      message: 'Failed to update insurance settings'
     });
   }
 };

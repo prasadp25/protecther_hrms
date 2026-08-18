@@ -127,8 +127,7 @@ const getSalaryById = async (req, res) => {
     console.error('Get salary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch salary',
-      error: error.message
+      message: 'Failed to fetch salary'
     });
   }
 };
@@ -178,8 +177,7 @@ const getSalaryByEmployeeId = async (req, res) => {
     console.error('Get employee salary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch employee salary',
-      error: error.message
+      message: 'Failed to fetch employee salary'
     });
   }
 };
@@ -280,8 +278,7 @@ const createSalary = async (req, res) => {
     console.error('Create salary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create salary',
-      error: error.message
+      message: 'Failed to create salary'
     });
   }
 };
@@ -391,8 +388,7 @@ const updateSalary = async (req, res) => {
     console.error('Update salary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update salary',
-      error: error.message
+      message: 'Failed to update salary'
     });
   }
 };
@@ -439,8 +435,7 @@ const deleteSalary = async (req, res) => {
     console.error('Delete salary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete salary',
-      error: error.message
+      message: 'Failed to delete salary'
     });
   }
 };
@@ -496,8 +491,7 @@ const getSalarySummary = async (req, res) => {
     console.error('Get salary summary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch salary summary',
-      error: error.message
+      message: 'Failed to fetch salary summary'
     });
   }
 };
@@ -544,8 +538,7 @@ const getSiteWiseSalaryReport = async (req, res) => {
     console.error('Get site-wise salary report error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch site-wise salary report',
-      error: error.message
+      message: 'Failed to fetch site-wise salary report'
     });
   }
 };

@@ -40,8 +40,7 @@ router.get('/', authenticate, superAdminOnly, async (req, res) => {
     console.error('Error fetching audit logs:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch audit logs',
-      error: error.message
+      message: 'Failed to fetch audit logs'
     });
   }
 });
@@ -65,8 +64,7 @@ router.get('/:tableName/:recordId', authenticate, superAdminOnly, async (req, re
     console.error('Error fetching record audit logs:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch audit logs',
-      error: error.message
+      message: 'Failed to fetch audit logs'
     });
   }
 });

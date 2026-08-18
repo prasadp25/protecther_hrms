@@ -42,8 +42,7 @@ const getAllNotices = async (req, res) => {
     console.error('Get notices error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch notices',
-      error: error.message
+      message: 'Failed to fetch notices'
     });
   }
 };
@@ -82,8 +81,7 @@ const getNoticeById = async (req, res) => {
     console.error('Get notice error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch notice',
-      error: error.message
+      message: 'Failed to fetch notice'
     });
   }
 };
@@ -141,8 +139,7 @@ const createNotice = async (req, res) => {
     console.error('Create notice error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create notice',
-      error: error.message
+      message: 'Failed to create notice'
     });
   }
 };
@@ -220,8 +217,7 @@ const updateNotice = async (req, res) => {
     console.error('Update notice error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update notice',
-      error: error.message
+      message: 'Failed to update notice'
     });
   }
 };
@@ -257,8 +253,7 @@ const deleteNotice = async (req, res) => {
     console.error('Delete notice error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete notice',
-      error: error.message
+      message: 'Failed to delete notice'
     });
   }
 };

@@ -45,8 +45,7 @@ const getAttendanceByMonth = async (req, res) => {
     console.error('Error fetching attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve attendance records',
-      error: error.message
+      message: 'Failed to retrieve attendance records'
     });
   }
 };
@@ -82,8 +81,7 @@ const getEmployeeAttendance = async (req, res) => {
     console.error('Error fetching employee attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve employee attendance',
-      error: error.message
+      message: 'Failed to retrieve employee attendance'
     });
   }
 };
@@ -176,8 +174,7 @@ const saveAttendance = async (req, res) => {
     console.error('Error saving attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to save attendance',
-      error: error.message
+      message: 'Failed to save attendance'
     });
   }
 };
@@ -222,8 +219,7 @@ const finalizeAttendance = async (req, res) => {
     console.error('Error finalizing attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to finalize attendance',
-      error: error.message
+      message: 'Failed to finalize attendance'
     });
   }
 };
@@ -265,8 +261,7 @@ const unfinalizeAttendance = async (req, res) => {
     console.error('Error unfinalizing attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to unfinalize attendance',
-      error: error.message
+      message: 'Failed to unfinalize attendance'
     });
   }
 };
@@ -309,8 +304,7 @@ const deleteAttendance = async (req, res) => {
     console.error('Error deleting attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete attendance record',
-      error: error.message
+      message: 'Failed to delete attendance record'
     });
   }
 };
@@ -345,8 +339,7 @@ const getAttendanceSummary = async (req, res) => {
     console.error('Error fetching attendance summary:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve attendance summary',
-      error: error.message
+      message: 'Failed to retrieve attendance summary'
     });
   }
 };

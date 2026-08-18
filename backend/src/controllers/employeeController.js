@@ -131,8 +131,7 @@ const getActiveEmployees = async (req, res) => {
     console.error('Get active employees error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch active employees',
-      error: error.message
+      message: 'Failed to fetch active employees'
     });
   }
 };
@@ -170,8 +169,7 @@ const getEmployeesWithoutSalary = async (req, res) => {
     console.error('Get employees without salary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch employees without salary',
-      error: error.message
+      message: 'Failed to fetch employees without salary'
     });
   }
 };
@@ -214,8 +212,7 @@ const getEmployeeById = async (req, res) => {
     console.error('Get employee error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch employee',
-      error: error.message
+      message: 'Failed to fetch employee'
     });
   }
 };
@@ -426,8 +423,7 @@ const createEmployee = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: 'Failed to create employee',
-      error: error.message
+      message: 'Failed to create employee'
     });
   }
 };
@@ -623,8 +619,7 @@ const updateEmployee = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: 'Failed to update employee',
-      error: error.message
+      message: 'Failed to update employee'
     });
   }
 };
@@ -697,8 +692,7 @@ const deleteEmployee = async (req, res) => {
     console.error('Delete employee error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete employee',
-      error: error.message
+      message: 'Failed to delete employee'
     });
   }
 };
