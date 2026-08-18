@@ -18,6 +18,7 @@ const EmployeeList = lazy(() => import('./components/employee/EmployeeList'));
 const EmployeeForm = lazy(() => import('./components/employee/EmployeeForm'));
 const BulkDocumentUpload = lazy(() => import('./components/employee/BulkDocumentUpload'));
 const FnFSettlement = lazy(() => import('./components/fnf/FnFSettlement'));
+const ExitDocuments = lazy(() => import('./components/fnf/ExitDocuments'));
 const SiteList = lazy(() => import('./components/site/SiteList'));
 const SiteForm = lazy(() => import('./components/site/SiteForm'));
 const SalaryList = lazy(() => import('./components/salary/SalaryList'));
@@ -281,7 +282,7 @@ const MainApp = () => {
                   <h1 className="text-xl font-semibold text-slate-800">
                     {module === 'dashboard' && 'Dashboard'}
                     {module === 'candidates' && (view === 'form' ? (selectedCandidate ? 'Edit Candidate' : 'Add Candidate') : view === 'offer-letter' ? 'Generate Offer Letter' : view === 'convert' ? 'Convert to Employee' : 'Candidates')}
-                    {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : view === 'bulk-upload' ? 'Bulk Document Upload' : view === 'fnf' ? 'Full & Final Settlement' : 'Employees')}
+                    {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : view === 'bulk-upload' ? 'Bulk Document Upload' : view === 'fnf' ? 'Full & Final Settlement' : view === 'exit-docs' ? 'Exit Documents' : 'Employees')}
                     {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
                     {module === 'attendance' && 'Attendance Management'}
                     {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
@@ -371,11 +372,17 @@ const MainApp = () => {
                   onAddNew={handleEmployeeAddNew}
                   onBulkUpload={() => setView('bulk-upload')}
                   onFnF={(id) => { setSelectedEmployeeId(id); setView('fnf'); }}
+                  onExitDocs={(id) => { setSelectedEmployeeId(id); setView('exit-docs'); }}
                 />
               ) : view === 'bulk-upload' ? (
                 <BulkDocumentUpload onBack={() => setView('list')} />
               ) : view === 'fnf' ? (
                 <FnFSettlement
+                  employeeId={selectedEmployeeId}
+                  onBack={() => { setView('list'); setSelectedEmployeeId(null); }}
+                />
+              ) : view === 'exit-docs' ? (
+                <ExitDocuments
                   employeeId={selectedEmployeeId}
                   onBack={() => { setView('list'); setSelectedEmployeeId(null); }}
                 />

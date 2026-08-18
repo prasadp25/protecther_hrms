@@ -183,9 +183,10 @@ const getEmployeeById = async (req, res) => {
     const companyId = getCompanyFilter(req);
 
     let query = `
-      SELECT e.*, s.site_name, s.site_code
+      SELECT e.*, s.site_name, s.site_code, c.company_name, c.company_code
       FROM employees e
       LEFT JOIN sites s ON e.site_id = s.site_id
+      LEFT JOIN companies c ON e.company_id = c.company_id
       WHERE e.employee_id = ?
     `;
     const params = [id];

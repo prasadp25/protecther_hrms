@@ -6,7 +6,7 @@ import { siteService } from '../../services/siteService';
 import usePagination from '../../hooks/usePagination';
 import Pagination from '../common/Pagination';
 
-const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF }) => {
+const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF, onExitDocs }) => {
   const [employees, setEmployees] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -508,6 +508,17 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF }) => {
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.94 6.94a.75.75 0 11-1.06-1.06 5.5 5.5 0 018.02 7.5.75.75 0 01-1.3-.75 4 4 0 00-5.66-5.69zM3.36 9.37a.75.75 0 01.93.51 4 4 0 005.66 5.69.75.75 0 111.06 1.06 5.5 5.5 0 01-8.02-7.5.75.75 0 01.37-.77z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+                      {onExitDocs && ['RESIGNED', 'TERMINATED'].includes(employee.status) && (
+                        <button
+                          onClick={() => onExitDocs(employee.employee_id)}
+                          className="text-indigo-600 hover:text-indigo-900 p-1"
+                          title="Exit documents (relieving / experience letter)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                           </svg>
                         </button>
                       )}
