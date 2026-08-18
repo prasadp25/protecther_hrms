@@ -10,6 +10,9 @@ nul
 .env.local
 .env.production
 *.env.backup
+# Deployment secret bundles (e.g. DEPLOYMENT_CONFIG_PC09.env.backend)
+*.env.backend
+DEPLOYMENT_CONFIG_*
 
 # ===== FRONTEND =====
 # Logs
