@@ -71,6 +71,9 @@ const FnFStatementPDF = ({ settlement: s, items = [], companyName = 'ProtectHer'
   const recoveries = items.filter((i) => i.kind === 'RECOVERY');
   const net = Number(s.net_payable || 0);
   const recoverable = net < 0;
+  // When gratuity was NOT paid monthly, HR adds it as a payable line; the
+  // reference note must then not claim it was already settled monthly.
+  const gratuityInPayable = items.some((i) => i.code === 'GRATUITY_OVERRIDE');
 
   return (
     <Document>
@@ -121,8 +124,9 @@ const FnFStatementPDF = ({ settlement: s, items = [], companyName = 'ProtectHer'
             <Text style={styles.rowAmt}>{inr(s.ref_statutory_gratuity)}</Text>
           </View>
           <Text style={styles.refNote}>
-            Gratuity and statutory bonus are included in monthly CTC and disbursed with each payslip.
-            These figures are shown for compliance reference only.
+            {gratuityInPayable
+              ? 'Statutory gratuity has been added to the payable above (this employee was not paid gratuity monthly). Statutory bonus, where applicable, remains part of monthly CTC.'
+              : 'Gratuity and statutory bonus are included in monthly CTC and disbursed with each payslip. These figures are shown for compliance reference only.'}
           </Text>
         </View>
 
