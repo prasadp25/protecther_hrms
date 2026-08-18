@@ -3,6 +3,37 @@ const { calculatePayslip } = require('../utils/payslipCalculator');
 const { getCompanyFilter } = require('../middleware/auth');
 const { computeRecoveries, recordRecoveries } = require('../utils/advanceRecovery');
 
+// Single canonical payslip INSERT, used by both single- and bulk-generate so a
+// schema/column change only happens in one place.
+const PAYSLIP_INSERT_SQL = `
+  INSERT INTO payslips (
+    employee_id, salary_id, month,
+    total_working_days, total_days_in_month, days_present, days_absent,
+    basic_salary, hra, other_allowances, bonus, gratuity, gross_salary,
+    fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
+    pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
+    advance_deduction, other_deductions, total_deductions,
+    net_salary, net_payable_with_bonus, payment_status, remarks
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
+
+// Insert one payslip row (within a transaction) from a calculatePayslip() result.
+// Returns the new payslip_id.
+const insertPayslipRow = async (conn, { employeeId, salaryId, monthStr, daysInMonth, actualDaysPresent, calc, paymentStatus = 'PENDING', remarks = null }) => {
+  const [result] = await conn.query(PAYSLIP_INSERT_SQL, [
+    employeeId, salaryId, monthStr,
+    calc.totalWorkingDays, daysInMonth, actualDaysPresent, calc.daysAbsent,
+    calc.actualBasic, calc.actualHra, calc.actualAllowance + calc.actualIncentive,
+    calc.bonus, calc.gratuity, calc.actualGross,
+    calc.fixedBasic, calc.fixedHra, calc.fixedAllowance + calc.fixedIncentive,
+    calc.fixedGross, calc.fixedNetSalary,
+    calc.pfDeduction, calc.esiDeduction, calc.professionalTax, calc.mediclaimDeduction,
+    calc.advanceDeduction, calc.otherDeductions, calc.totalDeductions,
+    calc.netSalary, calc.netPayableWithBonus, paymentStatus, remarks,
+  ]);
+  return result.insertId;
+};
+
 // ==============================================
 // GET ALL PAYSLIPS
 // ==============================================
@@ -222,18 +253,6 @@ const generatePayslip = async (req, res) => {
     const daysInMonth = attendanceData.total_days_in_month;
     const actualDaysPresent = attendanceData.days_present;
 
-    const insertQuery = `
-      INSERT INTO payslips (
-        employee_id, salary_id, month,
-        total_working_days, total_days_in_month, days_present, days_absent,
-        basic_salary, hra, other_allowances, bonus, gratuity, gross_salary,
-        fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
-        pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
-        advance_deduction, other_deductions, total_deductions,
-        net_salary, net_payable_with_bonus, payment_status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
     // Advance recovery, payslip insert, and the recovery ledger are done in one
     // transaction so a partial failure can't half-recover. The SALARY ADVANCE
     // deduction is now driven by tracked advances (auto-recovery), not a manual
@@ -245,18 +264,10 @@ const generatePayslip = async (req, res) => {
         : { recoveries: [], total: 0 };
       const calc = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
-      const [result] = await conn.query(insertQuery, [
-        employee_id, salaryData.salary_id, monthStr,
-        calc.totalWorkingDays, daysInMonth, actualDaysPresent, calc.daysAbsent,
-        calc.actualBasic, calc.actualHra, calc.actualAllowance + calc.actualIncentive,
-        calc.bonus, calc.gratuity, calc.actualGross,
-        calc.fixedBasic, calc.fixedHra, calc.fixedAllowance + calc.fixedIncentive,
-        calc.fixedGross, calc.fixedNetSalary,
-        calc.pfDeduction, calc.esiDeduction, calc.professionalTax, calc.mediclaimDeduction,
-        calc.advanceDeduction, calc.otherDeductions, calc.totalDeductions,
-        calc.netSalary, calc.netPayableWithBonus, 'PENDING', remarks || null
-      ]);
-      const payslipId = result.insertId;
+      const payslipId = await insertPayslipRow(conn, {
+        employeeId: employee_id, salaryId: salaryData.salary_id, monthStr,
+        daysInMonth, actualDaysPresent, calc, remarks: remarks || null,
+      });
       await recordRecoveries(conn, payslipId, monthStr, recoveries);
       return { payslipId, calc };
     });
@@ -394,27 +405,11 @@ const bulkGeneratePayslips = async (req, res) => {
             : { recoveries: [], total: 0 };
           const c = calculatePayslip(salaryData, actualDaysPresent, daysInMonth, advanceDeduction, isJoiningMonth);
 
-          const [ins] = await conn.query(
-            `INSERT INTO payslips (
-              employee_id, salary_id, month,
-              total_working_days, total_days_in_month, days_present, days_absent,
-              basic_salary, hra, other_allowances, bonus, gratuity, gross_salary,
-              fixed_basic, fixed_hra, fixed_incentive, fixed_gross, fixed_net,
-              pf_deduction, esi_deduction, professional_tax, mediclaim_deduction,
-              advance_deduction, other_deductions, total_deductions,
-              net_salary, net_payable_with_bonus, payment_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              emp.employee_id, salaryData.salary_id, monthStr,
-              c.totalWorkingDays, daysInMonth, actualDaysPresent, c.daysAbsent,
-              c.actualBasic, c.actualHra, c.actualAllowance + c.actualIncentive, c.bonus, c.gratuity, c.actualGross,
-              c.fixedBasic, c.fixedHra, c.fixedAllowance + c.fixedIncentive, c.fixedGross, c.fixedNetSalary,
-              c.pfDeduction, c.esiDeduction, c.professionalTax, c.mediclaimDeduction,
-              c.advanceDeduction, c.otherDeductions, c.totalDeductions,
-              c.netSalary, c.netPayableWithBonus, 'PENDING'
-            ]
-          );
-          await recordRecoveries(conn, ins.insertId, monthStr, recoveries);
+          const payslipId = await insertPayslipRow(conn, {
+            employeeId: emp.employee_id, salaryId: salaryData.salary_id, monthStr,
+            daysInMonth, actualDaysPresent, calc: c,
+          });
+          await recordRecoveries(conn, payslipId, monthStr, recoveries);
           return c;
         });
 
@@ -650,5 +645,7 @@ module.exports = {
   updatePaymentStatus,
   getPayslipSummary,
   getPayslipsByMonth,
-  deletePayslipsByMonth
+  deletePayslipsByMonth,
+  // exported for tests
+  insertPayslipRow,
 };
