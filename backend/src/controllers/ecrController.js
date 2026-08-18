@@ -17,6 +17,50 @@ const isValidUAN = (uan) => {
   return /^\d{12}$/.test(uanStr);
 };
 
+// Shared payslip+employee query for both the ECR file and its preview.
+const ECR_SELECT = `
+  SELECT
+    p.payslip_id, p.month, p.basic_salary, p.gross_salary,
+    p.pf_deduction, p.days_absent,
+    e.employee_id, e.employee_code, e.first_name, e.last_name,
+    e.uan_no, e.eps_applicable, e.company_id,
+    c.company_code, c.company_name
+  FROM payslips p
+  JOIN employees e ON p.employee_id = e.employee_id
+  LEFT JOIN companies c ON e.company_id = c.company_id
+  WHERE p.month = ?
+    AND p.pf_deduction > 0
+`;
+
+const fetchEcrPayslips = async (month, companyId) => {
+  let query = ECR_SELECT;
+  const params = [month];
+  if (companyId) { query += ' AND e.company_id = ?'; params.push(companyId); }
+  query += ' ORDER BY e.employee_code';
+  return executeQuery(query, params);
+};
+
+// EPFO contribution fields for one payslip (shared by generate + preview).
+// EPS wages are 0 for members not in the pension scheme (EPFO-flagged). Employer
+// EPF (ER diff) MUST equal Employee EPF (12%) − EPS (8.33%) exactly, so it is
+// derived from the two rather than a flat 3.67% (which rounds off by ±1 → RFE-37).
+const computeEcrFields = (p) => {
+  const epfWages = Math.min(parseFloat(p.basic_salary) || 0, EPF_WAGES_CAP);
+  const epsWages = p.eps_applicable !== 0 ? epfWages : 0;
+  const epfEE = p.pf_deduction || Math.round(epfWages * EPF_EMPLOYEE_RATE);
+  const eps = Math.round(epsWages * EPS_RATE);
+  return {
+    epfWages,
+    edliWages: epfWages,
+    epsWages,
+    epfEE,
+    eps,
+    epfERDiff: epfEE - eps,
+    ncpDays: p.days_absent || 0,
+    grossWages: parseFloat(p.gross_salary) || 0,
+  };
+};
+
 // ==============================================
 // GENERATE ECR TEXT FILE
 // ==============================================
@@ -33,31 +77,7 @@ const generateECR = async (req, res) => {
       });
     }
 
-    // Build query to get payslips with employee UAN details
-    let query = `
-      SELECT
-        p.payslip_id, p.month, p.basic_salary, p.gross_salary,
-        p.pf_deduction, p.days_absent,
-        e.employee_id, e.employee_code, e.first_name, e.last_name,
-        e.uan_no, e.eps_applicable, e.company_id,
-        c.company_code, c.company_name
-      FROM payslips p
-      JOIN employees e ON p.employee_id = e.employee_id
-      LEFT JOIN companies c ON e.company_id = c.company_id
-      WHERE p.month = ?
-        AND p.pf_deduction > 0
-    `;
-    const params = [month];
-
-    // Filter by company_id
-    if (company_id) {
-      query += ' AND e.company_id = ?';
-      params.push(company_id);
-    }
-
-    query += ' ORDER BY e.employee_code';
-
-    const payslips = await executeQuery(query, params);
+    const payslips = await fetchEcrPayslips(month, company_id);
 
     if (payslips.length === 0) {
       return res.status(404).json({
@@ -69,10 +89,6 @@ const generateECR = async (req, res) => {
     // Build ECR text content
     const ecrLines = [];
     const warnings = [];
-    let totalEPFContribution = 0;
-    let totalEPSContribution = 0;
-    let totalEPFERDiff = 0;
-    let validEmployeeCount = 0;
 
     for (const payslip of payslips) {
       // Skip employees without valid UAN
@@ -85,44 +101,25 @@ const generateECR = async (req, res) => {
         continue;
       }
 
-      // Calculate EPF wages (capped at 15000)
-      const epfWages = Math.min(parseFloat(payslip.basic_salary) || 0, EPF_WAGES_CAP);
-      const edliWages = epfWages; // Same as EPF wages
-      // EPS wages are 0 for members not in the pension scheme (EPFO-flagged);
-      // otherwise same as EPF wages.
-      const epsMember = payslip.eps_applicable !== 0;
-      const epsWages = epsMember ? epfWages : 0;
+      const f = computeEcrFields(payslip);
 
-      // Contributions. Employer EPF (ER diff) MUST equal Employee EPF (12%) minus
-      // EPS (8.33%) exactly — EPFO validates this (RFE-37). A separate 3.67% calc
-      // rounds independently and mismatches by ±1, so derive it from the two.
-      const epfEE = payslip.pf_deduction || Math.round(epfWages * EPF_EMPLOYEE_RATE);
-      const eps = Math.round(epsWages * EPS_RATE);
-      const epfERDiff = epfEE - eps;
-      const ncpDays = payslip.days_absent || 0;
-      const refund = 0;
-
-      // Build ECR row. EPFO's ECR text format uses "#~#" as the field delimiter.
+      // EPFO's ECR text format uses "#~#" as the field delimiter.
       // Format: UAN#~#MEMBER NAME#~#GROSS WAGES#~#EPF WAGES#~#EPS WAGES#~#EDLI WAGES#~#EPF(EE)#~#EPS#~#EPF(ER Diff)#~#NCP DAYS#~#REFUND
       const ecrRow = [
         String(payslip.uan_no).trim(),
         `${payslip.first_name} ${payslip.last_name}`.toUpperCase().trim(),
-        Math.round(parseFloat(payslip.gross_salary) || 0),
-        Math.round(epfWages),
-        Math.round(epsWages),
-        Math.round(edliWages),
-        Math.round(epfEE),
-        Math.round(eps),
-        Math.round(epfERDiff),
-        Math.round(ncpDays),
-        Math.round(refund)
+        Math.round(f.grossWages),
+        Math.round(f.epfWages),
+        Math.round(f.epsWages),
+        Math.round(f.edliWages),
+        Math.round(f.epfEE),
+        Math.round(f.eps),
+        Math.round(f.epfERDiff),
+        Math.round(f.ncpDays),
+        0
       ].join('#~#');
 
       ecrLines.push(ecrRow);
-      totalEPFContribution += epfEE;
-      totalEPSContribution += eps;
-      totalEPFERDiff += epfERDiff;
-      validEmployeeCount++;
     }
 
     if (ecrLines.length === 0) {
@@ -172,31 +169,7 @@ const previewECR = async (req, res) => {
       });
     }
 
-    // Build query to get payslips with employee UAN details
-    let query = `
-      SELECT
-        p.payslip_id, p.month, p.basic_salary, p.gross_salary,
-        p.pf_deduction, p.days_absent,
-        e.employee_id, e.employee_code, e.first_name, e.last_name,
-        e.uan_no, e.eps_applicable, e.company_id,
-        c.company_code, c.company_name
-      FROM payslips p
-      JOIN employees e ON p.employee_id = e.employee_id
-      LEFT JOIN companies c ON e.company_id = c.company_id
-      WHERE p.month = ?
-        AND p.pf_deduction > 0
-    `;
-    const params = [month];
-
-    // Filter by company_id
-    if (company_id) {
-      query += ' AND e.company_id = ?';
-      params.push(company_id);
-    }
-
-    query += ' ORDER BY e.employee_code';
-
-    const payslips = await executeQuery(query, params);
+    const payslips = await fetchEcrPayslips(month, company_id);
 
     if (payslips.length === 0) {
       return res.status(404).json({
@@ -218,32 +191,21 @@ const previewECR = async (req, res) => {
 
     for (const payslip of payslips) {
       const hasValidUAN = isValidUAN(payslip.uan_no);
-
-      // Calculate EPF wages (capped at 15000)
-      const epfWages = Math.min(parseFloat(payslip.basic_salary) || 0, EPF_WAGES_CAP);
-      const edliWages = epfWages;
-      const epsMember = payslip.eps_applicable !== 0;
-      const epsWages = epsMember ? epfWages : 0;
-
-      // Employer EPF = Employee EPF (12%) − EPS (8.33%), exactly (see generateECR).
-      const epfEE = payslip.pf_deduction || Math.round(epfWages * EPF_EMPLOYEE_RATE);
-      const eps = Math.round(epsWages * EPS_RATE);
-      const epfERDiff = epfEE - eps;
-      const ncpDays = payslip.days_absent || 0;
+      const f = computeEcrFields(payslip);
 
       const record = {
         employee_code: payslip.employee_code,
         name: `${payslip.first_name} ${payslip.last_name}`.toUpperCase(),
         uan: payslip.uan_no || null,
         uan_valid: hasValidUAN,
-        gross_wages: Math.round(parseFloat(payslip.gross_salary) || 0),
-        epf_wages: Math.round(epfWages),
-        eps_wages: Math.round(epsWages),
-        edli_wages: Math.round(edliWages),
-        epf_contribution: Math.round(epfEE),
-        eps_contribution: Math.round(eps),
-        epf_er_diff: Math.round(epfERDiff),
-        ncp_days: Math.round(ncpDays),
+        gross_wages: Math.round(f.grossWages),
+        epf_wages: Math.round(f.epfWages),
+        eps_wages: Math.round(f.epsWages),
+        edli_wages: Math.round(f.edliWages),
+        epf_contribution: Math.round(f.epfEE),
+        eps_contribution: Math.round(f.eps),
+        epf_er_diff: Math.round(f.epfERDiff),
+        ncp_days: Math.round(f.ncpDays),
         refund: 0
       };
 
