@@ -11,10 +11,10 @@ const {
 // ==============================================
 // VALIDATE UAN FORMAT (12 digits)
 // ==============================================
+const { UAN: UAN_PATTERN } = require('../utils/validationPatterns');
 const isValidUAN = (uan) => {
   if (!uan) return false;
-  const uanStr = String(uan).trim();
-  return /^\d{12}$/.test(uanStr);
+  return UAN_PATTERN.test(String(uan).trim());
 };
 
 // Shared payslip+employee query for both the ECR file and its preview.

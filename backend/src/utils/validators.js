@@ -1,6 +1,7 @@
 // ===================================
 // INPUT VALIDATORS
 // ===================================
+const PATTERNS = require('./validationPatterns');
 
 /**
  * Validate Aadhaar number (12 digits)
@@ -16,7 +17,7 @@ const validateAadhaar = (aadhaar) => {
   const cleanAadhaar = aadhaar.replace(/\s/g, '');
 
   // Must be exactly 12 digits
-  if (!/^\d{12}$/.test(cleanAadhaar)) {
+  if (!PATTERNS.AADHAAR.test(cleanAadhaar)) {
     return { valid: false, message: 'Aadhaar must be exactly 12 digits' };
   }
 
@@ -42,7 +43,7 @@ const validatePAN = (pan) => {
   const cleanPAN = pan.toUpperCase().replace(/\s/g, '');
 
   // PAN format: 5 letters + 4 digits + 1 letter
-  if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPAN)) {
+  if (!PATTERNS.PAN.test(cleanPAN)) {
     return { valid: false, message: 'PAN must be in format: ABCDE1234F' };
   }
 
@@ -101,8 +102,7 @@ const validateEmail = (email) => {
   const cleanEmail = email.trim().toLowerCase();
 
   // Basic email regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(cleanEmail)) {
+  if (!PATTERNS.EMAIL.test(cleanEmail)) {
     return { valid: false, message: 'Invalid email format' };
   }
 
@@ -122,7 +122,7 @@ const validateIFSC = (ifsc) => {
   const cleanIFSC = ifsc.toUpperCase().replace(/\s/g, '');
 
   // IFSC format: 4 letters + 0 + 6 alphanumeric
-  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanIFSC)) {
+  if (!PATTERNS.IFSC.test(cleanIFSC)) {
     return { valid: false, message: 'Invalid IFSC code format' };
   }
 

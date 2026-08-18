@@ -1,3 +1,5 @@
+const PATTERNS = require('./validationPatterns');
+
 // ==============================================
 // DATE FORMATTING
 // ==============================================
@@ -89,50 +91,32 @@ const generateOfferLetterRef = (year, lastNumber) => {
 // ==============================================
 // VALIDATE EMAIL
 // ==============================================
-const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+const isValidEmail = (email) => PATTERNS.EMAIL.test(email);
 
 // ==============================================
-// VALIDATE MOBILE NUMBER (10 digits)
+// VALIDATE MOBILE NUMBER (10 digits, starts 6-9)
 // ==============================================
-const isValidMobile = (mobile) => {
-  const mobileRegex = /^[6-9]\d{9}$/;
-  return mobileRegex.test(mobile);
-};
+const isValidMobile = (mobile) => PATTERNS.MOBILE.test(mobile);
 
 // ==============================================
 // VALIDATE AADHAAR NUMBER (12 digits)
 // ==============================================
-const isValidAadhaar = (aadhaar) => {
-  const aadhaarRegex = /^\d{12}$/;
-  return aadhaarRegex.test(aadhaar);
-};
+const isValidAadhaar = (aadhaar) => PATTERNS.AADHAAR.test(aadhaar);
 
 // ==============================================
 // VALIDATE PAN NUMBER
 // ==============================================
-const isValidPAN = (pan) => {
-  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-  return panRegex.test(pan);
-};
+const isValidPAN = (pan) => PATTERNS.PAN.test(pan);
 
 // ==============================================
 // VALIDATE IFSC CODE
 // ==============================================
-const isValidIFSC = (ifsc) => {
-  const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-  return ifscRegex.test(ifsc);
-};
+const isValidIFSC = (ifsc) => PATTERNS.IFSC.test(ifsc);
 
 // ==============================================
 // VALIDATE UAN NUMBER (EPFO Universal Account Number)
 // ==============================================
-const isValidUAN = (uan) => {
-  const uanRegex = /^\d{12}$/;
-  return uanRegex.test(uan);
-};
+const isValidUAN = (uan) => PATTERNS.UAN.test(uan);
 
 // ==============================================
 // FORMAT CURRENCY (INR)
