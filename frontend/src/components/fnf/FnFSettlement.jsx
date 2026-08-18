@@ -192,7 +192,10 @@ const FnFSettlement = ({ employeeId, onBack }) => {
     PAID: 'bg-green-100 text-green-700', CANCELLED: 'bg-red-100 text-red-700',
   }[status] || 'bg-gray-100';
 
-  const LineRows = ({ kind }) => {
+  // Rendered via {renderLines(kind)} — NOT as <LineRows/>. Defining a component
+  // inside the render and mounting it as an element remounts its inputs on every
+  // keystroke (focus loss); calling it as a plain function reconciles in place.
+  const renderLines = (kind) => {
     const auto = autoLines.filter((i) => i.kind === kind);
     const manual = manualLines
       .map((l, idx) => ({ l, idx }))
@@ -251,14 +254,14 @@ const FnFSettlement = ({ employeeId, onBack }) => {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white border rounded p-4">
           <h3 className="font-semibold text-green-700 border-b pb-1 mb-2">Earnings</h3>
-          <LineRows kind="EARNING" />
+          {renderLines('EARNING')}
           <div className="flex justify-between border-t mt-2 pt-2 font-semibold">
             <span>Total earnings</span><span>{formatCurrency(settlement.total_earnings)}</span>
           </div>
         </div>
         <div className="bg-white border rounded p-4">
           <h3 className="font-semibold text-red-700 border-b pb-1 mb-2">Recoveries</h3>
-          <LineRows kind="RECOVERY" />
+          {renderLines('RECOVERY')}
           <div className="flex justify-between border-t mt-2 pt-2 font-semibold">
             <span>Total recoveries</span><span>{formatCurrency(settlement.total_recoveries)}</span>
           </div>
