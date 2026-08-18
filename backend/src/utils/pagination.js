@@ -113,98 +113,10 @@ const buildPaginatedResponse = (data, total, page, limit) => {
   };
 };
 
-/**
- * Build SQL WHERE clause for search
- * @param {Object} searchParams - Search parameters
- * @param {Array} searchFields - Fields to search in
- * @returns {Object} WHERE clause and values
- */
-const buildSearchClause = (searchParams, searchFields = []) => {
-  const conditions = [];
-  const values = [];
-
-  // Full-text search
-  if (searchParams.search && searchFields.length > 0) {
-    const searchConditions = searchFields.map(field => `${field} LIKE ?`);
-    conditions.push(`(${searchConditions.join(' OR ')})`);
-    // Add search value for each field
-    searchFields.forEach(() => {
-      values.push(`%${searchParams.search}%`);
-    });
-  }
-
-  // Status filter
-  if (searchParams.status) {
-    conditions.push('status = ?');
-    values.push(searchParams.status);
-  }
-
-  // Site ID filter
-  if (searchParams.siteId) {
-    conditions.push('site_id = ?');
-    values.push(searchParams.siteId);
-  }
-
-  // Client ID filter
-  if (searchParams.clientId) {
-    conditions.push('client_id = ?');
-    values.push(searchParams.clientId);
-  }
-
-  // Designation filter
-  if (searchParams.designation) {
-    conditions.push('designation = ?');
-    values.push(searchParams.designation);
-  }
-
-  // Date range filter
-  if (searchParams.dateFrom) {
-    conditions.push('created_at >= ?');
-    values.push(searchParams.dateFrom);
-  }
-
-  if (searchParams.dateTo) {
-    conditions.push('created_at <= ?');
-    values.push(searchParams.dateTo);
-  }
-
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  return {
-    whereClause,
-    values
-  };
-};
-
-/**
- * Middleware to add pagination helpers to request
- */
-const paginationMiddleware = (req, res, next) => {
-  // Add pagination helpers to request object
-  req.pagination = parsePaginationParams(req.query);
-  req.sort = parseSortParams(req.query);
-  req.search = parseSearchParams(req.query);
-
-  // Add helper function to send paginated response
-  res.sendPaginated = (data, total) => {
-    const response = buildPaginatedResponse(
-      data,
-      total,
-      req.pagination.page,
-      req.pagination.limit
-    );
-    res.json(response);
-  };
-
-  next();
-};
-
 module.exports = {
   parsePaginationParams,
   parseSortParams,
   parseSearchParams,
   buildPaginationMeta,
-  buildPaginatedResponse,
-  buildSearchClause,
-  paginationMiddleware
+  buildPaginatedResponse
 };

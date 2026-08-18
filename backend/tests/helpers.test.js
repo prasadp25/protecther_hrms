@@ -6,7 +6,6 @@ const {
   isValidIFSC,
   isValidUAN,
   generateEmployeeCode,
-  generateSiteCode,
   getDaysInMonth,
   calculateAge,
   formatDate
@@ -49,11 +48,6 @@ describe('code generators', () => {
     assert.equal(generateEmployeeCode(null), 'P00001');
     assert.equal(generateEmployeeCode('P00009'), 'P00010');
     assert.equal(generateEmployeeCode('P00122'), 'P00123');
-  });
-
-  test('site codes increment with padding', () => {
-    assert.equal(generateSiteCode(null), 'SITE001');
-    assert.equal(generateSiteCode('SITE009'), 'SITE010');
   });
 });
 

@@ -68,16 +68,6 @@ const generateEmployeeCode = (lastCode) => {
 };
 
 // ==============================================
-// GENERATE SITE CODE
-// ==============================================
-const generateSiteCode = (lastCode) => {
-  if (!lastCode) return 'SITE001';
-
-  const num = parseInt(lastCode.replace(/[^0-9]/g, '')) + 1;
-  return `SITE${String(num).padStart(3, '0')}`;
-};
-
-// ==============================================
 // GENERATE CANDIDATE CODE
 // ==============================================
 const generateCandidateCode = (lastCode) => {
@@ -94,59 +84,6 @@ const generateCandidateCode = (lastCode) => {
 const generateOfferLetterRef = (year, lastNumber) => {
   const nextNumber = (lastNumber || 100) + 1;
   return `PLLP-${year}-${nextNumber}`;
-};
-
-// ==============================================
-// SANITIZE INPUT
-// ==============================================
-const sanitizeInput = (input) => {
-  if (typeof input !== 'string') return input;
-
-  return input
-    .trim()
-    .replace(/[<>]/g, ''); // Remove < and > to prevent XSS
-};
-
-// ==============================================
-// CALCULATE SALARY COMPONENTS
-// ==============================================
-const calculateSalaryComponents = (salaryData) => {
-  const basicSalary = parseFloat(salaryData.basic_salary) || 0;
-  const hra = parseFloat(salaryData.hra) || 0;
-  const da = parseFloat(salaryData.da) || 0;
-  const conveyanceAllowance = parseFloat(salaryData.conveyance_allowance) || 0;
-  const medicalAllowance = parseFloat(salaryData.medical_allowance) || 0;
-  const otherAllowances = parseFloat(salaryData.other_allowances) || 0;
-
-  const pf = parseFloat(salaryData.pf) || 0;
-  const esi = parseFloat(salaryData.esi) || 0;
-  const professionalTax = parseFloat(salaryData.professional_tax) || 0;
-  const tds = parseFloat(salaryData.tds) || 0;
-  const otherDeductions = parseFloat(salaryData.other_deductions) || 0;
-
-  const grossSalary = basicSalary + hra + da + conveyanceAllowance + medicalAllowance + otherAllowances;
-  const totalDeductions = pf + esi + professionalTax + tds + otherDeductions;
-  const netSalary = grossSalary - totalDeductions;
-
-  return {
-    gross_salary: grossSalary,
-    total_deductions: totalDeductions,
-    net_salary: netSalary
-  };
-};
-
-// ==============================================
-// CALCULATE WORKING HOURS
-// ==============================================
-const calculateWorkingHours = (checkInTime, checkOutTime, date = null) => {
-  if (!checkInTime || !checkOutTime) return null;
-
-  const dateStr = date || new Date().toISOString().split('T')[0];
-  const checkIn = new Date(`${dateStr} ${checkInTime}`);
-  const checkOut = new Date(`${dateStr} ${checkOutTime}`);
-
-  const hours = (checkOut - checkIn) / (1000 * 60 * 60);
-  return Math.max(0, parseFloat(hours.toFixed(2)));
 };
 
 // ==============================================
@@ -198,40 +135,6 @@ const isValidUAN = (uan) => {
 };
 
 // ==============================================
-// PAGINATION HELPER
-// ==============================================
-const paginate = (page = 1, limit = 10) => {
-  const pageNum = Math.max(1, parseInt(page));
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
-  const offset = (pageNum - 1) * limitNum;
-
-  return {
-    limit: limitNum,
-    offset: offset,
-    page: pageNum
-  };
-};
-
-// ==============================================
-// BUILD PAGINATION RESPONSE
-// ==============================================
-const buildPaginationResponse = (data, total, page, limit) => {
-  const totalPages = Math.ceil(total / limit);
-
-  return {
-    data: data,
-    pagination: {
-      total: total,
-      page: page,
-      limit: limit,
-      totalPages: totalPages,
-      hasNext: page < totalPages,
-      hasPrev: page > 1
-    }
-  };
-};
-
-// ==============================================
 // FORMAT CURRENCY (INR)
 // ==============================================
 const formatCurrency = (amount) => {
@@ -244,36 +147,10 @@ const formatCurrency = (amount) => {
 };
 
 // ==============================================
-// GENERATE RANDOM PASSWORD
-// ==============================================
-const generatePassword = (length = 12) => {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-  let password = '';
-
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-
-  return password;
-};
-
-// ==============================================
 // SLEEP/DELAY
 // ==============================================
 const sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
-};
-
-// ==============================================
-// REMOVE UNDEFINED/NULL VALUES FROM OBJECT
-// ==============================================
-const cleanObject = (obj) => {
-  return Object.entries(obj).reduce((acc, [key, value]) => {
-    if (value !== undefined && value !== null) {
-      acc[key] = value;
-    }
-    return acc;
-  }, {});
 };
 
 module.exports = {
@@ -282,22 +159,14 @@ module.exports = {
   getDaysInMonth,
   calculateAge,
   generateEmployeeCode,
-  generateSiteCode,
   generateCandidateCode,
   generateOfferLetterRef,
-  sanitizeInput,
-  calculateSalaryComponents,
-  calculateWorkingHours,
   isValidEmail,
   isValidMobile,
   isValidAadhaar,
   isValidPAN,
   isValidIFSC,
   isValidUAN,
-  paginate,
-  buildPaginationResponse,
   formatCurrency,
-  generatePassword,
-  sleep,
-  cleanObject
+  sleep
 };
