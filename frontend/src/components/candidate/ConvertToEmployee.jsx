@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 import { candidateService } from '../../services/candidateService';
 import { formatCurrency } from '../../utils/format';
 
@@ -51,11 +52,11 @@ const ConvertToEmployee = ({ candidate, onSuccess, onCancel }) => {
     try {
       const response = await candidateService.convertToEmployee(candidate.candidate_id, formData);
       if (response.success) {
-        alert('Candidate converted to Employee successfully! Employee Code: ' + response.data.employee_code);
+        toast.success('Candidate converted to Employee successfully! Employee Code: ' + response.data.employee_code);
         onSuccess();
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to convert candidate');
+      toast.error(error.response?.data?.message || 'Failed to convert candidate');
     } finally {
       setLoading(false);
     }

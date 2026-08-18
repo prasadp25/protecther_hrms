@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { attendanceService } from '../../services/attendanceService';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
@@ -111,7 +112,7 @@ const AttendanceManagement = () => {
       }
     } catch (error) {
       console.error('Failed to load attendance:', error);
-      alert('Failed to load attendance data');
+      toast.error('Failed to load attendance data');
     } finally {
       setLoading(false);
     }
@@ -247,7 +248,7 @@ const AttendanceManagement = () => {
   const handleSaveClick = async () => {
     // Check if attendance is finalized
     if (!isFinalized) {
-      alert('⚠️ Please finalize attendance first before generating payslips.');
+      toast.error('⚠️ Please finalize attendance first before generating payslips.');
       return;
     }
 
@@ -316,12 +317,12 @@ const AttendanceManagement = () => {
       const response = await attendanceService.saveAttendance(selectedMonth, records);
 
       if (response.success) {
-        alert('✅ Attendance saved successfully!');
+        toast.success('✅ Attendance saved successfully!');
         loadAttendance();
       }
     } catch (error) {
       console.error('Failed to save attendance:', error);
-      alert('❌ Failed to save attendance');
+      toast.error('❌ Failed to save attendance');
     } finally {
       setSaving(false);
     }
@@ -334,7 +335,7 @@ const AttendanceManagement = () => {
       await generateBulkPayslips();
     } catch (error) {
       console.error('Failed to generate payslips:', error);
-      alert('❌ Failed to generate payslips');
+      toast.error('❌ Failed to generate payslips');
     } finally {
       setSaving(false);
       setProgressStatus({ current: 0, total: 0, employee: '' });
@@ -418,7 +419,7 @@ const AttendanceManagement = () => {
           window.location.hash = '#/salary';
         }
       } else {
-        alert(
+        toast.success(
           `✅ Success! Generated ${successCount} payslips\n\n` +
           `📥 Excel downloaded successfully!`
         );
@@ -427,7 +428,7 @@ const AttendanceManagement = () => {
       loadAttendance();
     } catch (error) {
       console.error('Bulk payslip generation error:', error);
-      alert('❌ Failed to generate payslips');
+      toast.error('❌ Failed to generate payslips');
     }
   };
 
@@ -436,7 +437,7 @@ const AttendanceManagement = () => {
       const payslipsResponse = await salaryService.getPayslipsByMonth(selectedMonth);
 
       if (!payslipsResponse.success || payslipsResponse.data.length === 0) {
-        alert('No payslips found to export');
+        toast.error('No payslips found to export');
         return;
       }
 
@@ -549,7 +550,7 @@ const AttendanceManagement = () => {
       XLSX.writeFile(wb, filename);
     } catch (error) {
       console.error('Export error:', error);
-      alert('❌ Failed to export to Excel');
+      toast.error('❌ Failed to export to Excel');
     }
   };
 
@@ -579,7 +580,7 @@ const AttendanceManagement = () => {
       const response = await attendanceService.getAttendanceByMonth(prevMonth);
 
       if (!response.success || response.data.length === 0) {
-        alert(`❌ No attendance data found for ${prevMonthName}`);
+        toast.error(`❌ No attendance data found for ${prevMonthName}`);
         return;
       }
 
@@ -614,7 +615,7 @@ const AttendanceManagement = () => {
         });
       });
 
-      alert(
+      toast.success(
         `✅ Copy Complete!\n\n` +
         `• Copied: ${copiedCount} employees\n` +
         `• Skipped: ${skippedCount} employees (already have attendance)\n\n` +
@@ -622,7 +623,7 @@ const AttendanceManagement = () => {
       );
     } catch (error) {
       console.error('Failed to copy attendance:', error);
-      alert('❌ Failed to copy attendance from previous month');
+      toast.error('❌ Failed to copy attendance from previous month');
     } finally {
       setCopyingLastMonth(false);
     }
@@ -641,11 +642,11 @@ const AttendanceManagement = () => {
     try {
       setSaving(true);
       await attendanceService.finalizeAttendance(selectedMonth);
-      alert('✅ Attendance finalized successfully!');
+      toast.success('✅ Attendance finalized successfully!');
       loadAttendance();
     } catch (error) {
       console.error('Failed to finalize attendance:', error);
-      alert('❌ Failed to finalize attendance');
+      toast.error('❌ Failed to finalize attendance');
     } finally {
       setSaving(false);
     }
@@ -665,11 +666,11 @@ const AttendanceManagement = () => {
     try {
       setSaving(true);
       await attendanceService.unfinalizeAttendance(selectedMonth);
-      alert('✅ Attendance unfinalized successfully! You can now edit attendance records.');
+      toast.success('✅ Attendance unfinalized successfully! You can now edit attendance records.');
       loadAttendance();
     } catch (error) {
       console.error('Failed to unfinalize attendance:', error);
-      alert('❌ Failed to unfinalize attendance');
+      toast.error('❌ Failed to unfinalize attendance');
     } finally {
       setSaving(false);
     }

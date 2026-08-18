@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { companyService } from '../../services/companyService';
 
 const CompanyForm = ({ companyId, onSuccess, onBack }) => {
@@ -36,7 +37,7 @@ const CompanyForm = ({ companyId, onSuccess, onBack }) => {
         setFormData(response.data);
       }
     } catch (error) {
-      alert('Failed to load company');
+      toast.error('Failed to load company');
       onBack();
     } finally {
       setLoading(false);
@@ -96,11 +97,11 @@ const CompanyForm = ({ companyId, onSuccess, onBack }) => {
       }
 
       if (response.success) {
-        alert(response.message);
+        toast.success(response.message);
         onSuccess();
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to save company');
+      toast.error(error.response?.data?.message || 'Failed to save company');
     } finally {
       setSubmitting(false);
     }

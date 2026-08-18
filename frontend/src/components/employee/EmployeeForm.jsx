@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
 import authService from '../../services/authService';
@@ -147,7 +148,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         }
       }
     } catch (error) {
-      alert('Failed to load employee data');
+      toast.error('Failed to load employee data');
     } finally {
       setLoading(false);
     }
@@ -199,13 +200,13 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
       // Validate file type (PDF, DOC, DOCX, JPG, PNG)
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
       if (!allowedTypes.includes(file.type)) {
-        alert('Only PDF, DOC, DOCX, JPG, and PNG files are allowed');
+        toast.error('Only PDF, DOC, DOCX, JPG, and PNG files are allowed');
         e.target.value = '';
         return;
       }
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        toast.error('File size must be less than 5MB');
         e.target.value = '';
         return;
       }
@@ -233,13 +234,13 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
         // Validate image type for photo
         const imageTypes = ['image/jpeg', 'image/png', 'image/jpg'];
         if (!imageTypes.includes(file.type)) {
-          alert('Only JPG and PNG images are allowed for photo');
+          toast.error('Only JPG and PNG images are allowed for photo');
           e.target.value = '';
           return;
         }
         // Max 2MB for photos
         if (file.size > 2 * 1024 * 1024) {
-          alert('Photo size must be less than 2MB');
+          toast.error('Photo size must be less than 2MB');
           e.target.value = '';
           return;
         }
@@ -396,19 +397,19 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           if (onSuccess) onSuccess(addSalary ? response.data : null);
         } else {
           // Editing existing employee
-          alert(response.message);
+          toast.success(response.message);
           if (onSuccess) onSuccess();
         }
       }
     } catch (error) {
       if (error.response?.data?.message) {
-        alert(error.response.data.message);
+        toast.error(error.response.data.message);
       } else if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       } else if (error.message) {
-        alert(error.message);
+        toast.error(error.message);
       } else {
-        alert('Failed to save employee');
+        toast.error('Failed to save employee');
       }
     } finally {
       setLoading(false);

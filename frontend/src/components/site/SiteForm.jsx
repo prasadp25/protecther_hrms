@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { siteService } from '../../services/siteService';
 
 const SiteForm = ({ siteId, onBack, onSuccess }) => {
@@ -48,7 +49,7 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
         });
       }
     } catch (error) {
-      alert('Failed to load site data');
+      toast.error('Failed to load site data');
     } finally {
       setLoading(false);
     }
@@ -104,7 +105,7 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
     e.preventDefault();
 
     if (!validateForm()) {
-      alert('Please fix all validation errors');
+      toast.error('Please fix all validation errors');
       return;
     }
 
@@ -119,11 +120,11 @@ const SiteForm = ({ siteId, onBack, onSuccess }) => {
       }
 
       if (response.success) {
-        alert(response.message);
+        toast.success(response.message);
         onSuccess?.();
       }
     } catch (error) {
-      alert(`Failed to ${isEditMode ? 'update' : 'create'} site: ${error.message}`);
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} site: ${error.message}`);
     } finally {
       setLoading(false);
     }

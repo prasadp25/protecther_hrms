@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'react-toastify';
 import { formatCurrency } from '../../utils/format';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
@@ -105,7 +106,7 @@ const PayslipView = ({ onBack }) => {
         setPayslips(transformedPayslips);
       }
     } catch (error) {
-      alert('Failed to load payslips');
+      toast.error('Failed to load payslips');
     } finally {
       setLoading(false);
     }
@@ -170,13 +171,13 @@ const PayslipView = ({ onBack }) => {
         if (response.success) {
           setSalaryStructure(response.data);
         } else {
-          alert('No salary structure found for this employee');
+          toast.error('No salary structure found for this employee');
           setSalaryStructure(null);
           setAttendanceData(null);
           return;
         }
       } catch (error) {
-        alert('Failed to load salary structure');
+        toast.error('Failed to load salary structure');
         setSalaryStructure(null);
         setAttendanceData(null);
         return;
@@ -196,13 +197,13 @@ const PayslipView = ({ onBack }) => {
           setAttendanceData(empAttendance);
         } else {
           setAttendanceData(null);
-          alert(`No attendance record found for ${month}. Please mark attendance first in the Attendance module.`);
+          toast.error(`No attendance record found for ${month}. Please mark attendance first in the Attendance module.`);
         }
       }
     } catch (error) {
       console.error('Failed to load attendance:', error);
       setAttendanceData(null);
-      alert('Failed to load attendance data');
+      toast.error('Failed to load attendance data');
     }
   };
 
@@ -228,12 +229,12 @@ const PayslipView = ({ onBack }) => {
     }
 
     if (!selectedEmployee || !salaryStructure) {
-      alert('Please select an employee');
+      toast.error('Please select an employee');
       return;
     }
 
     if (!attendanceData) {
-      alert('No attendance record found for this employee in the selected month. Please mark attendance first.');
+      toast.error('No attendance record found for this employee in the selected month. Please mark attendance first.');
       return;
     }
 
@@ -254,14 +255,14 @@ const PayslipView = ({ onBack }) => {
       setLoading(true);
       const response = await salaryService.generatePayslip(payslipData);
       if (response.success) {
-        alert(response.message);
+        toast.success(response.message);
         loadPayslips();
         setView('list');
         resetGenerateForm();
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Failed to generate payslip';
-      alert(errorMsg);
+      toast.error(errorMsg);
     } finally {
       isSubmittingRef.current = false;
       setLoading(false);
@@ -282,7 +283,7 @@ const PayslipView = ({ onBack }) => {
   // Bulk generate payslips
   const handleBulkGenerate = async () => {
     if (!bulkMonth) {
-      alert('Please select a month');
+      toast.error('Please select a month');
       return;
     }
 
@@ -304,7 +305,7 @@ const PayslipView = ({ onBack }) => {
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Failed to generate payslips';
-      alert(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -324,7 +325,7 @@ const PayslipView = ({ onBack }) => {
         paymentMethod: 'BANK_TRANSFER',
       });
       if (response.success) {
-        alert(response.message);
+        toast.success(response.message);
         loadPayslips();
         if (selectedPayslip?.payslipId === payslipId) {
           // Ensure month is a string
@@ -333,7 +334,7 @@ const PayslipView = ({ onBack }) => {
         }
       }
     } catch (error) {
-      alert('Failed to update payment status');
+      toast.error('Failed to update payment status');
     }
   };
 
@@ -347,7 +348,7 @@ const PayslipView = ({ onBack }) => {
         paymentDate: null,
       });
       if (response.success) {
-        alert('Payslip reverted to PENDING');
+        toast.success('Payslip reverted to PENDING');
         loadPayslips();
         if (selectedPayslip?.payslipId === payslipId) {
           const updatedPayslip = { ...response.data, month: String(response.data.month || '') };
@@ -355,7 +356,7 @@ const PayslipView = ({ onBack }) => {
         }
       }
     } catch (error) {
-      alert('Failed to revert payment status');
+      toast.error('Failed to revert payment status');
     }
   };
 
@@ -370,7 +371,7 @@ const PayslipView = ({ onBack }) => {
 
   const exportPayslipsToExcel = () => {
     if (filteredPayslips.length === 0) {
-      alert('No payslips to export');
+      toast.error('No payslips to export');
       return;
     }
 
@@ -655,7 +656,7 @@ const PayslipView = ({ onBack }) => {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
     }
   };
 
@@ -673,7 +674,7 @@ const PayslipView = ({ onBack }) => {
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Failed to preview ECR data';
-      alert(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setEcrLoading(false);
     }
@@ -683,10 +684,10 @@ const PayslipView = ({ onBack }) => {
     try {
       setEcrLoading(true);
       await ecrService.downloadECR(selectedMonth);
-      alert('ECR file downloaded successfully');
+      toast.success('ECR file downloaded successfully');
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Failed to download ECR file';
-      alert(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setEcrLoading(false);
     }
@@ -701,7 +702,7 @@ const PayslipView = ({ onBack }) => {
         : sites.find(s => String(s.siteId) === String(selectedSite));
 
       if (!site) {
-        alert('Please select a valid site');
+        toast.error('Please select a valid site');
         return;
       }
 
@@ -712,7 +713,7 @@ const PayslipView = ({ onBack }) => {
       const payslipsToInclude = filteredPayslips;
 
       if (payslipsToInclude.length === 0) {
-        alert('No payslips found for the selected site and month');
+        toast.error('No payslips found for the selected site and month');
         setLoading(false);
         return;
       }
@@ -740,7 +741,7 @@ const PayslipView = ({ onBack }) => {
       setLoading(false);
     } catch (error) {
       console.error('Error generating site-wise PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
       setLoading(false);
     }
   };

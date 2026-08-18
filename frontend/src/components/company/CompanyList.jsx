@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { companyService } from '../../services/companyService';
 
 const CompanyList = ({ onEdit, onAddNew }) => {
@@ -24,7 +25,7 @@ const CompanyList = ({ onEdit, onAddNew }) => {
         setCompanies(response.data);
       }
     } catch (error) {
-      alert('Failed to load companies');
+      toast.error('Failed to load companies');
     } finally {
       setLoading(false);
     }
@@ -56,11 +57,11 @@ const CompanyList = ({ onEdit, onAddNew }) => {
       try {
         const response = await companyService.deleteCompany(id);
         if (response.success) {
-          alert(response.message);
+          toast.success(response.message);
           loadCompanies();
         }
       } catch (error) {
-        alert(error.response?.data?.message || 'Failed to delete company');
+        toast.error(error.response?.data?.message || 'Failed to delete company');
       }
     }
   };

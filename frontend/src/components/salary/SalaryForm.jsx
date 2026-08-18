@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { formatCurrency } from '../../utils/format';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
@@ -164,7 +165,7 @@ const SalaryForm = ({ salaryId, preSelectedEmployeeId, onSuccess, onCancel }) =>
         });
       }
     } catch (error) {
-      alert('Failed to load salary data');
+      toast.error('Failed to load salary data');
     } finally {
       setLoading(false);
     }
@@ -406,16 +407,16 @@ const SalaryForm = ({ salaryId, preSelectedEmployeeId, onSuccess, onCancel }) =>
       }
 
       if (response.success) {
-        alert(response.message);
+        toast.success(response.message);
         if (onSuccess) onSuccess();
       }
     } catch (error) {
       if (error.response?.data?.message) {
-        alert(error.response.data.message);
+        toast.error(error.response.data.message);
       } else if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       } else {
-        alert('Failed to save salary structure');
+        toast.error('Failed to save salary structure');
       }
     } finally {
       setLoading(false);

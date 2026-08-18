@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { formatCurrency } from '../../utils/format';
 import { candidateService } from '../../services/candidateService';
 import { siteService } from '../../services/siteService';
@@ -55,8 +56,8 @@ const CandidateList = ({ onEdit, onAddNew, onGenerateOfferLetter, onConvertToEmp
     if (window.confirm('Are you sure you want to delete candidate ' + name + '?')) {
       try {
         const response = await candidateService.deleteCandidate(id);
-        if (response.success) { alert(response.message); loadCandidates(); }
-      } catch (error) { alert('Failed to delete candidate'); }
+        if (response.success) { toast.success(response.message); loadCandidates(); }
+      } catch (error) { toast.error('Failed to delete candidate'); }
     }
   };
 

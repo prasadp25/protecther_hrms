@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { candidateService } from '../../services/candidateService';
 import { siteService } from '../../services/siteService';
 import { employeeService } from '../../services/employeeService';
@@ -272,15 +273,15 @@ const CandidateForm = ({ candidate, onSuccess, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.first_name || !formData.mobile || !formData.designation || !formData.department || !formData.basic_salary) {
-      alert('Please fill required fields'); return;
+      toast.error('Please fill required fields'); return;
     }
     setLoading(true);
     try {
       const response = isEdit
         ? await candidateService.updateCandidate(candidate.candidate_id, formData)
         : await candidateService.createCandidate(formData);
-      if (response.success) { alert(response.message); onSuccess(); }
-    } catch (error) { alert('Failed to save candidate'); }
+      if (response.success) { toast.success(response.message); onSuccess(); }
+    } catch (error) { toast.error('Failed to save candidate'); }
     finally { setLoading(false); }
   };
 

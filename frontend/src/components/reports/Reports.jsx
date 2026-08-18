@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { toast } from 'react-toastify';
 import reportService from '../../services/reportService';
 import { showSuccess, showError } from '../../config/api';
 
@@ -122,7 +123,7 @@ const Reports = () => {
 
   const handleExportCSV = () => {
     if (!reportData || reportData.length === 0) {
-      alert('No data to export');
+      toast.error('No data to export');
       return;
     }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { candidateService } from '../../services/candidateService';
 
 const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel }) => {
@@ -93,7 +94,7 @@ const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to generate offer letter');
+      toast.error(error.response?.data?.message || 'Failed to generate offer letter');
     } finally {
       setDownloading(false);
     }
@@ -102,10 +103,10 @@ const OfferLetterGenerator = ({ candidate: initialCandidate, onSuccess, onCancel
   const handleMarkAsOffered = async () => {
     try {
       await candidateService.updateCandidateStatus(candidate.candidate_id, 'OFFERED');
-      alert('Candidate marked as OFFERED');
+      toast.success('Candidate marked as OFFERED');
       onSuccess();
     } catch (error) {
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 

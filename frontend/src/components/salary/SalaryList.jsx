@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { formatCurrency } from '../../utils/format';
 import { salaryService } from '../../services/salaryService';
 import { employeeService } from '../../services/employeeService';
@@ -36,7 +37,7 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
         setSalaries(activeSalaries);
       }
     } catch (error) {
-      alert('Failed to load salary structures');
+      toast.error('Failed to load salary structures');
     } finally {
       setLoading(false);
     }
@@ -119,12 +120,12 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
       try {
         const response = await salaryService.deleteSalary(salaryId);
         if (response.success) {
-          alert(response.message);
+          toast.success(response.message);
           loadSalaries();
           loadSummary();
         }
       } catch (error) {
-        alert('Failed to deactivate salary structure');
+        toast.error('Failed to deactivate salary structure');
       }
     }
   };
@@ -132,7 +133,7 @@ const SalaryList = ({ onEdit, onAddNew, onViewPayslips }) => {
 
   const exportToExcel = () => {
     if (filteredSalaries.length === 0) {
-      alert('No data to export');
+      toast.error('No data to export');
       return;
     }
 

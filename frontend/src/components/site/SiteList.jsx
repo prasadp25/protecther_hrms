@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { formatCurrency } from '../../utils/format';
 import { siteService } from '../../services/siteService';
 
@@ -25,7 +26,7 @@ const SiteList = ({ onEdit, onAddNew }) => {
         setSites(response.data);
       }
     } catch (error) {
-      alert('Failed to load sites');
+      toast.error('Failed to load sites');
     } finally {
       setLoading(false);
     }
@@ -62,11 +63,11 @@ const SiteList = ({ onEdit, onAddNew }) => {
       try {
         const response = await siteService.deleteSite(id);
         if (response.success) {
-          alert(response.message);
+          toast.success(response.message);
           loadSites();
         }
       } catch (error) {
-        alert('Failed to delete site');
+        toast.error('Failed to delete site');
       }
     }
   };

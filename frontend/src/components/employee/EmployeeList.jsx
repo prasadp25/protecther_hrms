@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import api from '../../config/api';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
@@ -100,18 +101,18 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
           if (owed && owed.total_balance > 0) {
             const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(owed.total_balance);
             // No more payslips will generate, so this can't auto-recover.
-            window.alert(
+            toast.success(
               `${name} marked as resigned.\n\n⚠ Outstanding advance not yet recovered: ${fmt}.\n` +
               `No further payslips will be generated, so this will NOT auto-recover. ` +
               `Please collect it in the final settlement or cancel the advance to write it off (Advances screen).`
             );
           } else {
-            alert(response.message);
+            toast.success(response.message);
           }
           loadEmployees();
         }
       } catch (error) {
-        alert('Failed to delete employee');
+        toast.error('Failed to delete employee');
       }
     }
   };
@@ -126,7 +127,7 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
       // Revoke after the new tab has had time to load the blob
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
-      alert('Failed to open document');
+      toast.error('Failed to open document');
     }
   };
 
@@ -135,11 +136,11 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload }) => {
       try {
         const response = await employeeService.updateEmployee(employeeId, { status: newStatus });
         if (response.success) {
-          alert('Status updated successfully');
+          toast.success('Status updated successfully');
           loadEmployees();
         }
       } catch (error) {
-        alert('Failed to update status');
+        toast.error('Failed to update status');
       }
     }
   };
