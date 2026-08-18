@@ -6,7 +6,7 @@ import { siteService } from '../../services/siteService';
 import usePagination from '../../hooks/usePagination';
 import Pagination from '../common/Pagination';
 
-const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF, onExitDocs }) => {
+const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF, onExitDocs, onClearance }) => {
   const [employees, setEmployees] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -519,6 +519,17 @@ const EmployeeList = ({ onEdit, onAddNew, onBulkUpload, onFnF, onExitDocs }) => 
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+                      {onClearance && ['RESIGNED', 'TERMINATED'].includes(employee.status) && (
+                        <button
+                          onClick={() => onClearance(employee.employee_id)}
+                          className="text-amber-600 hover:text-amber-800 p-1"
+                          title="No-dues clearance checklist"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6.414A2 2 0 0015.414 5L13 2.586A2 2 0 0011.586 2H6zm5 6a1 1 0 10-2 0v.01a1 1 0 102 0V8zm-1 3a1 1 0 00-1 1v2a1 1 0 102 0v-2a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
                         </button>
                       )}
