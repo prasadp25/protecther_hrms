@@ -49,6 +49,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
     status: 'ACTIVE',
     dateOfJoining: '',
     dateOfLeaving: '',
+    notice_period: '15',
     designation: '',
     department: '',
     offerLetterIssueDate: '',
@@ -127,6 +128,7 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
           status: employee.status || 'ACTIVE',
           dateOfJoining: employee.date_of_joining ? employee.date_of_joining.split('T')[0] : '',
           dateOfLeaving: employee.date_of_leaving ? employee.date_of_leaving.split('T')[0] : '',
+          notice_period: employee.notice_period != null ? String(employee.notice_period) : '15',
           designation: employee.designation || '',
           department: employee.department || '',
           offerLetterIssueDate: employee.offer_letter_issue_date ? employee.offer_letter_issue_date.split('T')[0] : '',
@@ -832,6 +834,21 @@ const EmployeeForm = ({ employeeId, onSuccess, onCancel }) => {
                 Not applicable for active employees
               </p>
             )}
+          </div>
+
+          <div>
+            <label className={labelClasses}>Notice Period (Days)</label>
+            <input
+              type="number"
+              name="notice_period"
+              min="0"
+              value={formData.notice_period}
+              onChange={handleChange}
+              className={inputClasses}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Used for notice-shortfall recovery in the final settlement.
+            </p>
           </div>
 
           <div>

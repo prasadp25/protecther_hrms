@@ -125,10 +125,11 @@ const createDraft = asyncHandler(async (req, res) => {
 
   // Snapshots
   const activeSalary = await executeQuery(
-    `SELECT basic_salary FROM salaries WHERE employee_id = ? AND status = 'ACTIVE' ORDER BY effective_from DESC LIMIT 1`,
+    `SELECT basic_salary, gross_salary FROM salaries WHERE employee_id = ? AND status = 'ACTIVE' ORDER BY effective_from DESC LIMIT 1`,
     [employeeId]
   );
   const lastBasic = activeSalary.length > 0 ? Number(activeSalary[0].basic_salary) : 0;
+  const lastGross = activeSalary.length > 0 ? Number(activeSalary[0].gross_salary) : 0;
   const years = completedYears(employee.date_of_joining, lwd);
   const [gr] = await executeQuery(
     'SELECT COALESCE(SUM(gratuity), 0) AS accrued FROM payslips WHERE employee_id = ?',
@@ -167,6 +168,34 @@ const createDraft = asyncHandler(async (req, res) => {
       label: `Advance recovery (#${a.advance_id})`,
       amount: round2(a.balance), is_auto: 1, source_ref: String(a.advance_id),
     });
+  }
+
+  // Notice-period shortfall recovery (client sign-off A3): if the employee was
+  // relieved through the resignation workflow having served fewer days than
+  // their notice period, recover the shortfall at Gross ÷ 30 per day. Inserted
+  // as an editable line (not auto) so HR can waive it on an early release.
+  const noticeDays = employee.notice_period != null ? Number(employee.notice_period) : 0;
+  const [resig] = await executeQuery(
+    `SELECT approved_lwd, requested_lwd, created_at
+     FROM resignation_requests
+     WHERE employee_id = ? AND status IN ('RELIEVED', 'APPROVED')
+     ORDER BY request_id DESC LIMIT 1`,
+    [employeeId]
+  );
+  if (resig && noticeDays > 0 && lastGross > 0) {
+    const effectiveLwd = resig.approved_lwd || resig.requested_lwd;
+    const submitted = resig.created_at ? new Date(resig.created_at) : null;
+    if (effectiveLwd && submitted) {
+      const servedDays = Math.floor((new Date(effectiveLwd).getTime() - submitted.getTime()) / 86400000);
+      const shortfall = Math.max(0, noticeDays - servedDays);
+      if (shortfall > 0) {
+        autoLines.push({
+          kind: 'RECOVERY', code: 'NOTICE',
+          label: `Notice shortfall (${shortfall} of ${noticeDays} days · Gross÷30)`,
+          amount: round2((lastGross / 30) * shortfall), is_auto: 0, source_ref: null,
+        });
+      }
+    }
   }
 
   const fnfId = await withTransaction(async (conn) => {

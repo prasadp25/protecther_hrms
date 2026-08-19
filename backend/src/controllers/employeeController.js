@@ -350,8 +350,8 @@ const createEmployee = async (req, res) => {
         designation, department, date_of_joining, date_of_leaving,
         offer_letter_issue_date, offer_letter_url, status, site_id,
         emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship,
-        wp_policy, hospital_insurance_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        wp_policy, hospital_insurance_id, notice_period
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -395,7 +395,8 @@ const createEmployee = async (req, res) => {
       employeeData.emergency_contact_mobile || null,
       employeeData.emergency_contact_relationship || null,
       employeeData.wp_policy || 'No',
-      employeeData.hospital_insurance_id || null
+      employeeData.hospital_insurance_id || null,
+      employeeData.notice_period != null && employeeData.notice_period !== '' ? parseInt(employeeData.notice_period) : 15
     ];
 
     const result = await executeQuery(query, params);

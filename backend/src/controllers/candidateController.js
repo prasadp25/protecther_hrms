@@ -519,7 +519,7 @@ const convertToEmployee = asyncHandler(async (req, res) => {
     }
 
     // Insert employee
-    const employeeQuery = 'INSERT INTO employees (company_id, employee_code, first_name, last_name, mobile, email, dob, gender, address, city, state, pincode, aadhaar_no, pan_no, uan_no, designation, department, date_of_joining, offer_letter_issue_date, offer_letter_url, site_id, status, emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship, account_number, ifsc_code, bank_name, branch_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    const employeeQuery = 'INSERT INTO employees (company_id, employee_code, first_name, last_name, mobile, email, dob, gender, address, city, state, pincode, aadhaar_no, pan_no, uan_no, designation, department, date_of_joining, offer_letter_issue_date, offer_letter_url, site_id, status, emergency_contact_name, emergency_contact_mobile, emergency_contact_relationship, account_number, ifsc_code, bank_name, branch_name, notice_period) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     const employeeParams = [
       candidate.company_id, employeeCode, candidate.first_name, candidate.last_name,
@@ -531,7 +531,8 @@ const convertToEmployee = asyncHandler(async (req, res) => {
       additionalData.emergency_contact_name || null, additionalData.emergency_contact_mobile || null,
       additionalData.emergency_contact_relationship || null,
       additionalData.account_number || null, additionalData.ifsc_code || null,
-      additionalData.bank_name || null, additionalData.branch_name || null
+      additionalData.bank_name || null, additionalData.branch_name || null,
+      candidate.notice_period != null ? candidate.notice_period : 15
     ];
 
     const [employeeResult] = await conn.query(employeeQuery, employeeParams);
