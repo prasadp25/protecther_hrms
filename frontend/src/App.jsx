@@ -47,7 +47,6 @@ const MyPayslips = lazy(() => import('./components/employeePortal/MyPayslips'));
 const MyDocuments = lazy(() => import('./components/employeePortal/MyDocuments'));
 const InsuranceInfo = lazy(() => import('./components/employeePortal/InsuranceInfo'));
 const EmployeeNotices = lazy(() => import('./components/employeePortal/Notices'));
-const MyResignation = lazy(() => import('./components/employeePortal/MyResignation'));
 
 // Shown while a lazily-loaded screen's code downloads
 const PageLoader = () => (
@@ -511,7 +510,6 @@ function App() {
             <Route path="documents" element={<MyDocuments />} />
             <Route path="insurance" element={<InsuranceInfo />} />
             <Route path="notices" element={<EmployeeNotices />} />
-            <Route path="resignation" element={<MyResignation />} />
           </Route>
 
           {/* Admin Routes */}

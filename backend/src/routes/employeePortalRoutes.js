@@ -11,10 +11,7 @@ const {
   getNotices,
   getInsurance,
   getDocuments,
-  downloadMyDocument,
-  submitResignation,
-  getMyResignation,
-  withdrawResignation
+  downloadMyDocument
 } = require('../controllers/employeePortalController');
 const { otpRequestLimiter, otpVerifyLimiter } = require('../middleware/rateLimiter');
 
@@ -35,10 +32,5 @@ router.get('/notices', authenticateEmployee, getNotices);
 router.get('/insurance', authenticateEmployee, getInsurance);
 router.get('/documents', authenticateEmployee, getDocuments);
 router.get('/documents/:type/download', authenticateEmployee, downloadMyDocument);
-
-// Resignation self-service (Phase 2)
-router.get('/resignation', authenticateEmployee, getMyResignation);
-router.post('/resignation', authenticateEmployee, submitResignation);
-router.post('/resignation/withdraw', authenticateEmployee, withdrawResignation);
 
 module.exports = router;

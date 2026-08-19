@@ -154,23 +154,6 @@ export const employeePortalService = {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
-  },
-
-  // Resignation self-service
-  getResignation: async () => {
-    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
-    const response = await api.get('/employee-portal/resignation', { headers: { Authorization: `Bearer ${token}` } });
-    return response.data;
-  },
-  submitResignation: async (data) => {
-    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
-    const response = await api.post('/employee-portal/resignation', data, { headers: { Authorization: `Bearer ${token}` } });
-    return response.data;
-  },
-  withdrawResignation: async () => {
-    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
-    const response = await api.post('/employee-portal/resignation/withdraw', {}, { headers: { Authorization: `Bearer ${token}` } });
-    return response.data;
   }
 };
 

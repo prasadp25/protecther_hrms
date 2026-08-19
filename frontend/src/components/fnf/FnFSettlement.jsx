@@ -358,11 +358,11 @@ const FnFSettlement = ({ employeeId, onBack }) => {
             {saving ? 'Saving…' : 'Save'}
           </button>
         )}
-        {isDraft && isAdmin && (
+        {isDraft && (
           <button onClick={() => doTransition(fnfService.approve, 'Settlement approved')} disabled={saving}
             className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50">Approve</button>
         )}
-        {status === 'APPROVED' && isAdmin && (
+        {status === 'APPROVED' && (
           <button onClick={() => doTransition(fnfService.pay, 'Marked as paid')} disabled={saving}
             className="bg-emerald-600 text-white px-4 py-2 rounded disabled:opacity-50">Mark as paid</button>
         )}

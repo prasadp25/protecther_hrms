@@ -630,80 +630,6 @@ const downloadMyDocument = async (req, res) => {
   }
 };
 
-// ==============================================
-// RESIGNATION — employee self-service (Phase 2)
-// The portal's first write action. The employee (req.employee, always ACTIVE)
-// raises a PENDING request that HR then approves/rejects via the admin queue.
-// ==============================================
-const RESIG_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-// POST /employee-portal/resignation
-const submitResignation = async (req, res) => {
-  try {
-    const emp = req.employee;
-    const { reason, requested_lwd } = req.body;
-
-    if (!requested_lwd || !RESIG_DATE_RE.test(requested_lwd)) {
-      return res.status(400).json({ success: false, message: 'A valid intended last working day (YYYY-MM-DD) is required' });
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    if (requested_lwd < today) {
-      return res.status(400).json({ success: false, message: 'The last working day cannot be in the past' });
-    }
-
-    const dup = await executeQuery(
-      "SELECT request_id FROM resignation_requests WHERE employee_id = ? AND status IN ('PENDING','APPROVED')",
-      [emp.employee_id]
-    );
-    if (dup.length > 0) {
-      return res.status(409).json({ success: false, message: 'You already have a resignation in progress' });
-    }
-
-    const result = await executeQuery(
-      `INSERT INTO resignation_requests (employee_id, company_id, submitted_by, reason, requested_lwd, status)
-       VALUES (?, ?, 'EMPLOYEE', ?, ?, 'PENDING')`,
-      [emp.employee_id, emp.company_id, reason || null, requested_lwd]
-    );
-    const rows = await executeQuery('SELECT * FROM resignation_requests WHERE request_id = ?', [result.insertId]);
-    res.status(201).json({ success: true, message: 'Resignation submitted for approval', data: rows[0] });
-  } catch (error) {
-    console.error('Submit resignation error:', error);
-    res.status(500).json({ success: false, message: 'Failed to submit resignation' });
-  }
-};
-
-// GET /employee-portal/resignation — the employee's latest request (or null)
-const getMyResignation = async (req, res) => {
-  try {
-    const rows = await executeQuery(
-      'SELECT * FROM resignation_requests WHERE employee_id = ? ORDER BY request_id DESC LIMIT 1',
-      [req.employee.employee_id]
-    );
-    res.status(200).json({ success: true, data: rows[0] || null });
-  } catch (error) {
-    console.error('Get resignation error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load resignation' });
-  }
-};
-
-// POST /employee-portal/resignation/withdraw — withdraw own PENDING request
-const withdrawResignation = async (req, res) => {
-  try {
-    const rows = await executeQuery(
-      "SELECT request_id FROM resignation_requests WHERE employee_id = ? AND status = 'PENDING' ORDER BY request_id DESC LIMIT 1",
-      [req.employee.employee_id]
-    );
-    if (rows.length === 0) {
-      return res.status(400).json({ success: false, message: 'No pending resignation to withdraw' });
-    }
-    await executeQuery("UPDATE resignation_requests SET status = 'WITHDRAWN' WHERE request_id = ?", [rows[0].request_id]);
-    res.status(200).json({ success: true, message: 'Resignation withdrawn' });
-  } catch (error) {
-    console.error('Withdraw resignation error:', error);
-    res.status(500).json({ success: false, message: 'Failed to withdraw resignation' });
-  }
-};
-
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -715,8 +641,5 @@ module.exports = {
   getNotices,
   getInsurance,
   getDocuments,
-  downloadMyDocument,
-  submitResignation,
-  getMyResignation,
-  withdrawResignation
+  downloadMyDocument
 };
