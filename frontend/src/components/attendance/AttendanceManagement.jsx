@@ -4,6 +4,7 @@ import { attendanceService } from '../../services/attendanceService';
 import { employeeService } from '../../services/employeeService';
 import { siteService } from '../../services/siteService';
 import { salaryService } from '../../services/salaryService';
+import { leaveService } from '../../services/leaveService';
 import * as XLSX from 'xlsx';
 
 const AttendanceManagement = () => {
@@ -26,11 +27,22 @@ const AttendanceManagement = () => {
   const [attendanceFilter, setAttendanceFilter] = useState('ALL'); // ALL, WITH_ATTENDANCE, MISSING_ATTENDANCE
   const [copyingLastMonth, setCopyingLastMonth] = useState(false);
   const [selectedSitePayCycle, setSelectedSitePayCycle] = useState('GROUP_A');
+  // Approved unpaid-leave days per employee for the selected month (employee_id -> days).
+  const [leaveDays, setLeaveDays] = useState({});
 
   useEffect(() => {
     loadEmployees();
     loadSites();
   }, []);
+
+  // Approved leave for the month → shown per row so HR subtracts it from days present.
+  useEffect(() => {
+    let cancelled = false;
+    leaveService.monthSummary(selectedMonth)
+      .then((res) => { if (!cancelled) setLeaveDays(res?.data?.unpaid_by_employee || {}); })
+      .catch(() => { if (!cancelled) setLeaveDays({}); });
+    return () => { cancelled = true; };
+  }, [selectedMonth]);
 
   useEffect(() => {
     if (employees.length > 0) {
@@ -1078,6 +1090,23 @@ const AttendanceManagement = () => {
                         className="w-20 text-center rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 border disabled:bg-gray-100"
                       />
                       <span className="ml-2 text-sm text-gray-500">/ {att.total_days_in_month}</span>
+                      {leaveDays[att.employee_id] > 0 && (
+                        <div className="mt-1 flex items-center justify-center gap-1 text-xs">
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded" title="Approved unpaid leave this month">
+                            {leaveDays[att.employee_id]} leave
+                          </span>
+                          {att.status !== 'FINALIZED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleDaysChange(att.employee_id, Math.max(0, att.total_days_in_month - leaveDays[att.employee_id]))}
+                              className="text-blue-600 hover:underline"
+                              title={`Set days present to ${att.total_days_in_month} − ${leaveDays[att.employee_id]} leave`}
+                            >
+                              apply
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <input

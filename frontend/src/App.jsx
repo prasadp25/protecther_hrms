@@ -21,6 +21,7 @@ const FnFSettlement = lazy(() => import('./components/fnf/FnFSettlement'));
 const ExitDocuments = lazy(() => import('./components/fnf/ExitDocuments'));
 const Clearance = lazy(() => import('./components/fnf/Clearance'));
 const ResignationList = lazy(() => import('./components/fnf/ResignationList'));
+const LeaveList = lazy(() => import('./components/fnf/LeaveList'));
 const SiteList = lazy(() => import('./components/site/SiteList'));
 const SiteForm = lazy(() => import('./components/site/SiteForm'));
 const SalaryList = lazy(() => import('./components/salary/SalaryList'));
@@ -47,6 +48,7 @@ const MyPayslips = lazy(() => import('./components/employeePortal/MyPayslips'));
 const MyDocuments = lazy(() => import('./components/employeePortal/MyDocuments'));
 const InsuranceInfo = lazy(() => import('./components/employeePortal/InsuranceInfo'));
 const EmployeeNotices = lazy(() => import('./components/employeePortal/Notices'));
+const MyLeave = lazy(() => import('./components/employeePortal/MyLeave'));
 
 // Shown while a lazily-loaded screen's code downloads
 const PageLoader = () => (
@@ -287,6 +289,7 @@ const MainApp = () => {
                     {module === 'employees' && (view === 'form' ? (selectedEmployeeId ? 'Edit Employee' : 'Add Employee') : view === 'bulk-upload' ? 'Bulk Document Upload' : view === 'fnf' ? 'Full & Final Settlement' : view === 'exit-docs' ? 'Exit Documents' : view === 'clearance' ? 'No-dues Clearance' : 'Employees')}
                     {module === 'sites' && (view === 'form' ? (selectedSiteId ? 'Edit Site' : 'Add Site') : 'Sites & Clients')}
                     {module === 'resignations' && 'Resignations'}
+                    {module === 'leaves' && 'Leave'}
                     {module === 'attendance' && 'Attendance Management'}
                     {module === 'salary' && (view === 'form' ? (selectedSalaryId ? 'Edit Salary' : 'Add Salary') : view === 'payslips' ? 'Payslips' : 'Salary & Payroll')}
                     {module === 'advances' && 'Salary Advances'}
@@ -421,6 +424,8 @@ const MainApp = () => {
 
           {module === 'resignations' && <ResignationList />}
 
+          {module === 'leaves' && <LeaveList />}
+
           {module === 'attendance' && <AttendanceManagement />}
 
           {module === 'salary' && (
@@ -510,6 +515,7 @@ function App() {
             <Route path="documents" element={<MyDocuments />} />
             <Route path="insurance" element={<InsuranceInfo />} />
             <Route path="notices" element={<EmployeeNotices />} />
+            <Route path="leave" element={<MyLeave />} />
           </Route>
 
           {/* Admin Routes */}

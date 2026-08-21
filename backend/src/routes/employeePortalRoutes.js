@@ -13,6 +13,7 @@ const {
   getDocuments,
   downloadMyDocument
 } = require('../controllers/employeePortalController');
+const { applyLeave, myLeaves, withdrawLeave } = require('../controllers/leaveController');
 const { otpRequestLimiter, otpVerifyLimiter } = require('../middleware/rateLimiter');
 
 // ==============================================
@@ -32,5 +33,10 @@ router.get('/notices', authenticateEmployee, getNotices);
 router.get('/insurance', authenticateEmployee, getInsurance);
 router.get('/documents', authenticateEmployee, getDocuments);
 router.get('/documents/:type/download', authenticateEmployee, downloadMyDocument);
+
+// Leave self-service
+router.get('/leaves', authenticateEmployee, myLeaves);
+router.post('/leaves', authenticateEmployee, applyLeave);
+router.post('/leaves/:id/withdraw', authenticateEmployee, withdrawLeave);
 
 module.exports = router;

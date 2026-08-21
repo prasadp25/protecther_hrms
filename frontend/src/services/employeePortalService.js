@@ -154,6 +154,23 @@ export const employeePortalService = {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
+  },
+
+  // Leave self-service
+  getLeaves: async () => {
+    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
+    const response = await api.get('/employee-portal/leaves', { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+  applyLeave: async (data) => {
+    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
+    const response = await api.post('/employee-portal/leaves', data, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+  withdrawLeave: async (id) => {
+    const token = localStorage.getItem(EMPLOYEE_TOKEN_KEY);
+    const response = await api.post(`/employee-portal/leaves/${id}/withdraw`, {}, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
   }
 };
 
